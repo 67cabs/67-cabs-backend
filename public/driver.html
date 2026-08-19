@@ -136,7 +136,8 @@
 
     const socket = io({
       transports: ['websocket', 'polling'],
-      reconnectionAttempts: 10
+      reconnectionAttempts: 20,
+      reconnectionDelay: 1000
     });
 
     let currentOffer = null;
@@ -145,6 +146,7 @@
     let alertSoundInterval = null;
     let currentTripPhase = 'TO_PICKUP';
     let geoWatchId = null;
+    let wakeLock = null;
 
     const DRIVER_INFO = {
       driverId: 'DRV_67_01',
@@ -155,10 +157,38 @@
       location: null
     };
 
+    // 1. Keep Screen Awake (Prevent background pause)
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+        }
+      } catch (err) {
+        console.warn('WakeLock not supported/granted:', err);
+      }
+    }
+    requestWakeLock();
+
+    document.addEventListener('visibilitychange', async () => {
+      if (document.visibilityState === 'visible') {
+        await requestWakeLock();
+        registerDriver();
+      }
+    });
+
     function registerDriver() {
       socket.emit('driver:register', DRIVER_INFO);
     }
     socket.on('connect', registerDriver);
+
+    // Heartbeat Keep-Alive to Server
+    setInterval(() => {
+      if (socket.connected) {
+        registerDriver();
+      } else {
+        socket.connect();
+      }
+    }, 5000);
 
     async function reverseGeocode(lat, lng) {
       try {
@@ -172,27 +202,25 @@
       return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     }
 
-    // Force Prompt and Continuous GPS Tracking
+    // Force Mobile GPS Permission & Continuous Tracking
     function initDriverGPS() {
       if (!navigator.geolocation) {
         document.getElementById('gps-status-indicator').innerHTML = `● <span class="text-red-400">GPS Not Supported</span>`;
         return;
       }
 
-      // 1. Initial Prompt Call
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           updatePosition(pos);
-          // 2. Start continuous watcher after permission is granted
           geoWatchId = navigator.geolocation.watchPosition(
             updatePosition,
-            (err) => console.warn("Watch error:", err),
+            (err) => console.warn("Driver watchPosition err:", err.message),
             { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
           );
         },
         (err) => {
           document.getElementById('gps-status-indicator').innerHTML = `● <span class="text-red-400">GPS Permission Denied</span>`;
-          alert("Driver location access is required. Please allow location permissions in your browser bar.");
+          alert("Driver live location access zaroori hai. Kripya browser me GPS permission allow karein.");
         },
         { enableHighAccuracy: true, timeout: 15000 }
       );
@@ -217,10 +245,10 @@
     }
 
     window.addEventListener('load', () => {
-      setTimeout(initDriverGPS, 500);
+      setTimeout(initDriverGPS, 400);
     });
 
-    // Loud Native Audio Siren Generator
+    // Native Loud Audio Siren
     function playOfferSiren() {
       try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -229,7 +257,7 @@
           const gain = audioCtx.createGain();
           osc.type = type;
           osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-          gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+          gain.gain.setValueAtTime(0.35, audioCtx.currentTime);
           gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
           osc.connect(gain);
           gain.connect(audioCtx.destination);
@@ -243,6 +271,7 @@
 
     function startOfferAlerts() {
       playOfferSiren();
+      if (alertSoundInterval) clearInterval(alertSoundInterval);
       alertSoundInterval = setInterval(playOfferSiren, 1200);
       if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200]);
     }
@@ -251,7 +280,7 @@
       if (alertSoundInterval) clearInterval(alertSoundInterval);
     }
 
-    socket.on('ride:new_offer', async (offer) => {
+    async function triggerOfferModal(offer) {
       currentOffer = offer;
       document.getElementById('offer-fare').innerText = `₹${offer.totalFare}`;
       
@@ -264,6 +293,31 @@
       document.getElementById('offer-modal').classList.remove('hidden');
       document.getElementById('offer-modal').classList.add('flex');
       startOfferAlerts();
+    }
+
+    // Direct MongoDB Active DB Polling (Har 3 second me background query karega)
+    setInterval(async () => {
+      if (currentActiveRideId || currentOffer) return;
+
+      try {
+        const res = await fetch(`/api/driver/active-offers?cabType=${DRIVER_INFO.cabType}`);
+        const data = await res.json();
+
+        if (data.success && data.offer) {
+          if (!currentOffer || currentOffer.rideId !== data.offer.rideId) {
+            triggerOfferModal(data.offer);
+          }
+        }
+      } catch (err) {
+        console.warn("DB Polling Check...", err);
+      }
+    }, 3000);
+
+    // Immediate Socket Offer Listener (Fallback/Realtime)
+    socket.on('ride:new_offer', (offer) => {
+      if (!currentActiveRideId && !currentOffer) {
+        triggerOfferModal(offer);
+      }
     });
 
     socket.on('ride:taken', ({ rideId }) => {
