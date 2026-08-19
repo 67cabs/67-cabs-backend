@@ -19,9 +19,14 @@ const { calculateMasterFare } = require('./utils/fareCalculator');
 const app = express();
 const server = http.createServer(app);
 
-// Socket.io for Real-time Cabs & Alerts
+// Socket.io for Real-time Cabs & Alerts (Optimized for HTTPS/Nginx)
 const io = new Server(server, {
-  cors: { origin: '*', methods: ['GET', 'POST'] }
+  cors: { 
+    origin: '*', 
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
+  transports: ['websocket', 'polling']
 });
 
 // Middlewares
@@ -69,7 +74,11 @@ const tripSchema = new mongoose.Schema({
     upiId: String
   },
   otp: String,
-  status: { type: String, enum: ['SEARCHING', 'ACCEPTED', 'ARRIVED', 'ONGOING', 'COMPLETED', 'CANCELLED'], default: 'SEARCHING' },
+  status: { 
+    type: String, 
+    enum: ['SEARCHING', 'ACCEPTED', 'ARRIVED', 'ONGOING', 'COMPLETED', 'CANCELLED'], 
+    default: 'SEARCHING' 
+  },
   startTime: Date,
   endTime: Date
 }, { timestamps: true });
@@ -133,20 +142,22 @@ io.on('connection', (socket) => {
 
   // 1. Driver Online Registration
   socket.on('driver:register', (driverData) => {
+    const normalizedCabType = (driverData.cabType || 'HATCHBACK').toUpperCase();
     activeDrivers.set(socket.id, {
-      driverId: driverData.driverId,
-      name: driverData.name,
+      driverId: driverData.driverId || socket.id,
+      name: driverData.name || 'Driver',
       vehicleNo: driverData.vehicleNo || 'RJ 14 TA 6767',
-      cabType: driverData.cabType,
+      cabType: normalizedCabType,
       upiId: driverData.upiId || '67cabs@upi',
       socketId: socket.id
     });
-    console.log(`🚗 Driver Online: ${driverData.name} (${driverData.cabType})`);
+    console.log(`🚗 Driver Online: ${driverData.name} (${normalizedCabType}) | Socket: ${socket.id}`);
   });
 
   // 2. Rider Requests Cab with Geofence Verification
-  socket.on('ride:request', (rideData) => {
+  socket.on('ride:request', async (rideData) => {
     const { pickup, drop, cabType, totalFare } = rideData;
+    const requestedCabType = (cabType || 'HATCHBACK').toUpperCase();
 
     // Backend Geofence Validation
     if (pickup && (!isWithinJaipur(pickup.lat, pickup.lng) || !isWithinJaipur(drop.lat, drop.lng))) {
@@ -158,24 +169,45 @@ io.on('connection', (socket) => {
     const rideId = `RIDE_${Date.now()}`;
     const ridePayload = { 
       ...rideData, 
+      cabType: requestedCabType,
       rideId, 
       riderSocketId: socket.id, 
       status: 'SEARCHING' 
     };
     activeRides.set(rideId, ridePayload);
 
-    console.log(`📍 67 Cabs Request: ${rideId} for ${cabType}`);
+    console.log(`📍 67 Cabs Request: ${rideId} for ${requestedCabType}`);
 
-    // Broadcast offer only to matching online cabs
+    // Instant Mongo Atlas Log (SEARCHING state)
+    try {
+      await Trip.create({
+        rideId,
+        cabType: requestedCabType,
+        pickup,
+        drop,
+        totalFare: Number(totalFare) || 0,
+        status: 'SEARCHING',
+        startTime: new Date()
+      });
+      console.log(`💾 Live Ride ${rideId} persisted in MongoDB (SEARCHING).`);
+    } catch (dbErr) {
+      console.error(`⚠️ Initial DB Save Error for ${rideId}:`, dbErr.message);
+    }
+
+    // Broadcast offer to matching online cabs (or all online if any)
+    let dispatchedCount = 0;
     activeDrivers.forEach((driver, driverSocketId) => {
-      if (driver.cabType === cabType) {
+      if (driver.cabType === requestedCabType || requestedCabType === 'ALL') {
         io.to(driverSocketId).emit('ride:new_offer', ridePayload);
+        dispatchedCount++;
       }
     });
+
+    console.log(`📡 Offer dispatched to ${dispatchedCount} active driver(s).`);
   });
 
   // 3. Driver Accepts Ride
-  socket.on('ride:accept', ({ rideId, driverData }) => {
+  socket.on('ride:accept', async ({ rideId, driverData }) => {
     const ride = activeRides.get(rideId);
     if (!ride || ride.status !== 'SEARCHING') {
       return socket.emit('ride:error', { message: 'Ride already accepted or expired' });
@@ -194,6 +226,20 @@ io.on('connection', (socket) => {
     activeRides.set(rideId, ride);
 
     console.log(`✅ Ride ${rideId} Accepted. Generated OTP: ${startOtp}`);
+
+    // MongoDB Update to ACCEPTED
+    try {
+      await Trip.updateOne(
+        { rideId }, 
+        { 
+          status: 'ACCEPTED', 
+          driverData: ride.driverData, 
+          otp: startOtp 
+        }
+      );
+    } catch (e) {
+      console.error('DB Update Error (ACCEPTED):', e.message);
+    }
 
     // Rider ko Driver Details aur OTP bhejo
     io.to(ride.riderSocketId).emit('ride:accepted', {
@@ -242,7 +288,7 @@ io.on('connection', (socket) => {
   });
 
   // 4. Driver Verifies OTP to Start Trip
-  socket.on('ride:verify_otp', ({ rideId, enteredOtp }) => {
+  socket.on('ride:verify_otp', async ({ rideId, enteredOtp }) => {
     const ride = activeRides.get(rideId);
 
     if (!ride) {
@@ -255,6 +301,12 @@ io.on('connection', (socket) => {
       activeRides.set(rideId, ride);
 
       console.log(`🚀 Trip ${rideId} Started Successfully!`);
+
+      try {
+        await Trip.updateOne({ rideId }, { status: 'ONGOING', startTime: ride.startTime });
+      } catch (e) {
+        console.error('DB Update Error (ONGOING):', e.message);
+      }
 
       io.to(ride.riderSocketId).emit('ride:started', { rideId });
       socket.emit('ride:started_driver_view', { rideId });
@@ -283,21 +335,23 @@ io.on('connection', (socket) => {
       io.to(ride.riderSocketId).emit('ride:completed', completionPayload);
       socket.emit('ride:completed', completionPayload);
 
-      // Async DB Persistence (Non-blocking background save)
+      // Async DB Persistence
       try {
-        await Trip.create({
-          rideId: ride.rideId,
-          cabType: ride.cabType,
-          pickup: ride.pickup,
-          drop: ride.drop,
-          totalFare: ride.totalFare,
-          driverData: ride.driverData,
-          otp: ride.otp,
-          status: 'COMPLETED',
-          startTime: ride.startTime || new Date(),
-          endTime: ride.endTime
-        });
-        console.log(`💾 Trip ${rideId} successfully logged to MongoDB Atlas.`);
+        await Trip.findOneAndUpdate(
+          { rideId: ride.rideId },
+          {
+            cabType: ride.cabType,
+            pickup: ride.pickup,
+            drop: ride.drop,
+            totalFare: ride.totalFare,
+            driverData: ride.driverData,
+            otp: ride.otp,
+            status: 'COMPLETED',
+            endTime: ride.endTime
+          },
+          { upsert: true, new: true }
+        );
+        console.log(`💾 Trip ${rideId} successfully updated to COMPLETED in MongoDB Atlas.`);
       } catch (dbErr) {
         console.error(`⚠️ MongoDB Log Error for ${rideId}:`, dbErr.message);
       }
