@@ -12,7 +12,7 @@
 </head>
 <body class="bg-slate-950 text-white min-h-screen p-4 flex flex-col items-center select-none">
 
-  <div class="w-full max-w-md">
+  <div class="w-full max-w-md pb-12">
     <!-- Header -->
     <div class="flex justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow mb-4">
       <div>
@@ -42,7 +42,7 @@
       </button>
     </div>
 
-    <!-- Active Ride Screen -->
+    <!-- Active Ride Screen (Jab Driver Kisi Ek Ride ko Accept Kar Le) -->
     <div id="active-ride-card" class="hidden bg-slate-900 p-5 rounded-2xl border border-amber-400 shadow-2xl mb-4 space-y-4">
       <div class="flex justify-between items-center">
         <span id="trip-badge" class="text-xs bg-amber-400 text-slate-950 font-bold px-3 py-1 rounded-full uppercase">
@@ -88,31 +88,14 @@
       </div>
     </div>
 
-    <!-- Waiting Radar -->
+    <!-- Multi-Offers Feed Container (Jahan Ek Se Jyada Rides List Honge) -->
+    <div id="offers-container" class="space-y-4 mb-4"></div>
+
+    <!-- Waiting Radar (Jab Koi Ride Na Ho) -->
     <div id="waiting-radar" class="text-center py-16 bg-slate-900/60 rounded-2xl border border-dashed border-slate-800">
       <div class="animate-ping h-8 w-8 bg-amber-500 rounded-full mx-auto mb-4 opacity-75"></div>
       <p class="text-sm font-medium text-slate-200">Searching for ride offers...</p>
       <p class="text-xs text-slate-500 mt-1">Keep screen open</p>
-    </div>
-  </div>
-
-  <!-- INCOMING OFFER POPUP -->
-  <div id="offer-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4 z-50 animate-pulse">
-    <div class="bg-slate-900 border-2 border-amber-400 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
-      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-        <span class="text-xs font-bold uppercase text-amber-400 flex items-center gap-1.5">
-          <span class="animate-ping h-2.5 w-2.5 bg-amber-400 rounded-full inline-block"></span> NEW RIDE OFFER
-        </span>
-        <span class="text-2xl font-black text-green-400" id="offer-fare">₹0</span>
-      </div>
-      <div class="space-y-2 text-xs">
-        <div class="text-slate-300">📍 <b>From:</b> <span id="offer-pickup-addr">Pickup Location</span></div>
-        <div class="text-slate-300">🏁 <b>To:</b> <span id="offer-drop-addr">Drop Location</span></div>
-      </div>
-      <div class="grid grid-cols-2 gap-3 pt-2">
-        <button onclick="rejectRide()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3.5 rounded-xl text-sm">Decline</button>
-        <button onclick="acceptRide()" class="bg-green-600 hover:bg-green-500 text-white font-black py-3.5 rounded-xl text-sm shadow-xl">ACCEPT</button>
-      </div>
     </div>
   </div>
 
@@ -173,7 +156,8 @@
       reconnectionDelay: 1000
     });
 
-    let currentOffer = null;
+    let activeOffersMap = new Map(); // Store all incoming offers by rideId
+    let acceptedRide = null;
     let currentActiveRideId = null;
     let simInterval = null;
     let alertSoundInterval = null;
@@ -295,44 +279,86 @@
       } catch (e) {}
     }
 
-    function startOfferAlerts() {
-      playOfferSiren();
-      if (alertSoundInterval) clearInterval(alertSoundInterval);
-      alertSoundInterval = setInterval(playOfferSiren, 1200);
-      if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200]);
-    }
-
-    function stopOfferAlerts() {
-      if (alertSoundInterval) {
-        clearInterval(alertSoundInterval);
-        alertSoundInterval = null;
+    function syncSirenState() {
+      if (activeOffersMap.size > 0 && !currentActiveRideId) {
+        if (!alertSoundInterval) {
+          playOfferSiren();
+          alertSoundInterval = setInterval(playOfferSiren, 1400);
+          if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200]);
+        }
+      } else {
+        if (alertSoundInterval) {
+          clearInterval(alertSoundInterval);
+          alertSoundInterval = null;
+        }
       }
     }
 
-    async function triggerOfferModal(offer) {
-      currentOffer = offer;
-      document.getElementById('offer-fare').innerText = `₹${offer.totalFare}`;
-      
-      const pickupName = await reverseGeocode(offer.pickup.lat, offer.pickup.lng);
-      const dropName = await reverseGeocode(offer.drop.lat, offer.drop.lng);
+    // Render Multi-Offers Cards List
+    async function renderOffersList() {
+      const container = document.getElementById('offers-container');
+      const radar = document.getElementById('waiting-radar');
 
-      document.getElementById('offer-pickup-addr').innerText = pickupName;
-      document.getElementById('offer-drop-addr').innerText = dropName;
+      if (currentActiveRideId || activeOffersMap.size === 0) {
+        container.innerHTML = '';
+        if (!currentActiveRideId) radar.classList.remove('hidden');
+        syncSirenState();
+        return;
+      }
 
-      document.getElementById('offer-modal').classList.remove('hidden');
-      document.getElementById('offer-modal').classList.add('flex');
-      startOfferAlerts();
+      radar.classList.add('hidden');
+      syncSirenState();
+
+      // Render cards
+      let html = '';
+      for (const [rideId, offer] of activeOffersMap.entries()) {
+        const pickupStr = offer.pickupName || (await reverseGeocode(offer.pickup.lat, offer.pickup.lng));
+        const dropStr = offer.dropName || (await reverseGeocode(offer.drop.lat, offer.drop.lng));
+        offer.pickupName = pickupStr;
+        offer.dropName = dropStr;
+
+        html += `
+          <div id="card-${rideId}" class="bg-slate-900 border-2 border-amber-400 rounded-2xl p-4 shadow-2xl space-y-3 animate-pulse">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+              <span class="text-xs font-bold uppercase text-amber-400 flex items-center gap-1.5">
+                <span class="animate-ping h-2.5 w-2.5 bg-amber-400 rounded-full inline-block"></span> NEW RIDE OFFER
+              </span>
+              <span class="text-2xl font-black text-green-400">₹${offer.totalFare}</span>
+            </div>
+            <div class="space-y-1.5 text-xs">
+              <div class="text-slate-300 truncate">📍 <b>From:</b> <span>${pickupStr}</span></div>
+              <div class="text-slate-300 truncate">🏁 <b>To:</b> <span>${dropStr}</span></div>
+            </div>
+            <div class="grid grid-cols-2 gap-2.5 pt-1">
+              <button onclick="declineSingleOffer('${rideId}')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-xl text-xs transition">
+                Decline
+              </button>
+              <button onclick="acceptSelectedRide('${rideId}')" class="bg-green-600 hover:bg-green-500 text-white font-black py-3 rounded-xl text-xs shadow-lg transition">
+                ACCEPT
+              </button>
+            </div>
+          </div>
+        `;
+      }
+      container.innerHTML = html;
     }
 
-    function dismissOfferModal() {
-      stopOfferAlerts();
-      const modal = document.getElementById('offer-modal');
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
-      currentOffer = null;
+    function addOrUpdateOffer(offer) {
+      if (currentActiveRideId) return;
+      activeOffersMap.set(offer.rideId, offer);
+      renderOffersList();
     }
 
-    // Direct MongoDB Active DB Polling with auto-dismiss if cancelled
+    function removeOffer(rideId) {
+      activeOffersMap.delete(rideId);
+      renderOffersList();
+    }
+
+    function declineSingleOffer(rideId) {
+      removeOffer(rideId);
+    }
+
+    // Direct MongoDB Active Multi-Offers Polling
     setInterval(async () => {
       if (currentActiveRideId) return;
 
@@ -340,54 +366,67 @@
         const res = await fetch(`/api/driver/active-offers?cabType=${DRIVER_INFO.cabType}`);
         const data = await res.json();
 
-        if (data.success && data.offer) {
-          if (!currentOffer || currentOffer.rideId !== data.offer.rideId) {
-            triggerOfferModal(data.offer);
+        if (data.success && data.offers) {
+          const liveIds = new Set(data.offers.map(o => o.rideId));
+          
+          // Add newly incoming offers
+          data.offers.forEach(offer => {
+            if (!activeOffersMap.has(offer.rideId)) {
+              activeOffersMap.set(offer.rideId, offer);
+            }
+          });
+
+          // Delete cancelled/taken offers not present in DB response
+          for (const rideId of activeOffersMap.keys()) {
+            if (!liveIds.has(rideId)) {
+              activeOffersMap.delete(rideId);
+            }
           }
-        } else {
-          // DB me koi active offer nahi hai toh open modal band karo
-          if (currentOffer && !currentActiveRideId) {
-            dismissOfferModal();
-          }
+
+          renderOffersList();
         }
       } catch (err) {}
     }, 2500);
 
-    // Immediate Socket Offer Listener
+    // Socket Event: New Incoming Offer
     socket.on('ride:new_offer', (offer) => {
-      if (!currentActiveRideId && !currentOffer) {
-        triggerOfferModal(offer);
+      if (!currentActiveRideId) {
+        addOrUpdateOffer(offer);
       }
     });
 
-    // Ride Taken / Expired
+    // Socket Event: Ride Taken by Someone else
     socket.on('ride:taken', ({ rideId }) => {
-      if (currentOffer && currentOffer.rideId === rideId && !currentActiveRideId) {
-        dismissOfferModal();
-      }
+      removeOffer(rideId);
     });
 
-    // Instant Rider Cancellation Handler
+    // Socket Event: Rider Cancelled
     socket.on('ride:cancelled', ({ rideId }) => {
-      if (currentOffer && currentOffer.rideId === rideId) {
-        dismissOfferModal();
-      }
+      removeOffer(rideId);
       if (currentActiveRideId === rideId) {
-        stopOfferAlerts();
         if (simInterval) clearInterval(simInterval);
         alert("⚠️ Rider ne ride cancel kar di hai.");
         window.location.reload();
       }
     });
 
-    async function acceptRide() {
-      stopOfferAlerts();
-      if (!currentOffer) return;
-      currentActiveRideId = currentOffer.rideId;
+    // Driver Accepts Selected Ride from Multi-list
+    async function acceptSelectedRide(rideId) {
+      const selected = activeOffersMap.get(rideId);
+      if (!selected) return;
+
+      acceptedRide = selected;
+      currentActiveRideId = rideId;
       currentTripPhase = 'TO_PICKUP';
 
+      // Clear all other offers and stop sirens
+      activeOffersMap.clear();
+      syncSirenState();
+      document.getElementById('offers-container').innerHTML = '';
+      document.getElementById('waiting-radar').classList.add('hidden');
+
       socket.emit('ride:accept', {
-        rideId: currentOffer.rideId,
+        rideId: selected.rideId,
         driverData: { 
           name: DRIVER_INFO.name, 
           vehicleNo: DRIVER_INFO.vehicleNo, 
@@ -396,26 +435,18 @@
         }
       });
 
-      document.getElementById('offer-modal').classList.add('hidden');
-      document.getElementById('offer-modal').classList.remove('flex');
-      document.getElementById('waiting-radar').classList.add('hidden');
       document.getElementById('active-ride-card').classList.remove('hidden');
-
       document.getElementById('otp-section').classList.add('hidden');
       document.getElementById('trip-running-section').classList.add('hidden');
 
-      document.getElementById('active-fare').innerText = `₹${currentOffer.totalFare}`;
-      
-      const pickupName = await reverseGeocode(currentOffer.pickup.lat, currentOffer.pickup.lng);
-      const dropName = await reverseGeocode(currentOffer.drop.lat, currentOffer.drop.lng);
+      document.getElementById('active-fare').innerText = `₹${selected.totalFare}`;
+      document.getElementById('active-pickup').innerText = selected.pickupName || 'Pickup Location';
+      document.getElementById('active-drop').innerText = selected.dropName || 'Drop Location';
 
-      document.getElementById('active-pickup').innerText = pickupName;
-      document.getElementById('active-drop').innerText = dropName;
-
-      document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${currentOffer.pickup.lat},${currentOffer.pickup.lng}&travelmode=driving`;
+      document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${selected.pickup.lat},${selected.pickup.lng}&travelmode=driving`;
 
       if (DRIVER_INFO.location) {
-        startMovementSimulation(DRIVER_INFO.location, currentOffer.pickup, 'TO_PICKUP');
+        startMovementSimulation(DRIVER_INFO.location, selected.pickup, 'TO_PICKUP');
       }
     }
 
@@ -428,20 +459,16 @@
 
       document.getElementById('otp-section').classList.remove('hidden');
 
-      if (currentOffer) {
-        document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${currentOffer.drop.lat},${currentOffer.drop.lng}&travelmode=driving`;
+      if (acceptedRide) {
+        document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${acceptedRide.drop.lat},${acceptedRide.drop.lng}&travelmode=driving`;
       }
-    }
-
-    function rejectRide() {
-      dismissOfferModal();
     }
 
     function startMovementSimulation(fromCoords, toCoords, phase) {
       if (simInterval) clearInterval(simInterval);
       let step = 0;
       simInterval = setInterval(() => {
-        if (!currentOffer || !currentActiveRideId) return;
+        if (!acceptedRide || !currentActiveRideId) return;
         step += 0.04;
         if (step > 1) {
           step = 1;
@@ -477,11 +504,11 @@
       badge.innerText = "Trip Ongoing";
       badge.className = "text-xs bg-green-500 text-slate-950 font-bold px-3 py-1 rounded-full uppercase";
 
-      if (currentOffer) {
-        document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${currentOffer.drop.lat},${currentOffer.drop.lng}&travelmode=driving`;
+      if (acceptedRide) {
+        document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${acceptedRide.drop.lat},${acceptedRide.drop.lng}&travelmode=driving`;
       }
 
-      startMovementSimulation(currentOffer.pickup, currentOffer.drop, 'TO_DROP');
+      startMovementSimulation(acceptedRide.pickup, acceptedRide.drop, 'TO_DROP');
     });
 
     socket.on('ride:otp_invalid', (err) => {

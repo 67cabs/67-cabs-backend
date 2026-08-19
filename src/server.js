@@ -180,19 +180,20 @@ app.get('/api/cabs/nearby', async (req, res) => {
   }
 });
 
-// 3. Direct MongoDB Active Offers Polling Endpoint (Cluster-Safe)
+// 3. Multi-Offer MongoDB Polling Endpoint (Returns all active searching rides)
 app.get('/api/driver/active-offers', async (req, res) => {
   try {
     const cabType = (req.query.cabType || 'HATCHBACK').toUpperCase();
     const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
     
-    const activeOffer = await Trip.findOne({
+    // Fetch all active requests for this cab type
+    const activeOffers = await Trip.find({
       cabType,
       status: 'SEARCHING',
       createdAt: { $gte: twoMinutesAgo }
     }).sort({ createdAt: -1 });
 
-    res.json({ success: true, offer: activeOffer });
+    res.json({ success: true, offers: activeOffers });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
