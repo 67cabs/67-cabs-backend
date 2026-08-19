@@ -55,7 +55,7 @@ if (MONGO_URI) {
   console.warn('⚠️ MONGO_URI not found in .env. Running memory-only mode.');
 }
 
-// Phone Sanitizer Helper: Strips spaces, +91, and leading 0s to get clean 10 digits
+// Phone Sanitizer Helper: Extracts clean 10-digit number
 function sanitizePhone(phone) {
   if (!phone) return '';
   let cleaned = phone.toString().replace(/\D/g, '');
@@ -68,7 +68,7 @@ function sanitizePhone(phone) {
 // 1. Driver Account Schema (Auth, Approval Flow & KYC Documents)
 const driverSchema = new mongoose.Schema({
   driverId: { type: String, required: true, unique: true, index: true },
-  phone: { type: String, required: true, unique: true },
+  phone: { type: String, required: true, index: true },
   password: { type: String, required: true },
   name: { type: String, required: true },
   email: { type: String, default: '' },
@@ -187,11 +187,11 @@ app.post('/api/driver/signup', async (req, res) => {
     const cleanPhone = sanitizePhone(phone);
     const cleanVehicle = vehicleNo.trim().toUpperCase();
 
-    // Check with sanitized phone or raw phone
-    const existing = await Driver.findOne({ 
+    const existing = await Driver.findOne({
       $or: [
         { phone: cleanPhone },
-        { phone: phone.trim() }
+        { phone: phone.trim() },
+        { phone: { $regex: cleanPhone + '$' } }
       ]
     });
 
@@ -233,7 +233,7 @@ app.post('/api/driver/signup', async (req, res) => {
   }
 });
 
-// Driver Login (Robust Match for with-zero and without-zero phone formats)
+// Driver Login (Robust Match for all phone number formats)
 app.post('/api/driver/login', async (req, res) => {
   try {
     const { phone, password } = req.body;
@@ -241,16 +241,17 @@ app.post('/api/driver/login', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Phone number aur Password enter karein.' });
     }
 
-    const cleanPhone = sanitizePhone(phone);
+    const digitsOnly = phone.toString().replace(/\D/g, '');
+    const clean10 = digitsOnly.length >= 10 ? digitsOnly.slice(-10) : digitsOnly;
     const rawPhone = phone.trim();
 
-    // Search for sanitized 10 digits OR exact raw string entered previously
     const driver = await Driver.findOne({
       $or: [
-        { phone: cleanPhone },
+        { phone: clean10 },
         { phone: rawPhone },
-        { phone: `0${cleanPhone}` },
-        { phone: `+91${cleanPhone}` }
+        { phone: `0${clean10}` },
+        { phone: `+91${clean10}` },
+        { phone: { $regex: clean10 + '$' } }
       ],
       password: password.trim()
     });
@@ -260,13 +261,7 @@ app.post('/api/driver/login', async (req, res) => {
     }
 
     if (driver.status === 'SUSPENDED') {
-      return res.status(403).json({ success: false, message: 'Aapka account Admin dwara permanently suspend/block kar diya gaya hai.' });
-    }
-
-    // Auto normalize phone in DB if it had leading zero
-    if (driver.phone !== cleanPhone) {
-      driver.phone = cleanPhone;
-      await driver.save();
+      return res.status(403).json({ success: false, message: 'Aapka account Admin dwara permanently suspend kar diya gaya hai.' });
     }
 
     return res.json({
@@ -424,7 +419,6 @@ app.post('/api/admin/driver/suspend', async (req, res) => {
     const driver = await Driver.findOne({ driverId });
     if (!driver) return res.status(404).json({ success: false, message: 'Driver nahi mila.' });
 
-    // Save in Audit History for future detection
     await DriverAudit.create({
       phone: sanitizePhone(driver.phone),
       vehicleNo: driver.vehicleNo,
@@ -432,7 +426,6 @@ app.post('/api/admin/driver/suspend', async (req, res) => {
       reason: reason || 'Suspended by admin due to violations'
     });
 
-    // Delete current active record from system
     await Driver.deleteOne({ driverId });
     await DriverLocation.deleteOne({ driverId });
 
