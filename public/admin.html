@@ -124,7 +124,7 @@
             <td class="p-3.5 text-slate-300">${d.upiId || '67cabs@upi'}</td>
             <td class="p-3.5">
               <button onclick="viewDocuments('${d.driverId}')" class="bg-indigo-950 border border-indigo-700 hover:bg-indigo-900 text-indigo-300 font-bold px-2.5 py-1 rounded-lg transition">
-                👁️ View KYC (6)
+                👁️ View KYC (8)
               </button>
             </td>
             <td class="p-3.5">${badge}</td>
@@ -155,9 +155,11 @@
       const docs = driver.documents || {};
       const docTypes = [
         { key: 'selfiePhoto', title: '📸 Live Selfie / Profile' },
-        { key: 'drivingLicense', title: '🪪 Driving License' },
+        { key: 'drivingLicenseFront', title: '🪪 Driving License (Front)' },
+        { key: 'drivingLicenseBack', title: '🪪 Driving License (Back)' },
         { key: 'vehicleRc', title: '📄 Vehicle RC' },
-        { key: 'aadhaarCard', title: '🆔 Aadhaar Card' },
+        { key: 'aadhaarCardFront', title: '🆔 Aadhaar Card (Front)' },
+        { key: 'aadhaarCardBack', title: '🆔 Aadhaar Card (Back)' },
         { key: 'panCard', title: '💳 PAN Card' },
         { key: 'bankPassbook', title: '🏦 Bank Statement / Passbook' }
       ];
