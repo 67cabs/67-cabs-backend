@@ -29,9 +29,10 @@ const io = new Server(server, {
   transports: ['websocket', 'polling']
 });
 
-// Middlewares
+// Middlewares (Increased payload limits for document & photo uploads)
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(path.join(__dirname, '../public')));
 
 // MongoDB Atlas High-Performance Connection
@@ -54,7 +55,7 @@ if (MONGO_URI) {
   console.warn('⚠️ MONGO_URI not found in .env. Running memory-only mode.');
 }
 
-// 1. Driver Account Schema (Auth & Approval Flow)
+// 1. Driver Account Schema (Auth, Approval Flow & KYC Documents)
 const driverSchema = new mongoose.Schema({
   driverId: { type: String, required: true, unique: true, index: true },
   phone: { type: String, required: true, unique: true },
@@ -64,6 +65,14 @@ const driverSchema = new mongoose.Schema({
   vehicleNo: { type: String, required: true },
   cabType: { type: String, required: true, default: 'HATCHBACK' },
   upiId: { type: String, default: '67cabs@upi' },
+  documents: {
+    selfiePhoto: { type: String, default: '' },
+    aadhaarCard: { type: String, default: '' },
+    panCard: { type: String, default: '' },
+    drivingLicense: { type: String, default: '' },
+    vehicleRc: { type: String, default: '' },
+    bankPassbook: { type: String, default: '' }
+  },
   status: { 
     type: String, 
     enum: ['PENDING_APPROVAL', 'APPROVED', 'BLOCKED'], 
@@ -138,10 +147,10 @@ function isWithinJaipur(lat, lng) {
 
 // ---------------- AUTH & ONBOARDING ROUTES ----------------
 
-// Driver Registration (Sign Up)
+// Driver Registration (Sign Up with Documents)
 app.post('/api/driver/signup', async (req, res) => {
   try {
-    const { name, phone, password, email, vehicleNo, cabType, upiId } = req.body;
+    const { name, phone, password, email, vehicleNo, cabType, upiId, documents } = req.body;
 
     if (!name || !phone || !password || !vehicleNo) {
       return res.status(400).json({ success: false, message: 'Name, Phone, Password, aur Vehicle Number zaroori hain.' });
@@ -163,6 +172,7 @@ app.post('/api/driver/signup', async (req, res) => {
       vehicleNo: vehicleNo.trim().toUpperCase(),
       cabType: (cabType || 'HATCHBACK').toUpperCase(),
       upiId: upiId ? upiId.trim() : '67cabs@upi',
+      documents: documents || {},
       status: 'PENDING_APPROVAL',
       isOnline: false
     });

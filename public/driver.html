@@ -17,7 +17,7 @@
     <div class="text-center space-y-1">
       <div class="text-4xl">🚖</div>
       <h1 class="text-2xl font-black text-amber-400">67 Partner Portal</h1>
-      <p class="text-xs text-slate-400">Register and drive with 67 Cabs Jaipur</p>
+      <p class="text-xs text-slate-400">Register with KYC documents and drive with 67 Cabs</p>
     </div>
 
     <!-- Auth Tabs -->
@@ -26,7 +26,7 @@
         Login
       </button>
       <button onclick="switchAuthTab('signup')" id="tab-signup-btn" class="w-1/2 py-2 text-xs font-black rounded-lg text-slate-400 hover:text-white transition">
-        Sign Up
+        Sign Up & KYC
       </button>
     </div>
 
@@ -45,12 +45,13 @@
       </button>
     </form>
 
-    <!-- Sign Up Form -->
-    <form id="signup-form" onsubmit="handleDriverSignup(event)" class="hidden bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl space-y-3">
+    <!-- Sign Up Form (With Document & Camera Uploads) -->
+    <form id="signup-form" onsubmit="handleDriverSignup(event)" class="hidden bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl space-y-3 max-h-[80vh] overflow-y-auto">
       <div>
         <label class="text-[11px] font-bold text-slate-400 uppercase">Driver Full Name *</label>
         <input type="text" id="reg-name" required placeholder="e.g. Ramesh Sharma" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-2.5 text-xs outline-none focus:border-amber-400 mt-1" />
       </div>
+      
       <div class="grid grid-cols-2 gap-2">
         <div>
           <label class="text-[11px] font-bold text-slate-400 uppercase">Mobile Number *</label>
@@ -61,6 +62,7 @@
           <input type="password" id="reg-password" required placeholder="Set Password" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-2.5 text-xs outline-none focus:border-amber-400 mt-1" />
         </div>
       </div>
+
       <div class="grid grid-cols-2 gap-2">
         <div>
           <label class="text-[11px] font-bold text-slate-400 uppercase">Vehicle Number *</label>
@@ -75,16 +77,60 @@
           </select>
         </div>
       </div>
+
       <div>
         <label class="text-[11px] font-bold text-slate-400 uppercase">UPI ID for Fare Settlement</label>
         <input type="text" id="reg-upi" placeholder="yourname@upi (Default: 67cabs@upi)" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-2.5 text-xs outline-none focus:border-amber-400 mt-1" />
       </div>
+
       <div>
         <label class="text-[11px] font-bold text-slate-400 uppercase">Email ID (Optional)</label>
         <input type="email" id="reg-email" placeholder="Optional email" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-2.5 text-xs outline-none focus:border-amber-400 mt-1" />
       </div>
-      <button type="submit" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3.5 rounded-xl text-xs transition shadow-lg mt-2">
-        SUBMIT APPLICATION FOR VERIFICATION
+
+      <!-- ================= KYC DOCUMENTS UPLOAD SECTION ================= -->
+      <div class="pt-2 border-t border-slate-800 space-y-3">
+        <div class="text-xs font-bold text-amber-400 uppercase">KYC & Vehicle Documents (Upload or Click via Camera)</div>
+
+        <!-- 1. Driver Selfie Photo -->
+        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+          <label class="text-[11px] font-bold text-slate-300 block mb-1">📸 Driver Profile Photo / Live Selfie *</label>
+          <input type="file" id="doc-selfie" accept="image/*" capture="user" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950 hover:file:bg-amber-400" />
+        </div>
+
+        <!-- 2. Driving License -->
+        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+          <label class="text-[11px] font-bold text-slate-300 block mb-1">🪪 Driving License (Front / Back) *</label>
+          <input type="file" id="doc-dl" accept="image/*" capture="environment" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950 hover:file:bg-amber-400" />
+        </div>
+
+        <!-- 3. Vehicle RC -->
+        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+          <label class="text-[11px] font-bold text-slate-300 block mb-1">📄 Vehicle Registration Certificate (RC) *</label>
+          <input type="file" id="doc-rc" accept="image/*" capture="environment" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950 hover:file:bg-amber-400" />
+        </div>
+
+        <!-- 4. Aadhaar Card -->
+        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+          <label class="text-[11px] font-bold text-slate-300 block mb-1">🆔 Aadhaar Card (Front / Back) *</label>
+          <input type="file" id="doc-aadhaar" accept="image/*" capture="environment" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950 hover:file:bg-amber-400" />
+        </div>
+
+        <!-- 5. PAN Card -->
+        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+          <label class="text-[11px] font-bold text-slate-300 block mb-1">💳 PAN Card *</label>
+          <input type="file" id="doc-pan" accept="image/*" capture="environment" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950 hover:file:bg-amber-400" />
+        </div>
+
+        <!-- 6. Bank Passbook / Statement -->
+        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+          <label class="text-[11px] font-bold text-slate-300 block mb-1">🏦 Bank Passbook / Cancelled Cheque / Statement *</label>
+          <input type="file" id="doc-bank" accept="image/*" capture="environment" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950 hover:file:bg-amber-400" />
+        </div>
+      </div>
+
+      <button id="submit-signup-btn" type="submit" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3.5 rounded-xl text-xs transition shadow-lg mt-3">
+        SUBMIT APPLICATION & DOCUMENTS
       </button>
     </form>
   </div>
@@ -94,7 +140,7 @@
     <div class="text-4xl animate-bounce">⏳</div>
     <h2 class="text-lg font-black text-amber-400">Account Under Verification</h2>
     <p class="text-xs text-slate-300 leading-relaxed">
-      Aapka driver registration receive ho chuka hai. 67 Cabs Admin panel se aapka document aur vehicle number verify hone ke baad aap live rides accept kar sakenge.
+      Aapke saare KYC documents aur vehicle details receive ho chuke hain. 67 Cabs Admin panel se approval milte hi aap direct online aakar rides accept kar sakenge.
     </p>
     <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-[11px] text-slate-400 space-y-1">
       <div><b>Name:</b> <span id="pending-name">-</span></div>
@@ -263,6 +309,17 @@
     let geoWatchId = null;
     let wakeLock = null;
 
+    // Helper: Convert File to Base64
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        if (!file) return resolve('');
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+      });
+    }
+
     // --- AUTH LOGIC ---
     function switchAuthTab(tab) {
       const loginForm = document.getElementById('login-form');
@@ -285,17 +342,36 @@
 
     async function handleDriverSignup(e) {
       e.preventDefault();
-      const payload = {
-        name: document.getElementById('reg-name').value,
-        phone: document.getElementById('reg-phone').value,
-        password: document.getElementById('reg-password').value,
-        vehicleNo: document.getElementById('reg-vehicle').value,
-        cabType: document.getElementById('reg-cabtype').value,
-        upiId: document.getElementById('reg-upi').value || '67cabs@upi',
-        email: document.getElementById('reg-email').value
-      };
+      const submitBtn = document.getElementById('submit-signup-btn');
+      submitBtn.disabled = true;
+      submitBtn.innerText = '⏳ Uploading Documents...';
 
       try {
+        const selfieBase64 = await fileToBase64(document.getElementById('doc-selfie').files[0]);
+        const dlBase64 = await fileToBase64(document.getElementById('doc-dl').files[0]);
+        const rcBase64 = await fileToBase64(document.getElementById('doc-rc').files[0]);
+        const aadhaarBase64 = await fileToBase64(document.getElementById('doc-aadhaar').files[0]);
+        const panBase64 = await fileToBase64(document.getElementById('doc-pan').files[0]);
+        const bankBase64 = await fileToBase64(document.getElementById('doc-bank').files[0]);
+
+        const payload = {
+          name: document.getElementById('reg-name').value,
+          phone: document.getElementById('reg-phone').value,
+          password: document.getElementById('reg-password').value,
+          vehicleNo: document.getElementById('reg-vehicle').value,
+          cabType: document.getElementById('reg-cabtype').value,
+          upiId: document.getElementById('reg-upi').value || '67cabs@upi',
+          email: document.getElementById('reg-email')?.value || '',
+          documents: {
+            selfiePhoto: selfieBase64,
+            drivingLicense: dlBase64,
+            vehicleRc: rcBase64,
+            aadhaarCard: aadhaarBase64,
+            panCard: panBase64,
+            bankPassbook: bankBase64
+          }
+        };
+
         const res = await fetch('/api/driver/signup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -309,7 +385,10 @@
           alert(`⚠️ ${data.message || data.error}`);
         }
       } catch (err) {
-        alert('Registration failed. Please check internet connection.');
+        alert('Upload/Registration failed. Ensure file size is reasonable.');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'SUBMIT APPLICATION & DOCUMENTS';
       }
     }
 
@@ -510,6 +589,7 @@
       }
     }
 
+    // Render Multi-Offers Cards List
     async function renderOffersList() {
       const container = document.getElementById('offers-container');
       const radar = document.getElementById('waiting-radar');
@@ -524,6 +604,7 @@
       radar.classList.add('hidden');
       syncSirenState();
 
+      // Render cards
       let html = '';
       for (const [rideId, offer] of activeOffersMap.entries()) {
         const pickupStr = offer.pickupName || (await reverseGeocode(offer.pickup.lat, offer.pickup.lng));
@@ -572,6 +653,7 @@
       removeOffer(rideId);
     }
 
+    // Direct MongoDB Active Multi-Offers Polling
     setInterval(async () => {
       if (currentActiveRideId || currentDriver?.status !== 'APPROVED') return;
 
@@ -599,16 +681,19 @@
       } catch (err) {}
     }, 2500);
 
+    // Socket Event: New Incoming Offer
     socket.on('ride:new_offer', (offer) => {
       if (!currentActiveRideId && currentDriver?.status === 'APPROVED') {
         addOrUpdateOffer(offer);
       }
     });
 
+    // Socket Event: Ride Taken by Someone else
     socket.on('ride:taken', ({ rideId }) => {
       removeOffer(rideId);
     });
 
+    // Socket Event: Rider Cancelled
     socket.on('ride:cancelled', ({ rideId }) => {
       removeOffer(rideId);
       if (currentActiveRideId === rideId) {
@@ -618,6 +703,7 @@
       }
     });
 
+    // Driver Accepts Selected Ride from Multi-list
     async function acceptSelectedRide(rideId) {
       const selected = activeOffersMap.get(rideId);
       if (!selected || !currentDriver) return;
