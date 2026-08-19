@@ -116,7 +116,7 @@ function isWithinJaipur(lat, lng) {
   );
 }
 
-// Fare Calculation API Route with Validation
+// 1. Fare Calculation API Route with Validation
 app.post('/api/fare/estimate', (req, res) => {
   try {
     const { tripDistanceKm, tripTrafficMins, pickupDistanceKm, pickupTrafficMins, cabType } = req.body;
@@ -146,7 +146,41 @@ app.post('/api/fare/estimate', (req, res) => {
   }
 });
 
-// Direct MongoDB Active Offers Polling Endpoint (Cluster-Safe)
+// 2. Direct Live Nearby Driver GPS Locator API
+app.get('/api/cabs/nearby', async (req, res) => {
+  try {
+    const cabType = (req.query.cabType || 'HATCHBACK').toUpperCase();
+    
+    // Check in-memory active drivers first
+    let liveDriver = null;
+    activeDrivers.forEach((d) => {
+      if (d.cabType === cabType && d.location && d.location.lat) {
+        liveDriver = d;
+      }
+    });
+
+    // Fallback to MongoDB latest active driver record
+    if (!liveDriver) {
+      const dbDriver = await DriverLocation.findOne({ cabType }).sort({ lastActive: -1 });
+      if (dbDriver && dbDriver.location && dbDriver.location.lat) {
+        liveDriver = dbDriver;
+      }
+    }
+
+    if (liveDriver && liveDriver.location) {
+      return res.json({ 
+        success: true, 
+        driverCoords: [liveDriver.location.lat, liveDriver.location.lng] 
+      });
+    }
+
+    return res.json({ success: false, driverCoords: null });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// 3. Direct MongoDB Active Offers Polling Endpoint (Cluster-Safe)
 app.get('/api/driver/active-offers', async (req, res) => {
   try {
     const cabType = (req.query.cabType || 'HATCHBACK').toUpperCase();
@@ -182,8 +216,10 @@ io.on('connection', (socket) => {
       vehicleNo: driverData.vehicleNo || 'RJ 14 TA 6767',
       cabType: normalizedCabType,
       upiId: driverData.upiId || '67cabs@upi',
+      location: driverData.location || null,
       socketId: socket.id
     });
+    console.log(`🚗 Driver Online: ${driverData.name} (${normalizedCabType}) | Socket: ${socket.id}`);
 
     // Update Driver's GPS in MongoDB if available
     if (driverData.location && driverData.location.lat) {
@@ -357,7 +393,12 @@ io.on('connection', (socket) => {
   });
 
   // 3.2 Live Driver GPS Telemetry Stream (Pickup & Drop Route Sync)
-  socket.on('driver:location_update', ({ rideId, lat, lng, phase, heading }) => {
+  socket.on('driver:location_update', async ({ rideId, lat, lng, phase, heading }) => {
+    const d = activeDrivers.get(socket.id);
+    if (d) {
+      d.location = { lat, lng };
+    }
+
     const ride = activeRides.get(rideId);
     const telemetryPayload = {
       lat,

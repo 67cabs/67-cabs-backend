@@ -246,9 +246,6 @@
       iconAnchor: [16, 16]
     });
 
-    const driverCoords = [26.9150, 75.8050];
-    liveDriverMarker = L.marker(driverCoords, { icon: cabCarIcon }).addTo(map).bindPopup("🚗 67 Partner (MI Road)");
-
     function selectCab(type) {
       selectedCab = type;
       document.querySelectorAll('.cab-btn').forEach(btn => {
@@ -484,8 +481,27 @@
           routePolyline = L.geoJSON(route.geometry, { style: { color: '#f59e0b', weight: 6 } }).addTo(map);
           map.fitBounds(routePolyline.getBounds(), { padding: [40, 40] });
 
-          const pickupKm = parseFloat((map.distance(driverCoords, pickupCoords) / 1000).toFixed(1));
-          const pickupMins = Math.round(pickupKm * 3.5);
+          // Live Driver coordinates dynamic lookup
+          let pickupKm = 0;
+          let pickupMins = 0;
+          try {
+            const nearbyRes = await fetch(`/api/cabs/nearby?cabType=${selectedCab}`);
+            const nearbyJson = await nearbyRes.json();
+            if (nearbyJson.success && nearbyJson.driverCoords) {
+              const liveDriverPos = nearbyJson.driverCoords;
+              if (liveDriverMarker) {
+                liveDriverMarker.setLatLng(liveDriverPos);
+              } else {
+                liveDriverMarker = L.marker(liveDriverPos, { icon: cabCarIcon }).addTo(map).bindPopup("🚗 67 Partner Live");
+              }
+              const distMeters = map.distance(liveDriverPos, pickupCoords);
+              // Agar 150m ke radius me hai toh pickup distance 0 km
+              pickupKm = distMeters < 150 ? 0 : parseFloat((distMeters / 1000).toFixed(1));
+              pickupMins = Math.round(pickupKm * 3.5);
+            }
+          } catch (e) {
+            console.warn("Could not fetch live driver coordinates, defaulting pickup charge to 0", e);
+          }
 
           fetchFare(tripKm, tripMins, pickupKm, pickupMins);
         }
