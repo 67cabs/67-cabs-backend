@@ -27,7 +27,21 @@
       <h1 class="text-2xl font-black text-amber-500 flex items-center gap-2">
         🚖 67 CABS
       </h1>
-      <p class="text-xs text-slate-500 mb-4">Search locations below or click directly on map</p>
+      <p class="text-xs text-slate-500 mb-3">Search locations below or click directly on map</p>
+
+      <!-- One-Click PWA Install Banner -->
+      <div id="pwa-install-banner" class="hidden mb-3 bg-amber-500 text-slate-950 p-2.5 rounded-xl flex items-center justify-between shadow-md">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🚖</span>
+          <div>
+            <div class="text-xs font-black">Install 67 Rider App</div>
+            <div class="text-[10px] font-semibold text-slate-800">Quick booking on Home Screen</div>
+          </div>
+        </div>
+        <button id="btn-pwa-install" class="bg-slate-950 hover:bg-slate-900 text-amber-400 text-xs font-bold px-3 py-1.5 rounded-lg shadow">
+          Install
+        </button>
+      </div>
 
       <!-- Location Search & GPS Section -->
       <div id="search-section" class="space-y-2.5 mb-4">
@@ -136,12 +150,33 @@
 
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js');
+      navigator.serviceWorker.register('/sw.js', { scope: '/' });
     }
+
+    // In-App PWA Install Trigger
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const banner = document.getElementById('pwa-install-banner');
+      if (banner) banner.classList.remove('hidden');
+    });
+
+    document.getElementById('btn-pwa-install')?.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          document.getElementById('pwa-install-banner').classList.add('hidden');
+        }
+        deferredPrompt = null;
+      }
+    });
 
     const socket = io({
       transports: ['websocket', 'polling'],
-      reconnectionAttempts: 10
+      reconnectionAttempts: 20,
+      reconnectionDelay: 1000
     });
 
     const map = L.map('map').setView([26.9124, 75.7873], 13);
@@ -156,6 +191,7 @@
     let currentFareData = null;
     let liveDriverMarker = null;
     let tripPhase = 'TO_PICKUP';
+    let requestedRideId = null;
 
     const JAIPUR_BBOX = {
       minLat: 26.6500,
@@ -490,6 +526,8 @@
 
     function requestRide() {
       if (!currentFareData) return;
+      requestedRideId = `RIDE_${Date.now()}`;
+
       socket.emit('ride:request', {
         pickup: { lat: pickupCoords[0], lng: pickupCoords[1] },
         drop: { lat: dropCoords[0], lng: dropCoords[1] },
@@ -512,7 +550,7 @@
       btn.className = "w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-black py-3.5 rounded-xl text-sm shadow-lg cursor-pointer transition";
     });
 
-    socket.on('ride:accepted', ({ driver, otp, fare }) => {
+    function handleRideAccepted({ driver, otp, fare }) {
       document.getElementById('search-section').classList.add('hidden');
       document.getElementById('cab-select-section').classList.add('hidden');
       document.getElementById('coords-section').classList.add('hidden');
@@ -523,7 +561,9 @@
       document.getElementById('assigned-vehicle-no').innerText = driver.vehicleNo || driver.cabNumber || 'RJ 14 TA 6767';
       document.getElementById('display-otp').innerText = otp;
       document.getElementById('rider-confirmed-card').classList.remove('hidden');
-    });
+    }
+
+    socket.on('ride:accepted', handleRideAccepted);
 
     socket.on('ride:driver_arrived', ({ message }) => {
       playArrivedChime();

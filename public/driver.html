@@ -28,6 +28,20 @@
       </div>
     </div>
 
+    <!-- One-Click Driver PWA Install Banner -->
+    <div id="pwa-driver-install-banner" class="hidden mb-4 bg-emerald-600 text-white p-3 rounded-2xl flex items-center justify-between shadow-xl border border-emerald-500">
+      <div class="flex items-center gap-2.5">
+        <span class="text-2xl">👨‍✈️</span>
+        <div>
+          <div class="text-xs font-black">Install 67 Partner App</div>
+          <div class="text-[10px] text-emerald-100">Standalone Driver App with GPS</div>
+        </div>
+      </div>
+      <button id="btn-driver-pwa-install" class="bg-slate-950 hover:bg-slate-900 text-emerald-400 text-xs font-bold px-3.5 py-2 rounded-xl shadow transition">
+        Install
+      </button>
+    </div>
+
     <!-- Active Ride Screen -->
     <div id="active-ride-card" class="hidden bg-slate-900 p-5 rounded-2xl border border-amber-400 shadow-2xl mb-4 space-y-4">
       <div class="flex justify-between items-center">
@@ -133,6 +147,26 @@
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw-driver.js', { scope: '/driver.html' });
     }
+
+    // In-App Driver PWA Install Trigger
+    let deferredDriverPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredDriverPrompt = e;
+      const banner = document.getElementById('pwa-driver-install-banner');
+      if (banner) banner.classList.remove('hidden');
+    });
+
+    document.getElementById('btn-driver-pwa-install')?.addEventListener('click', async () => {
+      if (deferredDriverPrompt) {
+        deferredDriverPrompt.prompt();
+        const { outcome } = await deferredDriverPrompt.userChoice;
+        if (outcome === 'accepted') {
+          document.getElementById('pwa-driver-install-banner').classList.add('hidden');
+        }
+        deferredDriverPrompt = null;
+      }
+    });
 
     const socket = io({
       transports: ['websocket', 'polling'],
