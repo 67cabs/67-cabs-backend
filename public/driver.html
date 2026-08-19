@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>67 Partner - Driver App</title>
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#f59e0b" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body class="bg-slate-950 text-white min-h-screen p-4 flex flex-col items-center select-none">
+
+  <div class="w-full max-w-md">
+    <!-- Header -->
+    <div class="flex justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow mb-4">
+      <div>
+        <h1 class="text-base font-bold text-amber-400 flex items-center gap-1.5">
+          <span>🚖</span> 67 Partner
+        </h1>
+        <p class="text-sm font-semibold">Ramesh Sharma (WagonR)</p>
+        <p class="text-[11px] text-green-400 font-bold">● ONLINE • Hatchback</p>
+      </div>
+      <div class="text-right">
+        <span class="text-[10px] text-slate-400">Base Rate</span>
+        <div class="text-sm font-bold text-amber-400">₹16/km</div>
+      </div>
+    </div>
+
+    <!-- Active Ride Screen -->
+    <div id="active-ride-card" class="hidden bg-slate-900 p-5 rounded-2xl border border-amber-400 shadow-2xl mb-4 space-y-4">
+      <div class="flex justify-between items-center">
+        <span id="trip-badge" class="text-xs bg-amber-400 text-slate-950 font-bold px-3 py-1 rounded-full uppercase">
+          Driving to Pickup
+        </span>
+        <span id="active-fare" class="text-2xl font-black text-green-400">₹0</span>
+      </div>
+
+      <div class="space-y-2 text-xs text-slate-300 bg-slate-950 p-3 rounded-xl border border-slate-800">
+        <div>📍 <b>Pickup:</b> <span id="active-pickup">-</span></div>
+        <div>🏁 <b>Drop:</b> <span id="active-drop">-</span></div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="grid grid-cols-2 gap-2">
+        <button id="btn-arrived" onclick="notifyArrived()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition text-xs shadow-md">
+          🔔 I have Arrived
+        </button>
+        <a id="nav-btn" target="_blank" class="block text-center bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition text-xs shadow-md">
+          🗺️ Navigation
+        </a>
+      </div>
+
+      <!-- Step 1: OTP Entry -->
+      <div id="otp-section" class="pt-2 border-t border-slate-800">
+        <label class="text-[11px] text-slate-400 block mb-1.5 font-medium">Rider se 4-digit OTP lekar enter karein:</label>
+        <div class="flex gap-2">
+          <input type="text" id="driverOtpInput" maxlength="4" placeholder="Enter OTP" class="bg-slate-950 text-white text-center font-mono font-black text-lg rounded-xl p-3 w-full border border-slate-700 focus:outline-none focus:border-amber-400">
+          <button onclick="submitOtp()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-6 rounded-xl text-sm transition">
+            START
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 2: Trip In Progress -->
+      <div id="trip-running-section" class="hidden pt-2 border-t border-slate-800 space-y-3">
+        <div class="text-center text-xs text-green-400 font-bold bg-green-950/40 border border-green-800 p-2.5 rounded-xl animate-pulse">
+          🟢 TRIP ONGOING TO DROP DESTINATION
+        </div>
+        <button onclick="completeRide()" class="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-xl text-sm shadow-lg transition">
+          🏁 Complete Trip & Collect Fare
+        </button>
+      </div>
+    </div>
+
+    <!-- Waiting Radar -->
+    <div id="waiting-radar" class="text-center py-16 bg-slate-900/60 rounded-2xl border border-dashed border-slate-800">
+      <div class="animate-ping h-8 w-8 bg-amber-500 rounded-full mx-auto mb-4 opacity-75"></div>
+      <p class="text-sm font-medium text-slate-200">Searching for ride offers...</p>
+      <p class="text-xs text-slate-500 mt-1">Keep screen open</p>
+    </div>
+  </div>
+
+  <!-- INCOMING OFFER POPUP -->
+  <div id="offer-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4 z-50 animate-pulse">
+    <div class="bg-slate-900 border-2 border-amber-400 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <span class="text-xs font-bold uppercase text-amber-400 flex items-center gap-1.5">
+          <span class="animate-ping h-2.5 w-2.5 bg-amber-400 rounded-full inline-block"></span> NEW RIDE OFFER
+        </span>
+        <span class="text-2xl font-black text-green-400" id="offer-fare">₹0</span>
+      </div>
+      <div class="space-y-2 text-xs">
+        <div class="text-slate-300">📍 <b>From:</b> <span id="offer-pickup-addr">Pickup Location</span></div>
+        <div class="text-slate-300">🏁 <b>To:</b> <span id="offer-drop-addr">Drop Location</span></div>
+      </div>
+      <div class="grid grid-cols-2 gap-3 pt-2">
+        <button onclick="rejectRide()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3.5 rounded-xl text-sm">Decline</button>
+        <button onclick="acceptRide()" class="bg-green-600 hover:bg-green-500 text-white font-black py-3.5 rounded-xl text-sm shadow-xl">ACCEPT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAYMENT MODAL -->
+  <div id="payment-modal" class="fixed inset-0 bg-black/90 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 border-2 border-green-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl text-center space-y-4">
+      <div class="border-b border-slate-800 pb-2">
+        <span class="text-xs font-bold uppercase tracking-wider text-green-400">Trip Completed</span>
+        <h2 class="text-lg font-bold text-white mt-1">Collect Fare</h2>
+      </div>
+
+      <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+        <p class="text-xs text-slate-400">Total Payable Amount</p>
+        <p id="modal-fare-amount" class="text-3xl font-black text-green-400 mt-0.5">₹0</p>
+      </div>
+
+      <div class="bg-white p-3 rounded-xl inline-block shadow-inner">
+        <div id="qrcode-target" class="flex justify-center"></div>
+      </div>
+
+      <p class="text-[11px] text-slate-400 leading-tight">
+        Rider can scan using Google Pay, PhonePe, Paytm, or BHIM UPI.
+      </p>
+
+      <button onclick="dismissPaymentModal()" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3.5 rounded-xl text-sm transition shadow-lg">
+        ✅ Payment Received (Done)
+      </button>
+    </div>
+  </div>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js');
+    }
+
+    const socket = io();
+    let currentOffer = null;
+    let currentActiveRideId = null;
+    let simInterval = null;
+    let alertSoundInterval = null;
+
+    const DRIVER_INFO = {
+      driverId: 'DRV_67_01',
+      name: 'Ramesh Sharma',
+      vehicleNo: 'RJ 14 TA 6767',
+      cabType: 'HATCHBACK',
+      upiId: '67cabs@upi',
+      location: { lat: 26.9150, lng: 75.8050 }
+    };
+
+    socket.emit('driver:register', DRIVER_INFO);
+
+    // Loud Native Audio Siren Generator (Ola/Uber Style)
+    function playOfferSiren() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function beep(freq, duration, type = 'sine') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+          gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + duration);
+        }
+        beep(880, 0.25, 'sawtooth');
+        setTimeout(() => beep(1320, 0.35, 'sawtooth'), 260);
+      } catch (e) {}
+    }
+
+    function startOfferAlerts() {
+      playOfferSiren();
+      alertSoundInterval = setInterval(playOfferSiren, 1200);
+      if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200]);
+    }
+
+    function stopOfferAlerts() {
+      if (alertSoundInterval) clearInterval(alertSoundInterval);
+    }
+
+    socket.on('ride:new_offer', (offer) => {
+      currentOffer = offer;
+      document.getElementById('offer-fare').innerText = `₹${offer.totalFare}`;
+      document.getElementById('offer-pickup-addr').innerText = `${offer.pickup.lat.toFixed(4)}, ${offer.pickup.lng.toFixed(4)}`;
+      document.getElementById('offer-drop-addr').innerText = `${offer.drop.lat.toFixed(4)}, ${offer.drop.lng.toFixed(4)}`;
+
+      document.getElementById('offer-modal').classList.remove('hidden');
+      document.getElementById('offer-modal').classList.add('flex');
+      startOfferAlerts();
+    });
+
+    socket.on('ride:taken', ({ rideId }) => {
+      if (currentOffer && currentOffer.rideId === rideId) rejectRide();
+    });
+
+    function acceptRide() {
+      stopOfferAlerts();
+      if (!currentOffer) return;
+      currentActiveRideId = currentOffer.rideId;
+
+      socket.emit('ride:accept', {
+        rideId: currentOffer.rideId,
+        driverData: { name: DRIVER_INFO.name, vehicleNo: DRIVER_INFO.vehicleNo, phone: '9876543210' }
+      });
+
+      document.getElementById('offer-modal').classList.add('hidden');
+      document.getElementById('offer-modal').classList.remove('flex');
+      document.getElementById('waiting-radar').classList.add('hidden');
+      document.getElementById('active-ride-card').classList.remove('hidden');
+
+      document.getElementById('active-fare').innerText = `₹${currentOffer.totalFare}`;
+      document.getElementById('active-pickup').innerText = `${currentOffer.pickup.lat.toFixed(4)}, ${currentOffer.pickup.lng.toFixed(4)}`;
+      document.getElementById('active-drop').innerText = `${currentOffer.drop.lat.toFixed(4)}, ${currentOffer.drop.lng.toFixed(4)}`;
+
+      document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&origin=${currentOffer.pickup.lat},${currentOffer.pickup.lng}&destination=${currentOffer.drop.lat},${currentOffer.drop.lng}&travelmode=driving`;
+
+      startMovementSimulation(DRIVER_INFO.location, currentOffer.pickup, 'TO_PICKUP');
+    }
+
+    function notifyArrived() {
+      socket.emit('driver:arrived', { rideId: currentActiveRideId });
+      const btn = document.getElementById('btn-arrived');
+      btn.innerText = "✅ Arrived Notified";
+      btn.className = "bg-green-700 text-white font-bold py-3 rounded-xl text-xs";
+      document.getElementById('trip-badge').innerText = "Arrived at Pickup";
+    }
+
+    function rejectRide() {
+      stopOfferAlerts();
+      document.getElementById('offer-modal').classList.add('hidden');
+      document.getElementById('offer-modal').classList.remove('flex');
+      currentOffer = null;
+    }
+
+    function startMovementSimulation(fromCoords, toCoords, phase) {
+      if (simInterval) clearInterval(simInterval);
+      let step = 0;
+      simInterval = setInterval(() => {
+        if (!currentOffer || !currentActiveRideId) return;
+        step += 0.04;
+        if (step > 1) {
+          step = 1;
+          clearInterval(simInterval);
+        }
+        const lat = fromCoords.lat + (toCoords.lat - fromCoords.lat) * step;
+        const lng = fromCoords.lng + (toCoords.lng - fromCoords.lng) * step;
+
+        socket.emit('driver:location_update', {
+          rideId: currentActiveRideId,
+          lat,
+          lng,
+          phase
+        });
+      }, 1200);
+    }
+
+    function submitOtp() {
+      const enteredOtp = document.getElementById('driverOtpInput').value;
+      if (enteredOtp.length !== 4) return alert("Kripya 4-digit OTP enter karein.");
+
+      socket.emit('ride:verify_otp', {
+        rideId: currentActiveRideId,
+        enteredOtp: enteredOtp
+      });
+    }
+
+    socket.on('ride:started_driver_view', () => {
+      document.getElementById('otp-section').classList.add('hidden');
+      document.getElementById('trip-running-section').classList.remove('hidden');
+      const badge = document.getElementById('trip-badge');
+      badge.innerText = "Trip Ongoing";
+      badge.className = "text-xs bg-green-500 text-slate-950 font-bold px-3 py-1 rounded-full uppercase";
+
+      startMovementSimulation(currentOffer.pickup, currentOffer.drop, 'TO_DROP');
+    });
+
+    socket.on('ride:otp_invalid', (err) => {
+      alert(err.message);
+      document.getElementById('driverOtpInput').value = '';
+    });
+
+    function completeRide() {
+      if (confirm("Kya aap drop point par pahuch chuke hain?")) {
+        if (simInterval) clearInterval(simInterval);
+        socket.emit('ride:complete', { rideId: currentActiveRideId });
+      }
+    }
+
+    socket.on('ride:completed', ({ finalFare, driverUpiId }) => {
+      const vpa = driverUpiId || DRIVER_INFO.upiId;
+      document.getElementById('modal-fare-amount').innerText = `₹${finalFare}`;
+      
+      const qrTarget = document.getElementById('qrcode-target');
+      qrTarget.innerHTML = '';
+
+      const upiUrl = `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(DRIVER_INFO.name)}&am=${encodeURIComponent(finalFare)}&cu=INR&tn=${encodeURIComponent('67 Cabs Ride Fare')}`;
+
+      new QRCode(qrTarget, {
+        text: upiUrl,
+        width: 170,
+        height: 170,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
+      });
+
+      document.getElementById('payment-modal').classList.remove('hidden');
+      document.getElementById('payment-modal').classList.add('flex');
+    });
+
+    function dismissPaymentModal() {
+      window.location.reload();
+    }
+  </script>
+</body>
+</html>
