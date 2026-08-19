@@ -184,7 +184,6 @@ io.on('connection', (socket) => {
       upiId: driverData.upiId || '67cabs@upi',
       socketId: socket.id
     });
-    console.log(`🚗 Driver Online: ${driverData.name} (${normalizedCabType}) | Socket: ${socket.id}`);
 
     // Update Driver's GPS in MongoDB if available
     if (driverData.location && driverData.location.lat) {
@@ -215,7 +214,7 @@ io.on('connection', (socket) => {
       });
     }
 
-    const rideId = `RIDE_${Date.now()}`;
+    const rideId = rideData.rideId || `RIDE_${Date.now()}`;
     const ridePayload = { 
       ...rideData, 
       cabType: requestedCabType,
@@ -251,6 +250,19 @@ io.on('connection', (socket) => {
       }
     });
     io.emit('ride:new_offer', ridePayload);
+  });
+
+  // 2.1 Rider Cancels Ride
+  socket.on('ride:cancel', async ({ rideId }) => {
+    try {
+      await Trip.updateOne({ rideId }, { status: 'CANCELLED' });
+      activeRides.delete(rideId);
+      io.emit('ride:cancelled', { rideId });
+      io.emit('ride:taken', { rideId });
+      console.log(`❌ Ride ${rideId} cancelled by Rider.`);
+    } catch (e) {
+      console.error('Cancel Error:', e.message);
+    }
   });
 
   // 3. Driver Accepts Ride

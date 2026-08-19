@@ -134,13 +134,20 @@
         <div id="trip-live-status" class="text-center text-xs text-slate-300 bg-slate-800/80 p-2.5 rounded-lg border border-slate-700 transition">
           🚗 Driver is arriving at pickup location...
         </div>
+
+        <button onclick="cancelRide()" class="w-full bg-red-950/60 hover:bg-red-900 border border-red-600 text-red-300 font-bold py-2.5 rounded-xl text-xs transition">
+          ❌ Cancel Ride
+        </button>
       </div>
     </div>
 
     <!-- Booking Button Area -->
-    <div class="mt-4">
+    <div class="mt-4 space-y-2">
       <button onclick="requestRide()" id="book-btn" disabled class="w-full bg-slate-300 text-slate-500 font-bold py-3.5 rounded-xl text-sm cursor-not-allowed transition">
         Select Pickup & Drop
+      </button>
+      <button onclick="cancelRide()" id="cancel-searching-btn" class="hidden w-full bg-red-100 hover:bg-red-200 text-red-700 font-bold py-2.5 rounded-xl text-xs transition border border-red-300">
+        ❌ Cancel Search & Rebook
       </button>
     </div>
   </div>
@@ -191,7 +198,7 @@
     let currentFareData = null;
     let liveDriverMarker = null;
     let tripPhase = 'TO_PICKUP';
-    let requestedRideId = null;
+    let activeRideId = null;
 
     const JAIPUR_BBOX = {
       minLat: 26.6500,
@@ -225,9 +232,9 @@
           osc.start(start);
           osc.stop(start + duration);
         }
-        note(523.25, audioCtx.currentTime, 0.3);        // C5
-        note(659.25, audioCtx.currentTime + 0.15, 0.4); // E5
-        note(783.99, audioCtx.currentTime + 0.3, 0.6);  // G5
+        note(523.25, audioCtx.currentTime, 0.3);
+        note(659.25, audioCtx.currentTime + 0.15, 0.4);
+        note(783.99, audioCtx.currentTime + 0.3, 0.6);
         if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
       } catch (e) {}
     }
@@ -448,7 +455,6 @@
 
     document.getElementById('btn-gps').addEventListener('click', fetchPreciseGPS);
 
-    // Auto-acquire current location on initial page load
     window.addEventListener('load', () => {
       setTimeout(fetchPreciseGPS, 800);
     });
@@ -526,9 +532,10 @@
 
     function requestRide() {
       if (!currentFareData) return;
-      requestedRideId = `RIDE_${Date.now()}`;
+      activeRideId = `RIDE_${Date.now()}`;
 
       socket.emit('ride:request', {
+        rideId: activeRideId,
         pickup: { lat: pickupCoords[0], lng: pickupCoords[1] },
         drop: { lat: dropCoords[0], lng: dropCoords[1] },
         cabType: selectedCab,
@@ -540,6 +547,17 @@
       btn.disabled = true;
       btn.innerText = "⏳ Connecting to 67 Driver...";
       btn.className = "w-full bg-amber-400 text-slate-900 font-bold py-3.5 rounded-xl text-sm animate-pulse";
+
+      document.getElementById('cancel-searching-btn').classList.remove('hidden');
+    }
+
+    function cancelRide() {
+      if (confirm("Kya aap yeh ride request cancel karna chahte hain?")) {
+        if (activeRideId) {
+          socket.emit('ride:cancel', { rideId: activeRideId });
+        }
+        window.location.reload();
+      }
     }
 
     socket.on('ride:error', ({ message }) => {
@@ -548,14 +566,17 @@
       btn.disabled = false;
       btn.innerText = `Book 67 Cab • ₹${currentFareData?.fixedFare || ''}`;
       btn.className = "w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-black py-3.5 rounded-xl text-sm shadow-lg cursor-pointer transition";
+      document.getElementById('cancel-searching-btn').classList.add('hidden');
     });
 
-    function handleRideAccepted({ driver, otp, fare }) {
+    function handleRideAccepted({ rideId, driver, otp, fare }) {
+      activeRideId = rideId || activeRideId;
       document.getElementById('search-section').classList.add('hidden');
       document.getElementById('cab-select-section').classList.add('hidden');
       document.getElementById('coords-section').classList.add('hidden');
       document.getElementById('fare-card').classList.add('hidden');
       document.getElementById('book-btn').classList.add('hidden');
+      document.getElementById('cancel-searching-btn').classList.add('hidden');
 
       document.getElementById('assigned-driver-name').innerText = driver.name;
       document.getElementById('assigned-vehicle-no').innerText = driver.vehicleNo || driver.cabNumber || 'RJ 14 TA 6767';

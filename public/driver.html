@@ -66,8 +66,8 @@
         </a>
       </div>
 
-      <!-- Step 1: OTP Entry -->
-      <div id="otp-section" class="pt-2 border-t border-slate-800">
+      <!-- Step 1: OTP Entry (Hidden until Driver clicks 'I have Arrived') -->
+      <div id="otp-section" class="hidden pt-2 border-t border-slate-800">
         <label class="text-[11px] text-slate-400 block mb-1.5 font-medium">Rider se 4-digit OTP lekar enter karein:</label>
         <div class="flex gap-2">
           <input type="text" id="driverOtpInput" maxlength="4" placeholder="Enter OTP" class="bg-slate-950 text-white text-center font-mono font-black text-lg rounded-xl p-3 w-full border border-slate-700 focus:outline-none focus:border-amber-400">
@@ -253,8 +253,7 @@
           );
         },
         (err) => {
-          document.getElementById('gps-status-indicator').innerHTML = `● <span class="text-red-400">GPS Permission Denied</span>`;
-          alert("Driver live location access zaroori hai. Kripya browser me GPS permission allow karein.");
+          document.getElementById('gps-status-indicator').innerHTML = `● <span class="text-amber-400">GPS Default Mode</span>`;
         },
         { enableHighAccuracy: true, timeout: 15000 }
       );
@@ -329,7 +328,7 @@
       startOfferAlerts();
     }
 
-    // Direct MongoDB Active DB Polling (Har 3 second me background query karega)
+    // Direct MongoDB Active DB Polling
     setInterval(async () => {
       if (currentActiveRideId || currentOffer) return;
 
@@ -347,7 +346,7 @@
       }
     }, 3000);
 
-    // Immediate Socket Offer Listener (Fallback/Realtime)
+    // Immediate Socket Offer Listener
     socket.on('ride:new_offer', (offer) => {
       if (!currentActiveRideId && !currentOffer) {
         triggerOfferModal(offer);
@@ -356,6 +355,14 @@
 
     socket.on('ride:taken', ({ rideId }) => {
       if (currentOffer && currentOffer.rideId === rideId) rejectRide();
+    });
+
+    // Rider Cancels Ride listener
+    socket.on('ride:cancelled', ({ rideId }) => {
+      if (currentActiveRideId === rideId || (currentOffer && currentOffer.rideId === rideId)) {
+        alert("⚠️ Rider ne ride cancel kar di hai.");
+        window.location.reload();
+      }
     });
 
     async function acceptRide() {
@@ -379,6 +386,10 @@
       document.getElementById('waiting-radar').classList.add('hidden');
       document.getElementById('active-ride-card').classList.remove('hidden');
 
+      // Ensure OTP section is hidden initially until arrival
+      document.getElementById('otp-section').classList.add('hidden');
+      document.getElementById('trip-running-section').classList.add('hidden');
+
       document.getElementById('active-fare').innerText = `₹${currentOffer.totalFare}`;
       
       const pickupName = await reverseGeocode(currentOffer.pickup.lat, currentOffer.pickup.lng);
@@ -387,8 +398,8 @@
       document.getElementById('active-pickup').innerText = pickupName;
       document.getElementById('active-drop').innerText = dropName;
 
-      const originCoords = DRIVER_INFO.location ? `${DRIVER_INFO.location.lat},${DRIVER_INFO.location.lng}` : `${currentOffer.pickup.lat},${currentOffer.pickup.lng}`;
-      document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&origin=${originCoords}&destination=${currentOffer.pickup.lat},${currentOffer.pickup.lng}&travelmode=driving`;
+      // Google Maps Direct Navigation (Only destination coordinate)
+      document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${currentOffer.pickup.lat},${currentOffer.pickup.lng}&travelmode=driving`;
 
       if (DRIVER_INFO.location) {
         startMovementSimulation(DRIVER_INFO.location, currentOffer.pickup, 'TO_PICKUP');
@@ -402,8 +413,11 @@
       btn.className = "bg-green-700 text-white font-bold py-3 rounded-xl text-xs";
       document.getElementById('trip-badge').innerText = "Arrived at Pickup";
 
+      // Show OTP Input box now that driver has reached the location
+      document.getElementById('otp-section').classList.remove('hidden');
+
       if (currentOffer) {
-        document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&origin=${currentOffer.pickup.lat},${currentOffer.pickup.lng}&destination=${currentOffer.drop.lat},${currentOffer.drop.lng}&travelmode=driving`;
+        document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${currentOffer.drop.lat},${currentOffer.drop.lng}&travelmode=driving`;
       }
     }
 
@@ -453,6 +467,11 @@
       const badge = document.getElementById('trip-badge');
       badge.innerText = "Trip Ongoing";
       badge.className = "text-xs bg-green-500 text-slate-950 font-bold px-3 py-1 rounded-full uppercase";
+
+      // Navigation Link dynamically updated to Drop Destination
+      if (currentOffer) {
+        document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${currentOffer.drop.lat},${currentOffer.drop.lng}&travelmode=driving`;
+      }
 
       startMovementSimulation(currentOffer.pickup, currentOffer.drop, 'TO_DROP');
     });
