@@ -66,7 +66,7 @@
         </a>
       </div>
 
-      <!-- Step 1: OTP Entry (Hidden until Driver clicks 'I have Arrived') -->
+      <!-- Step 1: OTP Entry -->
       <div id="otp-section" class="hidden pt-2 border-t border-slate-800">
         <label class="text-[11px] text-slate-400 block mb-1.5 font-medium">Rider se 4-digit OTP lekar enter karein:</label>
         <div class="flex gap-2">
@@ -148,7 +148,6 @@
       navigator.serviceWorker.register('/sw-driver.js', { scope: '/driver.html' });
     }
 
-    // In-App Driver PWA Install Trigger
     let deferredDriverPrompt;
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -191,15 +190,12 @@
       location: null
     };
 
-    // 1. Keep Screen Awake (Prevent background pause)
     async function requestWakeLock() {
       try {
         if ('wakeLock' in navigator) {
           wakeLock = await navigator.wakeLock.request('screen');
         }
-      } catch (err) {
-        console.warn('WakeLock not supported/granted:', err);
-      }
+      } catch (err) {}
     }
     requestWakeLock();
 
@@ -215,7 +211,6 @@
     }
     socket.on('connect', registerDriver);
 
-    // Heartbeat Keep-Alive to Server
     setInterval(() => {
       if (socket.connected) {
         registerDriver();
@@ -236,7 +231,6 @@
       return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     }
 
-    // Force Mobile GPS Permission & Continuous Tracking
     function initDriverGPS() {
       if (!navigator.geolocation) {
         document.getElementById('gps-status-indicator').innerHTML = `● <span class="text-red-400">GPS Not Supported</span>`;
@@ -281,7 +275,6 @@
       setTimeout(initDriverGPS, 400);
     });
 
-    // Native Loud Audio Siren
     function playOfferSiren() {
       try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -310,7 +303,10 @@
     }
 
     function stopOfferAlerts() {
-      if (alertSoundInterval) clearInterval(alertSoundInterval);
+      if (alertSoundInterval) {
+        clearInterval(alertSoundInterval);
+        alertSoundInterval = null;
+      }
     }
 
     async function triggerOfferModal(offer) {
@@ -328,9 +324,17 @@
       startOfferAlerts();
     }
 
-    // Direct MongoDB Active DB Polling
+    function dismissOfferModal() {
+      stopOfferAlerts();
+      const modal = document.getElementById('offer-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      currentOffer = null;
+    }
+
+    // Direct MongoDB Active DB Polling with auto-dismiss if cancelled
     setInterval(async () => {
-      if (currentActiveRideId || currentOffer) return;
+      if (currentActiveRideId) return;
 
       try {
         const res = await fetch(`/api/driver/active-offers?cabType=${DRIVER_INFO.cabType}`);
@@ -340,11 +344,14 @@
           if (!currentOffer || currentOffer.rideId !== data.offer.rideId) {
             triggerOfferModal(data.offer);
           }
+        } else {
+          // DB me koi active offer nahi hai toh open modal band karo
+          if (currentOffer && !currentActiveRideId) {
+            dismissOfferModal();
+          }
         }
-      } catch (err) {
-        console.warn("DB Polling Check...", err);
-      }
-    }, 3000);
+      } catch (err) {}
+    }, 2500);
 
     // Immediate Socket Offer Listener
     socket.on('ride:new_offer', (offer) => {
@@ -353,13 +360,21 @@
       }
     });
 
+    // Ride Taken / Expired
     socket.on('ride:taken', ({ rideId }) => {
-      if (currentOffer && currentOffer.rideId === rideId) rejectRide();
+      if (currentOffer && currentOffer.rideId === rideId && !currentActiveRideId) {
+        dismissOfferModal();
+      }
     });
 
-    // Rider Cancels Ride listener
+    // Instant Rider Cancellation Handler
     socket.on('ride:cancelled', ({ rideId }) => {
-      if (currentActiveRideId === rideId || (currentOffer && currentOffer.rideId === rideId)) {
+      if (currentOffer && currentOffer.rideId === rideId) {
+        dismissOfferModal();
+      }
+      if (currentActiveRideId === rideId) {
+        stopOfferAlerts();
+        if (simInterval) clearInterval(simInterval);
         alert("⚠️ Rider ne ride cancel kar di hai.");
         window.location.reload();
       }
@@ -386,7 +401,6 @@
       document.getElementById('waiting-radar').classList.add('hidden');
       document.getElementById('active-ride-card').classList.remove('hidden');
 
-      // Ensure OTP section is hidden initially until arrival
       document.getElementById('otp-section').classList.add('hidden');
       document.getElementById('trip-running-section').classList.add('hidden');
 
@@ -398,7 +412,6 @@
       document.getElementById('active-pickup').innerText = pickupName;
       document.getElementById('active-drop').innerText = dropName;
 
-      // Google Maps Direct Navigation (Only destination coordinate)
       document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${currentOffer.pickup.lat},${currentOffer.pickup.lng}&travelmode=driving`;
 
       if (DRIVER_INFO.location) {
@@ -413,7 +426,6 @@
       btn.className = "bg-green-700 text-white font-bold py-3 rounded-xl text-xs";
       document.getElementById('trip-badge').innerText = "Arrived at Pickup";
 
-      // Show OTP Input box now that driver has reached the location
       document.getElementById('otp-section').classList.remove('hidden');
 
       if (currentOffer) {
@@ -422,10 +434,7 @@
     }
 
     function rejectRide() {
-      stopOfferAlerts();
-      document.getElementById('offer-modal').classList.add('hidden');
-      document.getElementById('offer-modal').classList.remove('flex');
-      currentOffer = null;
+      dismissOfferModal();
     }
 
     function startMovementSimulation(fromCoords, toCoords, phase) {
@@ -468,7 +477,6 @@
       badge.innerText = "Trip Ongoing";
       badge.className = "text-xs bg-green-500 text-slate-950 font-bold px-3 py-1 rounded-full uppercase";
 
-      // Navigation Link dynamically updated to Drop Destination
       if (currentOffer) {
         document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${currentOffer.drop.lat},${currentOffer.drop.lng}&travelmode=driving`;
       }
