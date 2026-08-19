@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>67 Cabs - Admin Management Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-white min-h-screen p-6">
+  <div class="max-w-5xl mx-auto space-y-6">
+    
+    <!-- Top Header -->
+    <div class="flex justify-between items-center border-b border-slate-800 pb-4">
+      <div>
+        <h1 class="text-2xl font-black text-amber-400 flex items-center gap-2">
+          <span>🛡️</span> 67 Cabs Admin Portal
+        </h1>
+        <p class="text-xs text-slate-400">Driver Partner Verification & Approvals</p>
+      </div>
+      <button onclick="loadDrivers()" class="bg-slate-800 hover:bg-slate-700 text-xs font-bold px-4 py-2 rounded-xl transition">
+        🔄 Refresh List
+      </button>
+    </div>
+
+    <!-- Drivers Table -->
+    <div class="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden">
+      <div class="p-4 border-b border-slate-800 flex justify-between items-center">
+        <h2 class="text-sm font-bold text-slate-200">Registered Driver Partners</h2>
+        <span id="total-drivers-count" class="text-xs bg-slate-800 px-3 py-1 rounded-full font-bold text-amber-400">0 Drivers</span>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-950 text-slate-400 uppercase font-bold border-b border-slate-800">
+            <tr>
+              <th class="p-3.5">Driver Info</th>
+              <th class="p-3.5">Mobile</th>
+              <th class="p-3.5">Vehicle Details</th>
+              <th class="p-3.5">UPI ID</th>
+              <th class="p-3.5">Status</th>
+              <th class="p-3.5 text-center">Action</th>
+            </tr>
+          </thead>
+          <tbody id="drivers-table-body" class="divide-y divide-slate-800">
+            <tr>
+              <td colspan="6" class="p-6 text-center text-slate-500">Loading drivers...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function loadDrivers() {
+      try {
+        const res = await fetch('/api/admin/drivers');
+        const data = await res.json();
+        if (data.success) {
+          renderTable(data.drivers);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function renderTable(drivers) {
+      document.getElementById('total-drivers-count').innerText = `${drivers.length} Drivers`;
+      const tbody = document.getElementById('drivers-table-body');
+      
+      if (drivers.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-500">No driver registrations found.</td></tr>`;
+        return;
+      }
+
+      let html = '';
+      drivers.forEach(d => {
+        let badge = '';
+        if (d.status === 'APPROVED') {
+          badge = `<span class="bg-green-950 border border-green-800 text-green-400 px-2 py-0.5 rounded-full font-bold">APPROVED</span>`;
+        } else if (d.status === 'BLOCKED') {
+          badge = `<span class="bg-red-950 border border-red-800 text-red-400 px-2 py-0.5 rounded-full font-bold">BLOCKED</span>`;
+        } else {
+          badge = `<span class="bg-amber-950 border border-amber-800 text-amber-400 px-2 py-0.5 rounded-full font-bold">PENDING APPROVAL</span>`;
+        }
+
+        html += `
+          <tr class="hover:bg-slate-800/40 transition">
+            <td class="p-3.5 font-semibold text-white">
+              <div>${d.name}</div>
+              <div class="text-[10px] text-slate-500">${d.email || 'No email'}</div>
+            </td>
+            <td class="p-3.5 font-mono text-slate-300">${d.phone}</td>
+            <td class="p-3.5">
+              <span class="font-mono bg-slate-950 px-2 py-1 rounded text-amber-400 font-bold">${d.vehicleNo}</span>
+              <span class="text-slate-400 ml-1">(${d.cabType})</span>
+            </td>
+            <td class="p-3.5 text-slate-300">${d.upiId || '67cabs@upi'}</td>
+            <td class="p-3.5">${badge}</td>
+            <td class="p-3.5 text-center space-x-2">
+              ${d.status !== 'APPROVED' ? `
+                <button onclick="updateDriverStatus('${d.driverId}', 'APPROVED')" class="bg-green-600 hover:bg-green-500 text-white font-bold px-3 py-1.5 rounded-lg transition shadow">
+                  Approve
+                </button>
+              ` : `
+                <button onclick="updateDriverStatus('${d.driverId}', 'BLOCKED')" class="bg-red-600 hover:bg-red-500 text-white font-bold px-3 py-1.5 rounded-lg transition shadow">
+                  Block
+                </button>
+              `}
+            </td>
+          </tr>
+        `;
+      });
+      tbody.innerHTML = html;
+    }
+
+    async function updateDriverStatus(driverId, status) {
+      try {
+        const res = await fetch('/api/admin/driver/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ driverId, status })
+        });
+        const data = await res.json();
+        if (data.success) {
+          loadDrivers();
+        } else {
+          alert(data.message);
+        }
+      } catch (e) {
+        alert("Action failed.");
+      }
+    }
+
+    window.addEventListener('load', loadDrivers);
+  </script>
+</body>
+</html>
