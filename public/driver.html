@@ -20,7 +20,7 @@
           <span>🚖</span> 67 Partner
         </h1>
         <p class="text-sm font-semibold">Ramesh Sharma (WagonR)</p>
-        <p class="text-[11px] text-green-400 font-bold">● ONLINE • Hatchback</p>
+        <p id="gps-status-indicator" class="text-[11px] text-green-400 font-bold">● ONLINE • Hatchback (GPS Active)</p>
       </div>
       <div class="text-right">
         <span class="text-[10px] text-slate-400">Base Rate</span>
@@ -134,11 +134,17 @@
       navigator.serviceWorker.register('/sw.js');
     }
 
-    const socket = io();
+    const socket = io({
+      transports: ['websocket', 'polling'],
+      reconnectionAttempts: 10
+    });
+
     let currentOffer = null;
     let currentActiveRideId = null;
     let simInterval = null;
     let alertSoundInterval = null;
+    let currentTripPhase = 'TO_PICKUP';
+    let geoWatchId = null;
 
     const DRIVER_INFO = {
       driverId: 'DRV_67_01',
@@ -146,10 +152,55 @@
       vehicleNo: 'RJ 14 TA 6767',
       cabType: 'HATCHBACK',
       upiId: '67cabs@upi',
-      location: { lat: 26.9150, lng: 75.8050 }
+      location: { lat: 26.9124, lng: 75.7873 }
     };
 
-    socket.emit('driver:register', DRIVER_INFO);
+    // Register Driver on Socket Connect & Reconnect
+    function registerDriver() {
+      socket.emit('driver:register', DRIVER_INFO);
+    }
+    socket.on('connect', registerDriver);
+
+    // High Precision Reverse Geocode Helper
+    async function reverseGeocode(lat, lng) {
+      try {
+        const res = await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}`);
+        const data = await res.json();
+        if (data.features && data.features.length > 0) {
+          const p = data.features[0].properties;
+          return [p.name, p.street, p.district || p.city].filter(Boolean).join(', ');
+        }
+      } catch (e) {}
+      return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    }
+
+    // Hardware GPS Live Tracking
+    function startDriverGPSTracking() {
+      if (navigator.geolocation) {
+        geoWatchId = navigator.geolocation.watchPosition(
+          (pos) => {
+            const { latitude, longitude, heading } = pos.coords;
+            DRIVER_INFO.location = { lat: latitude, lng: longitude };
+            document.getElementById('gps-status-indicator').innerHTML = `● ONLINE • Hatchback <span class="text-amber-400">(${latitude.toFixed(3)}, ${longitude.toFixed(3)})</span>`;
+
+            if (currentActiveRideId) {
+              socket.emit('driver:location_update', {
+                rideId: currentActiveRideId,
+                lat: latitude,
+                lng: longitude,
+                phase: currentTripPhase,
+                heading: heading || 0
+              });
+            }
+          },
+          (err) => {
+            console.warn("Driver GPS Watch Error:", err.message);
+          },
+          { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
+        );
+      }
+    }
+    startDriverGPSTracking();
 
     // Loud Native Audio Siren Generator (Ola/Uber Style)
     function playOfferSiren() {
@@ -182,11 +233,15 @@
       if (alertSoundInterval) clearInterval(alertSoundInterval);
     }
 
-    socket.on('ride:new_offer', (offer) => {
+    socket.on('ride:new_offer', async (offer) => {
       currentOffer = offer;
       document.getElementById('offer-fare').innerText = `₹${offer.totalFare}`;
-      document.getElementById('offer-pickup-addr').innerText = `${offer.pickup.lat.toFixed(4)}, ${offer.pickup.lng.toFixed(4)}`;
-      document.getElementById('offer-drop-addr').innerText = `${offer.drop.lat.toFixed(4)}, ${offer.drop.lng.toFixed(4)}`;
+      
+      const pickupName = await reverseGeocode(offer.pickup.lat, offer.pickup.lng);
+      const dropName = await reverseGeocode(offer.drop.lat, offer.drop.lng);
+
+      document.getElementById('offer-pickup-addr').innerText = pickupName;
+      document.getElementById('offer-drop-addr').innerText = dropName;
 
       document.getElementById('offer-modal').classList.remove('hidden');
       document.getElementById('offer-modal').classList.add('flex');
@@ -197,14 +252,20 @@
       if (currentOffer && currentOffer.rideId === rideId) rejectRide();
     });
 
-    function acceptRide() {
+    async function acceptRide() {
       stopOfferAlerts();
       if (!currentOffer) return;
       currentActiveRideId = currentOffer.rideId;
+      currentTripPhase = 'TO_PICKUP';
 
       socket.emit('ride:accept', {
         rideId: currentOffer.rideId,
-        driverData: { name: DRIVER_INFO.name, vehicleNo: DRIVER_INFO.vehicleNo, phone: '9876543210' }
+        driverData: { 
+          name: DRIVER_INFO.name, 
+          vehicleNo: DRIVER_INFO.vehicleNo, 
+          phone: '9876543210',
+          upiId: DRIVER_INFO.upiId
+        }
       });
 
       document.getElementById('offer-modal').classList.add('hidden');
@@ -213,10 +274,14 @@
       document.getElementById('active-ride-card').classList.remove('hidden');
 
       document.getElementById('active-fare').innerText = `₹${currentOffer.totalFare}`;
-      document.getElementById('active-pickup').innerText = `${currentOffer.pickup.lat.toFixed(4)}, ${currentOffer.pickup.lng.toFixed(4)}`;
-      document.getElementById('active-drop').innerText = `${currentOffer.drop.lat.toFixed(4)}, ${currentOffer.drop.lng.toFixed(4)}`;
+      
+      const pickupName = await reverseGeocode(currentOffer.pickup.lat, currentOffer.pickup.lng);
+      const dropName = await reverseGeocode(currentOffer.drop.lat, currentOffer.drop.lng);
 
-      document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&origin=${currentOffer.pickup.lat},${currentOffer.pickup.lng}&destination=${currentOffer.drop.lat},${currentOffer.drop.lng}&travelmode=driving`;
+      document.getElementById('active-pickup').innerText = pickupName;
+      document.getElementById('active-drop').innerText = dropName;
+
+      document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&origin=${DRIVER_INFO.location.lat},${DRIVER_INFO.location.lng}&destination=${currentOffer.pickup.lat},${currentOffer.pickup.lng}&travelmode=driving`;
 
       startMovementSimulation(DRIVER_INFO.location, currentOffer.pickup, 'TO_PICKUP');
     }
@@ -227,6 +292,10 @@
       btn.innerText = "✅ Arrived Notified";
       btn.className = "bg-green-700 text-white font-bold py-3 rounded-xl text-xs";
       document.getElementById('trip-badge').innerText = "Arrived at Pickup";
+
+      if (currentOffer) {
+        document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&origin=${currentOffer.pickup.lat},${currentOffer.pickup.lng}&destination=${currentOffer.drop.lat},${currentOffer.drop.lng}&travelmode=driving`;
+      }
     }
 
     function rejectRide() {
@@ -269,6 +338,7 @@
     }
 
     socket.on('ride:started_driver_view', () => {
+      currentTripPhase = 'TO_DROP';
       document.getElementById('otp-section').classList.add('hidden');
       document.getElementById('trip-running-section').classList.remove('hidden');
       const badge = document.getElementById('trip-badge');

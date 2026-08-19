@@ -139,7 +139,11 @@
       navigator.serviceWorker.register('/sw.js');
     }
 
-    const socket = io();
+    const socket = io({
+      transports: ['websocket', 'polling'],
+      reconnectionAttempts: 10
+    });
+
     const map = L.map('map').setView([26.9124, 75.7873], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
@@ -347,20 +351,70 @@
     setupAutocomplete('pickup-search-input', 'pickup-results', true);
     setupAutocomplete('drop-search-input', 'drop-results', false);
 
-    document.getElementById('btn-gps').addEventListener('click', () => {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const { latitude, longitude } = position.coords;
-            setPickup(latitude, longitude, "📍 Current Location");
-            map.setView([latitude, longitude], 15);
-          },
-          (error) => alert('GPS access error: ' + error.message),
-          { enableHighAccuracy: true }
-        );
-      } else {
-        alert("Geolocation is not supported by your browser.");
+    // High Precision Reverse Geocoding
+    async function reverseGeocode(lat, lng) {
+      try {
+        const res = await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}`);
+        const data = await res.json();
+        if (data.features && data.features.length > 0) {
+          const p = data.features[0].properties;
+          return [p.name, p.street, p.district || p.city].filter(Boolean).join(', ');
+        }
+      } catch (e) {
+        console.warn('Reverse geocode error:', e);
       }
+      return `📍 GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    }
+
+    // High Accuracy GPS Acquisition with Fallback
+    function fetchPreciseGPS() {
+      const btn = document.getElementById('btn-gps');
+      btn.innerText = '⏳';
+
+      if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser.");
+        btn.innerText = '🎯';
+        return;
+      }
+
+      const geoSuccess = async (position) => {
+        const { latitude, longitude } = position.coords;
+        btn.innerText = '🎯';
+
+        if (!isWithinJaipur(latitude, longitude)) {
+          alert(`⚠️ Aapki GPS Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)}) Jaipur service boundary ke bahar hai.`);
+          return;
+        }
+
+        const address = await reverseGeocode(latitude, longitude);
+        setPickup(latitude, longitude, address);
+        map.setView([latitude, longitude], 16);
+      };
+
+      const geoError = (error) => {
+        console.warn("High accuracy GPS failed, attempting normal accuracy...", error.message);
+        navigator.geolocation.getCurrentPosition(
+          geoSuccess,
+          (err2) => {
+            btn.innerText = '🎯';
+            alert(`GPS Error (${err2.message}). Please ensure Location/GPS is ON in your mobile settings.`);
+          },
+          { enableHighAccuracy: false, timeout: 10000 }
+        );
+      };
+
+      navigator.geolocation.getCurrentPosition(
+        geoSuccess,
+        geoError,
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      );
+    }
+
+    document.getElementById('btn-gps').addEventListener('click', fetchPreciseGPS);
+
+    // Auto-acquire current location on initial page load
+    window.addEventListener('load', () => {
+      setTimeout(fetchPreciseGPS, 800);
     });
 
     async function calculateRoute() {
@@ -399,34 +453,38 @@
     }
 
     async function fetchFare(tripKm, tripMins, pickupKm, pickupMins) {
-      const res = await fetch('/api/fare/estimate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tripDistanceKm: tripKm,
-          tripTrafficMins: tripMins,
-          pickupDistanceKm: pickupKm,
-          pickupTrafficMins: pickupMins,
-          cabType: selectedCab
-        })
-      });
+      try {
+        const res = await fetch('/api/fare/estimate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tripDistanceKm: tripKm,
+            tripTrafficMins: tripMins,
+            pickupDistanceKm: pickupKm,
+            pickupTrafficMins: pickupMins,
+            cabType: selectedCab
+          })
+        });
 
-      const json = await res.json();
-      if (json.success) {
-        currentFareData = json.data;
-        const d = json.data;
-        document.getElementById('trip-km').innerText = d.breakdown.trip.distanceKm;
-        document.getElementById('trip-fare').innerText = `₹${d.breakdown.trip.baseFare}`;
-        document.getElementById('pickup-km').innerText = d.breakdown.pickup.distanceKm;
-        document.getElementById('pickup-fare').innerText = `₹${d.breakdown.pickup.baseFare}`;
-        document.getElementById('delay-fare').innerText = `₹${d.breakdown.trip.trafficCharge + d.breakdown.pickup.trafficCharge}`;
-        document.getElementById('total-fare').innerText = `₹${d.fixedFare}`;
+        const json = await res.json();
+        if (json.success) {
+          currentFareData = json.data;
+          const d = json.data;
+          document.getElementById('trip-km').innerText = d.breakdown.trip.distanceKm;
+          document.getElementById('trip-fare').innerText = `₹${d.breakdown.trip.baseFare}`;
+          document.getElementById('pickup-km').innerText = d.breakdown.pickup.distanceKm;
+          document.getElementById('pickup-fare').innerText = `₹${d.breakdown.pickup.baseFare}`;
+          document.getElementById('delay-fare').innerText = `₹${d.breakdown.trip.trafficCharge + d.breakdown.pickup.trafficCharge}`;
+          document.getElementById('total-fare').innerText = `₹${d.fixedFare}`;
 
-        document.getElementById('fare-card').classList.remove('hidden');
-        const btn = document.getElementById('book-btn');
-        btn.disabled = false;
-        btn.className = "w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-black py-3.5 rounded-xl text-sm shadow-lg cursor-pointer transition";
-        btn.innerText = `Book 67 Cab • ₹${d.fixedFare}`;
+          document.getElementById('fare-card').classList.remove('hidden');
+          const btn = document.getElementById('book-btn');
+          btn.disabled = false;
+          btn.className = "w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-black py-3.5 rounded-xl text-sm shadow-lg cursor-pointer transition";
+          btn.innerText = `Book 67 Cab • ₹${d.fixedFare}`;
+        }
+      } catch (e) {
+        console.error("Fare estimate failed:", e);
       }
     }
 
@@ -445,6 +503,14 @@
       btn.innerText = "⏳ Connecting to 67 Driver...";
       btn.className = "w-full bg-amber-400 text-slate-900 font-bold py-3.5 rounded-xl text-sm animate-pulse";
     }
+
+    socket.on('ride:error', ({ message }) => {
+      alert(`⚠️ ${message}`);
+      const btn = document.getElementById('book-btn');
+      btn.disabled = false;
+      btn.innerText = `Book 67 Cab • ₹${currentFareData?.fixedFare || ''}`;
+      btn.className = "w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-black py-3.5 rounded-xl text-sm shadow-lg cursor-pointer transition";
+    });
 
     socket.on('ride:accepted', ({ driver, otp, fare }) => {
       document.getElementById('search-section').classList.add('hidden');
