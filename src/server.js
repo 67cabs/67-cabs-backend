@@ -54,7 +54,27 @@ if (MONGO_URI) {
   console.warn('⚠️ MONGO_URI not found in .env. Running memory-only mode.');
 }
 
-// Trip History Schema
+// 1. Driver Account Schema (Auth & Approval Flow)
+const driverSchema = new mongoose.Schema({
+  driverId: { type: String, required: true, unique: true, index: true },
+  phone: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  name: { type: String, required: true },
+  email: { type: String, default: '' },
+  vehicleNo: { type: String, required: true },
+  cabType: { type: String, required: true, default: 'HATCHBACK' },
+  upiId: { type: String, default: '67cabs@upi' },
+  status: { 
+    type: String, 
+    enum: ['PENDING_APPROVAL', 'APPROVED', 'BLOCKED'], 
+    default: 'PENDING_APPROVAL' 
+  },
+  isOnline: { type: Boolean, default: false }
+}, { timestamps: true });
+
+const Driver = mongoose.model('Driver', driverSchema);
+
+// 2. Trip History Schema
 const tripSchema = new mongoose.Schema({
   rideId: { type: String, required: true, unique: true, index: true },
   cabType: { type: String, required: true },
@@ -85,7 +105,7 @@ const tripSchema = new mongoose.Schema({
 
 const Trip = mongoose.model('Trip', tripSchema);
 
-// Driver Location Schema for Real-time DB GPS Tracking
+// 3. Driver Live GPS Telemetry Schema
 const driverLocationSchema = new mongoose.Schema({
   driverId: { type: String, required: true, unique: true },
   name: String,
@@ -116,7 +136,129 @@ function isWithinJaipur(lat, lng) {
   );
 }
 
-// 1. Fare Calculation API Route with Validation
+// ---------------- AUTH & ONBOARDING ROUTES ----------------
+
+// Driver Registration (Sign Up)
+app.post('/api/driver/signup', async (req, res) => {
+  try {
+    const { name, phone, password, email, vehicleNo, cabType, upiId } = req.body;
+
+    if (!name || !phone || !password || !vehicleNo) {
+      return res.status(400).json({ success: false, message: 'Name, Phone, Password, aur Vehicle Number zaroori hain.' });
+    }
+
+    const cleanPhone = phone.trim();
+    const existing = await Driver.findOne({ phone: cleanPhone });
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'Yeh mobile number pehle se registered hai.' });
+    }
+
+    const driverId = `DRV_${Date.now()}`;
+    const newDriver = await Driver.create({
+      driverId,
+      name: name.trim(),
+      phone: cleanPhone,
+      password: password.trim(),
+      email: email ? email.trim() : '',
+      vehicleNo: vehicleNo.trim().toUpperCase(),
+      cabType: (cabType || 'HATCHBACK').toUpperCase(),
+      upiId: upiId ? upiId.trim() : '67cabs@upi',
+      status: 'PENDING_APPROVAL',
+      isOnline: false
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Account successfully create ho gaya! Admin approval ke baad ride accept kar sakenge.',
+      driver: {
+        driverId: newDriver.driverId,
+        name: newDriver.name,
+        phone: newDriver.phone,
+        cabType: newDriver.cabType,
+        vehicleNo: newDriver.vehicleNo,
+        upiId: newDriver.upiId,
+        status: newDriver.status
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Driver Login
+app.post('/api/driver/login', async (req, res) => {
+  try {
+    const { phone, password } = req.body;
+    if (!phone || !password) {
+      return res.status(400).json({ success: false, message: 'Phone number aur Password enter karein.' });
+    }
+
+    const cleanPhone = phone.trim();
+    const driver = await Driver.findOne({ phone: cleanPhone, password: password.trim() });
+    
+    if (!driver) {
+      return res.status(401).json({ success: false, message: 'Galat Phone number ya Password!' });
+    }
+
+    return res.json({
+      success: true,
+      driver: {
+        driverId: driver.driverId,
+        name: driver.name,
+        phone: driver.phone,
+        cabType: driver.cabType,
+        vehicleNo: driver.vehicleNo,
+        upiId: driver.upiId,
+        status: driver.status
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ---------------- ADMIN DASHBOARD ROUTES ----------------
+
+// Get All Registered Drivers for Verification
+app.get('/api/admin/drivers', async (req, res) => {
+  try {
+    const drivers = await Driver.find().sort({ createdAt: -1 });
+    return res.json({ success: true, drivers });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Approve or Block Driver
+app.post('/api/admin/driver/status', async (req, res) => {
+  try {
+    const { driverId, status } = req.body;
+    if (!driverId || !['APPROVED', 'PENDING_APPROVAL', 'BLOCKED'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid driver status payload' });
+    }
+
+    const updated = await Driver.findOneAndUpdate(
+      { driverId },
+      { status },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ success: false, message: 'Driver nahi mila' });
+    }
+
+    // Live Socket Alert to Driver
+    io.emit(`driver:status:${driverId}`, { status: updated.status });
+
+    return res.json({ success: true, message: `Driver status changed to ${status}`, driver: updated });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ---------------- FARE & LOCATION ROUTES ----------------
+
+// Fare Calculation API Route with Validation
 app.post('/api/fare/estimate', (req, res) => {
   try {
     const { tripDistanceKm, tripTrafficMins, pickupDistanceKm, pickupTrafficMins, cabType } = req.body;
@@ -146,12 +288,11 @@ app.post('/api/fare/estimate', (req, res) => {
   }
 });
 
-// 2. Direct Live Nearby Driver GPS Locator API
+// Direct Live Nearby Driver GPS Locator API
 app.get('/api/cabs/nearby', async (req, res) => {
   try {
     const cabType = (req.query.cabType || 'HATCHBACK').toUpperCase();
     
-    // Check in-memory active drivers first
     let liveDriver = null;
     activeDrivers.forEach((d) => {
       if (d.cabType === cabType && d.location && d.location.lat) {
@@ -159,7 +300,6 @@ app.get('/api/cabs/nearby', async (req, res) => {
       }
     });
 
-    // Fallback to MongoDB latest active driver record
     if (!liveDriver) {
       const dbDriver = await DriverLocation.findOne({ cabType }).sort({ lastActive: -1 });
       if (dbDriver && dbDriver.location && dbDriver.location.lat) {
@@ -180,13 +320,12 @@ app.get('/api/cabs/nearby', async (req, res) => {
   }
 });
 
-// 3. Multi-Offer MongoDB Polling Endpoint (Returns all active searching rides)
+// Multi-Offer MongoDB Polling Endpoint (Returns all active searching rides)
 app.get('/api/driver/active-offers', async (req, res) => {
   try {
     const cabType = (req.query.cabType || 'HATCHBACK').toUpperCase();
     const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
     
-    // Fetch all active requests for this cab type
     const activeOffers = await Trip.find({
       cabType,
       status: 'SEARCHING',
@@ -206,7 +345,7 @@ let activeRides = new Map();
 io.on('connection', (socket) => {
   console.log(`⚡ Device Connected: ${socket.id}`);
 
-  // 1. Driver Online Registration
+  // 1. Driver Online Registration (Only Approved & Authenticated Drivers)
   socket.on('driver:register', async (driverData) => {
     const normalizedCabType = (driverData.cabType || 'HATCHBACK').toUpperCase();
     const driverId = driverData.driverId || socket.id;
@@ -217,12 +356,12 @@ io.on('connection', (socket) => {
       vehicleNo: driverData.vehicleNo || 'RJ 14 TA 6767',
       cabType: normalizedCabType,
       upiId: driverData.upiId || '67cabs@upi',
+      status: driverData.status || 'APPROVED',
       location: driverData.location || null,
       socketId: socket.id
     });
     console.log(`🚗 Driver Online: ${driverData.name} (${normalizedCabType}) | Socket: ${socket.id}`);
 
-    // Update Driver's GPS in MongoDB if available
     if (driverData.location && driverData.location.lat) {
       try {
         await DriverLocation.findOneAndUpdate(
@@ -244,7 +383,6 @@ io.on('connection', (socket) => {
     const { pickup, drop, cabType, totalFare } = rideData;
     const requestedCabType = (cabType || 'HATCHBACK').toUpperCase();
 
-    // Backend Geofence Validation
     if (pickup && (!isWithinJaipur(pickup.lat, pickup.lng) || !isWithinJaipur(drop.lat, drop.lng))) {
       return socket.emit('ride:error', { 
         message: 'Pickup ya Drop location Jaipur service boundary ke bahar hai.' 
@@ -264,7 +402,6 @@ io.on('connection', (socket) => {
 
     console.log(`📍 67 Cabs Request: ${rideId} for ${requestedCabType}`);
 
-    // Instant Mongo Atlas Log (SEARCHING state)
     try {
       await Trip.create({
         rideId,
@@ -280,9 +417,9 @@ io.on('connection', (socket) => {
       console.error(`⚠️ Initial DB Save Error for ${rideId}:`, dbErr.message);
     }
 
-    // Broadcast offer to matching drivers and via global room
+    // Broadcast offer only to Approved matching active drivers
     activeDrivers.forEach((driver, driverSocketId) => {
-      if (driver.cabType === requestedCabType || requestedCabType === 'ALL') {
+      if (driver.status === 'APPROVED' && (driver.cabType === requestedCabType || requestedCabType === 'ALL')) {
         io.to(driverSocketId).emit('ride:new_offer', ridePayload);
       }
     });
@@ -306,11 +443,15 @@ io.on('connection', (socket) => {
   socket.on('ride:accept', async ({ rideId, driverData }) => {
     const ride = activeRides.get(rideId);
     const registeredDriver = activeDrivers.get(socket.id);
-    const startOtp = Math.floor(1000 + Math.random() * 9000).toString();
 
+    // Gating: Only Approved Drivers can accept rides
+    if (registeredDriver && registeredDriver.status !== 'APPROVED') {
+      return socket.emit('ride:error', { message: 'Aapka account abhi Admin se Approved nahi hai.' });
+    }
+
+    const startOtp = Math.floor(1000 + Math.random() * 9000).toString();
     let finalTotalFare = ride ? ride.totalFare : 0;
 
-    // MongoDB Update to ACCEPTED
     try {
       const updatedTrip = await Trip.findOneAndUpdate(
         { rideId, status: 'SEARCHING' },
@@ -341,7 +482,6 @@ io.on('connection', (socket) => {
       ride.otp = startOtp;
       activeRides.set(rideId, ride);
 
-      // Specific Rider Emit
       if (ride.riderSocketId) {
         io.to(ride.riderSocketId).emit('ride:accepted', {
           rideId,
@@ -352,7 +492,6 @@ io.on('connection', (socket) => {
       }
     }
 
-    // Global Rider Room Broadcast fallback
     io.emit(`ride:accepted:${rideId}`, {
       rideId,
       driver: driverData,
@@ -362,7 +501,6 @@ io.on('connection', (socket) => {
 
     console.log(`✅ Ride ${rideId} Accepted. Generated OTP: ${startOtp}`);
 
-    // Driver confirmation
     socket.emit('driver:ride_confirmed', {
       rideId,
       pickup: ride?.pickup,
@@ -370,7 +508,6 @@ io.on('connection', (socket) => {
       totalFare: finalTotalFare
     });
 
-    // Broadcast dismiss to other drivers
     socket.broadcast.emit('ride:taken', { rideId });
     io.emit('ride:taken', { rideId });
   });
