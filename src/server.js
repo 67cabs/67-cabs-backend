@@ -76,11 +76,13 @@ const driverSchema = new mongoose.Schema({
     aadhaarCardFront: { type: String, default: '' },
     aadhaarCardBack: { type: String, default: '' },
     panCard: { type: String, default: '' },
-    bankPassbook: { type: String, default: '' }
+    bankPassbook: { type: String, default: '' },
+    additionalDocName: { type: String, default: '' },
+    additionalDocImage: { type: String, default: '' }
   },
   status: { 
     type: String, 
-    enum: ['PENDING_APPROVAL', 'APPROVED', 'BLOCKED'], 
+    enum: ['PENDING_APPROVAL', 'APPROVED', 'BLOCKED', 'ADDITIONAL_DOC_REQUIRED', 'SUSPENDED'], 
     default: 'PENDING_APPROVAL' 
   },
   isOnline: { type: Boolean, default: false }
@@ -88,7 +90,18 @@ const driverSchema = new mongoose.Schema({
 
 const Driver = mongoose.model('Driver', driverSchema);
 
-// 2. Trip History Schema
+// 2. Audit Trail Schema (Tracks Suspended & Blacklisted Drivers)
+const driverAuditSchema = new mongoose.Schema({
+  phone: { type: String, required: true, index: true },
+  vehicleNo: { type: String, required: true, index: true },
+  name: String,
+  reason: { type: String, default: 'Policy violation or Admin suspension' },
+  suspendedAt: { type: Date, default: Date.now }
+}, { timestamps: true });
+
+const DriverAudit = mongoose.model('DriverAudit', driverAuditSchema);
+
+// 3. Trip History Schema
 const tripSchema = new mongoose.Schema({
   rideId: { type: String, required: true, unique: true, index: true },
   cabType: { type: String, required: true },
@@ -119,7 +132,7 @@ const tripSchema = new mongoose.Schema({
 
 const Trip = mongoose.model('Trip', tripSchema);
 
-// 3. Driver Live GPS Telemetry Schema
+// 4. Driver Live GPS Telemetry Schema
 const driverLocationSchema = new mongoose.Schema({
   driverId: { type: String, required: true, unique: true },
   name: String,
@@ -162,6 +175,8 @@ app.post('/api/driver/signup', async (req, res) => {
     }
 
     const cleanPhone = phone.trim();
+    const cleanVehicle = vehicleNo.trim().toUpperCase();
+
     const existing = await Driver.findOne({ phone: cleanPhone });
     if (existing) {
       return res.status(400).json({ success: false, message: 'Yeh mobile number pehle se registered hai.' });
@@ -174,7 +189,7 @@ app.post('/api/driver/signup', async (req, res) => {
       phone: cleanPhone,
       password: password.trim(),
       email: email ? email.trim() : '',
-      vehicleNo: vehicleNo.trim().toUpperCase(),
+      vehicleNo: cleanVehicle,
       cabType: (cabType || 'HATCHBACK').toUpperCase(),
       upiId: upiId ? upiId.trim() : '67cabs@upi',
       documents: documents || {},
@@ -192,7 +207,8 @@ app.post('/api/driver/signup', async (req, res) => {
         cabType: newDriver.cabType,
         vehicleNo: newDriver.vehicleNo,
         upiId: newDriver.upiId,
-        status: newDriver.status
+        status: newDriver.status,
+        documents: newDriver.documents
       }
     });
   } catch (err) {
@@ -215,6 +231,10 @@ app.post('/api/driver/login', async (req, res) => {
       return res.status(401).json({ success: false, message: 'Galat Phone number ya Password!' });
     }
 
+    if (driver.status === 'SUSPENDED') {
+      return res.status(403).json({ success: false, message: 'Aapka account Admin dwara permanently suspend/block kar diya gaya hai.' });
+    }
+
     return res.json({
       success: true,
       driver: {
@@ -224,8 +244,55 @@ app.post('/api/driver/login', async (req, res) => {
         cabType: driver.cabType,
         vehicleNo: driver.vehicleNo,
         upiId: driver.upiId,
-        status: driver.status
+        status: driver.status,
+        documents: driver.documents
       }
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Driver Self-Delete Account (Permanent Deletion)
+app.post('/api/driver/delete-account', async (req, res) => {
+  try {
+    const { driverId } = req.body;
+    if (!driverId) return res.status(400).json({ success: false, message: 'Driver ID required' });
+
+    await Driver.deleteOne({ driverId });
+    await DriverLocation.deleteOne({ driverId });
+
+    return res.json({ success: true, message: 'Driver account successfully deleted.' });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Driver Uploads Requested Additional Document
+app.post('/api/driver/upload-additional-doc', async (req, res) => {
+  try {
+    const { driverId, additionalDocImage } = req.body;
+    if (!driverId || !additionalDocImage) {
+      return res.status(400).json({ success: false, message: 'Driver ID & Document image required.' });
+    }
+
+    const updated = await Driver.findOneAndUpdate(
+      { driverId },
+      { 
+        'documents.additionalDocImage': additionalDocImage,
+        status: 'PENDING_APPROVAL' 
+      },
+      { new: true }
+    );
+
+    if (!updated) return res.status(404).json({ success: false, message: 'Driver nahi mila.' });
+
+    io.emit(`driver:status:${driverId}`, { status: 'PENDING_APPROVAL' });
+
+    return res.json({ 
+      success: true, 
+      message: 'Additional document submitted for admin review.',
+      driver: updated 
     });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
@@ -234,11 +301,22 @@ app.post('/api/driver/login', async (req, res) => {
 
 // ---------------- ADMIN DASHBOARD ROUTES ----------------
 
-// Get All Registered Drivers for Verification
+// Get All Registered Drivers + Match Audit History
 app.get('/api/admin/drivers', async (req, res) => {
   try {
-    const drivers = await Driver.find().sort({ createdAt: -1 });
-    return res.json({ success: true, drivers });
+    const drivers = await Driver.find().sort({ createdAt: -1 }).lean();
+    const audits = await DriverAudit.find().lean();
+
+    const driversWithAudit = drivers.map(d => {
+      const pastRecord = audits.find(a => a.phone === d.phone || a.vehicleNo === d.vehicleNo);
+      return {
+        ...d,
+        hasPastRecord: !!pastRecord,
+        pastRecordDetails: pastRecord || null
+      };
+    });
+
+    return res.json({ success: true, drivers: driversWithAudit });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
@@ -248,7 +326,7 @@ app.get('/api/admin/drivers', async (req, res) => {
 app.post('/api/admin/driver/status', async (req, res) => {
   try {
     const { driverId, status } = req.body;
-    if (!driverId || !['APPROVED', 'PENDING_APPROVAL', 'BLOCKED'].includes(status)) {
+    if (!driverId || !['APPROVED', 'PENDING_APPROVAL', 'BLOCKED', 'ADDITIONAL_DOC_REQUIRED'].includes(status)) {
       return res.status(400).json({ success: false, message: 'Invalid driver status payload' });
     }
 
@@ -266,6 +344,63 @@ app.post('/api/admin/driver/status', async (req, res) => {
     io.emit(`driver:status:${driverId}`, { status: updated.status });
 
     return res.json({ success: true, message: `Driver status changed to ${status}`, driver: updated });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Admin Requests Additional Document from Driver
+app.post('/api/admin/driver/request-doc', async (req, res) => {
+  try {
+    const { driverId, docName } = req.body;
+    if (!driverId || !docName) {
+      return res.status(400).json({ success: false, message: 'Driver ID & Document name required.' });
+    }
+
+    const updated = await Driver.findOneAndUpdate(
+      { driverId },
+      { 
+        status: 'ADDITIONAL_DOC_REQUIRED',
+        'documents.additionalDocName': docName.trim()
+      },
+      { new: true }
+    );
+
+    if (!updated) return res.status(404).json({ success: false, message: 'Driver nahi mila' });
+
+    io.emit(`driver:status:${driverId}`, { 
+      status: 'ADDITIONAL_DOC_REQUIRED', 
+      docName: docName.trim() 
+    });
+
+    return res.json({ success: true, message: `Document '${docName}' requested from Driver.`, driver: updated });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Admin Permanently Suspends Driver & Saves to Blacklist Audit History
+app.post('/api/admin/driver/suspend', async (req, res) => {
+  try {
+    const { driverId, reason } = req.body;
+    const driver = await Driver.findOne({ driverId });
+    if (!driver) return res.status(404).json({ success: false, message: 'Driver nahi mila.' });
+
+    // Save in Audit History for future detection
+    await DriverAudit.create({
+      phone: driver.phone,
+      vehicleNo: driver.vehicleNo,
+      name: driver.name,
+      reason: reason || 'Suspended by admin due to violations'
+    });
+
+    // Delete current active record from system
+    await Driver.deleteOne({ driverId });
+    await DriverLocation.deleteOne({ driverId });
+
+    io.emit(`driver:status:${driverId}`, { status: 'SUSPENDED' });
+
+    return res.json({ success: true, message: 'Driver suspended & logged into blacklist history.' });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }

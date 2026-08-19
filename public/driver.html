@@ -156,7 +156,7 @@
 
         <!-- 9. Bank Passbook / Statement -->
         <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-          <label class="text-[11px] font-bold text-slate-300 block mb-1">🏦 Bank Passbook / Cancelled Cheque / Statement *</label>
+          <label class="text-[11px] font-bold text-slate-300 block mb-1">🏦 Bank Passbook / Statement *</label>
           <input type="file" id="doc-bank" accept="image/*" capture="environment" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
         </div>
       </div>
@@ -179,14 +179,52 @@
       <div><b>Vehicle:</b> <span id="pending-vehicle" class="font-mono text-amber-400">-</span></div>
       <div><b>Status:</b> <span class="text-amber-400 font-bold">PENDING APPROVAL</span></div>
     </div>
-    <button onclick="logoutDriver()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs">
-      Logout
+    
+    <div class="grid grid-cols-2 gap-2 pt-2">
+      <button onclick="logoutDriver()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs">
+        Logout
+      </button>
+      <button onclick="deleteAccountDriver()" class="bg-red-950/60 border border-red-800 hover:bg-red-900 text-red-300 font-bold py-2.5 rounded-xl text-xs">
+        🗑️ Delete Account
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= ADDITIONAL DOCUMENT UPLOAD ACTION CARD ================= -->
+  <div id="additional-doc-section" class="hidden w-full max-w-md my-auto bg-slate-900 p-6 rounded-2xl border-2 border-orange-500 shadow-2xl space-y-4">
+    <div class="text-center space-y-1">
+      <div class="text-3xl">📑</div>
+      <h2 class="text-base font-black text-orange-400">Additional Document Required</h2>
+      <p class="text-xs text-slate-300">
+        Admin ne approval ke liye aapse ek aur document manga hai:
+      </p>
+      <div class="bg-slate-950 border border-orange-500/40 p-2.5 rounded-xl text-xs font-bold text-orange-300" id="requested-doc-name-display">
+        -
+      </div>
+    </div>
+
+    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+      <label class="text-[11px] font-bold text-slate-400 block mb-1">📸 Upload / Camera Click:</label>
+      <input type="file" id="extra-doc-file" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-orange-500 file:text-slate-950" />
+    </div>
+
+    <button id="btn-submit-extra-doc" onclick="submitExtraDocument()" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-black py-3 rounded-xl text-xs transition shadow-lg">
+      SUBMIT ADDITIONAL DOCUMENT
     </button>
+
+    <div class="grid grid-cols-2 gap-2 pt-1">
+      <button onclick="logoutDriver()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2 rounded-xl text-xs">
+        Logout
+      </button>
+      <button onclick="deleteAccountDriver()" class="bg-red-950/60 border border-red-800 text-red-300 font-bold py-2 rounded-xl text-xs">
+        Delete Account
+      </button>
+    </div>
   </div>
 
   <!-- ================= MAIN DRIVER RIDE DASHBOARD (APPROVED ONLY) ================= -->
   <div id="main-driver-dashboard" class="hidden w-full max-w-md pb-12">
-    <!-- Header with Logout Button -->
+    <!-- Header with Logout & Delete Account Button -->
     <div class="flex justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow mb-4">
       <div>
         <h1 class="text-base font-bold text-amber-400 flex items-center gap-1.5">
@@ -195,10 +233,15 @@
         <p id="driver-header-name" class="text-sm font-semibold">Driver Name (WagonR)</p>
         <p id="gps-status-indicator" class="text-[11px] text-amber-400 font-bold">● Requesting GPS Permission...</p>
       </div>
-      <div class="text-right">
-        <button onclick="logoutDriver()" class="text-[10px] bg-red-950/60 border border-red-800 text-red-300 px-2.5 py-1 rounded font-bold mb-1 hover:bg-red-900 transition">
-          Logout
-        </button>
+      <div class="text-right space-y-1">
+        <div class="flex gap-1.5 justify-end">
+          <button onclick="logoutDriver()" class="text-[10px] bg-slate-800 border border-slate-700 text-slate-300 px-2 py-0.5 rounded font-bold hover:bg-slate-700 transition">
+            Logout
+          </button>
+          <button onclick="deleteAccountDriver()" class="text-[10px] bg-red-950/60 border border-red-800 text-red-300 px-2 py-0.5 rounded font-bold hover:bg-red-900 transition" title="Delete Profile Permanently">
+            🗑️ Delete
+          </button>
+        </div>
         <div id="driver-header-rate" class="text-sm font-bold text-amber-400">₹16/km</div>
       </div>
     </div>
@@ -341,7 +384,6 @@
     let geoWatchId = null;
     let wakeLock = null;
 
-    // Fast Client-Side Image Compression (Max 1200px, 0.7 Quality)
     function compressImageFile(file) {
       return new Promise((resolve) => {
         if (!file) return resolve('');
@@ -487,18 +529,94 @@
       window.location.reload();
     }
 
+    async function deleteAccountDriver() {
+      if (!currentDriver) return;
+      if (confirm("⚠️ Kya aap apna driver account permanently delete karna chahte hain? Aapka sara data remove ho jayega.")) {
+        try {
+          const res = await fetch('/api/driver/delete-account', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ driverId: currentDriver.driverId })
+          });
+          const data = await res.json();
+          if (data.success) {
+            alert("✅ Aapka account permanently delete ho chuka hai.");
+            localStorage.removeItem('67_driver_session');
+            window.location.reload();
+          }
+        } catch (e) {
+          alert("Delete failed.");
+        }
+      }
+    }
+
+    async function submitExtraDocument() {
+      const file = document.getElementById('extra-doc-file').files[0];
+      if (!file) return alert("Kripya photo select ya click karein.");
+
+      const btn = document.getElementById('btn-submit-extra-doc');
+      btn.disabled = true;
+      btn.innerText = "⏳ Uploading...";
+
+      const base64 = await compressImageFile(file);
+      try {
+        const res = await fetch('/api/driver/upload-additional-doc', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            driverId: currentDriver.driverId,
+            additionalDocImage: base64
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert("✅ Document submitted successfully! Admin review karega.");
+          currentDriver.status = 'PENDING_APPROVAL';
+          localStorage.setItem('67_driver_session', JSON.stringify(currentDriver));
+          initDriverSession(currentDriver);
+        } else {
+          alert(data.message);
+        }
+      } catch (e) {
+        alert("Upload failed.");
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "SUBMIT ADDITIONAL DOCUMENT";
+      }
+    }
+
     function initDriverSession(driver) {
       currentDriver = driver;
 
-      socket.on(`driver:status:${driver.driverId}`, ({ status }) => {
+      socket.on(`driver:status:${driver.driverId}`, ({ status, docName }) => {
         driver.status = status;
+        if (docName) {
+          if (!driver.documents) driver.documents = {};
+          driver.documents.additionalDocName = docName;
+        }
         localStorage.setItem('67_driver_session', JSON.stringify(driver));
         initDriverSession(driver);
       });
 
+      if (driver.status === 'SUSPENDED') {
+        alert("⚠️ Aapka account Admin dwara suspend kar diya gaya hai.");
+        logoutDriver();
+        return;
+      }
+
+      if (driver.status === 'ADDITIONAL_DOC_REQUIRED') {
+        document.getElementById('auth-section').classList.add('hidden');
+        document.getElementById('main-driver-dashboard').classList.add('hidden');
+        document.getElementById('pending-verification-section').classList.add('hidden');
+        document.getElementById('additional-doc-section').classList.remove('hidden');
+        document.getElementById('requested-doc-name-display').innerText = driver.documents?.additionalDocName || 'Document Required';
+        return;
+      }
+
       if (driver.status === 'PENDING_APPROVAL') {
         document.getElementById('auth-section').classList.add('hidden');
         document.getElementById('main-driver-dashboard').classList.add('hidden');
+        document.getElementById('additional-doc-section').classList.add('hidden');
         document.getElementById('pending-verification-section').classList.remove('hidden');
         document.getElementById('pending-name').innerText = driver.name;
         document.getElementById('pending-vehicle').innerText = driver.vehicleNo;
@@ -508,6 +626,7 @@
       if (driver.status === 'APPROVED') {
         document.getElementById('auth-section').classList.add('hidden');
         document.getElementById('pending-verification-section').classList.add('hidden');
+        document.getElementById('additional-doc-section').classList.add('hidden');
         document.getElementById('main-driver-dashboard').classList.remove('hidden');
 
         document.getElementById('driver-header-name').innerText = `${driver.name} (${driver.vehicleNo})`;
