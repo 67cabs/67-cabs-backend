@@ -1,0 +1,18 @@
+{
+  "name": "67 Partner - Driver",
+  "short_name": "67 Partner",
+  "start_url": "/driver.html",
+  "scope": "/driver.html",
+  "id": "/driver-app",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2554/2554978.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
