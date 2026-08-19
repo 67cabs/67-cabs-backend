@@ -12,12 +12,12 @@
 </head>
 <body class="bg-slate-950 text-white min-h-screen p-4 flex flex-col items-center select-none">
 
-  <!-- ================= AUTH VIEW (LOGIN / SIGNUP) ================= -->
+  <!-- ================= 1. AUTH VIEW (LOGIN / SIGNUP) ================= -->
   <div id="auth-section" class="w-full max-w-md my-auto space-y-4">
     <div class="text-center space-y-1">
       <div class="text-4xl">🚖</div>
       <h1 class="text-2xl font-black text-amber-400">67 Partner Portal</h1>
-      <p class="text-xs text-slate-400">Register with KYC documents and drive with 67 Cabs</p>
+      <p class="text-xs text-slate-400">Login to your account or Register with KYC</p>
     </div>
 
     <!-- Auth Tabs -->
@@ -40,12 +40,12 @@
         <label class="text-[11px] font-bold text-slate-400 uppercase">Password *</label>
         <input type="password" id="login-password" required placeholder="Enter Password" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-3 text-xs outline-none focus:border-amber-400 mt-1" />
       </div>
-      <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3.5 rounded-xl text-xs transition shadow-lg mt-2">
-        LOGIN TO DRIVER APP
+      <button type="submit" id="btn-login-submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3.5 rounded-xl text-xs transition shadow-lg mt-2">
+        LOGIN TO PARTNER PORTAL
       </button>
     </form>
 
-    <!-- Sign Up Form (With Document & Camera Uploads) -->
+    <!-- Sign Up Form -->
     <form id="signup-form" onsubmit="handleDriverSignup(event)" class="hidden bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl space-y-3 max-h-[80vh] overflow-y-auto">
       <div>
         <label class="text-[11px] font-bold text-slate-400 uppercase">Driver Full Name *</label>
@@ -88,17 +88,15 @@
         <input type="email" id="reg-email" placeholder="Optional email" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-2.5 text-xs outline-none focus:border-amber-400 mt-1" />
       </div>
 
-      <!-- ================= KYC DOCUMENTS UPLOAD SECTION ================= -->
+      <!-- KYC Upload Section -->
       <div class="pt-2 border-t border-slate-800 space-y-3">
         <div class="text-xs font-bold text-amber-400 uppercase">KYC & Vehicle Documents (Upload / Camera)</div>
 
-        <!-- 1. Driver Profile Photo -->
         <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
           <label class="text-[11px] font-bold text-slate-300 block mb-1">📸 Driver Profile Photo / Live Selfie *</label>
           <input type="file" id="doc-selfie" accept="image/*" capture="user" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
         </div>
 
-        <!-- 2. Driving License (Front & Back) -->
         <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-2">
           <label class="text-[11px] font-bold text-slate-300 block">🪪 Driving License (Front & Back) *</label>
           <div>
@@ -111,31 +109,26 @@
           </div>
         </div>
 
-        <!-- 3. Vehicle RC -->
         <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
           <label class="text-[11px] font-bold text-slate-300 block mb-1">📄 Vehicle Registration Certificate (RC) *</label>
           <input type="file" id="doc-rc" accept="image/*" capture="environment" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
         </div>
 
-        <!-- 4. Vehicle Fitness -->
         <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
           <label class="text-[11px] font-bold text-slate-300 block mb-1">🛡️ Vehicle Fitness Certificate *</label>
           <input type="file" id="doc-fitness" accept="image/*" capture="environment" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
         </div>
 
-        <!-- 5. Vehicle Permit (Optional) -->
         <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
           <label class="text-[11px] font-bold text-slate-400 block mb-1">📋 Vehicle Permit (Optional)</label>
           <input type="file" id="doc-permit" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-300" />
         </div>
 
-        <!-- 6. Permit Authorization (Optional) -->
         <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
           <label class="text-[11px] font-bold text-slate-400 block mb-1">📑 Permit Authorization (Optional)</label>
           <input type="file" id="doc-permit-auth" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-300" />
         </div>
 
-        <!-- 7. Aadhaar Card (Front & Back) -->
         <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-2">
           <label class="text-[11px] font-bold text-slate-300 block">🆔 Aadhaar Card (Front & Back) *</label>
           <div>
@@ -148,13 +141,11 @@
           </div>
         </div>
 
-        <!-- 8. PAN Card -->
         <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
           <label class="text-[11px] font-bold text-slate-300 block mb-1">💳 PAN Card *</label>
           <input type="file" id="doc-pan" accept="image/*" capture="environment" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
         </div>
 
-        <!-- 9. Bank Passbook / Statement -->
         <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
           <label class="text-[11px] font-bold text-slate-300 block mb-1">🏦 Bank Passbook / Statement *</label>
           <input type="file" id="doc-bank" accept="image/*" capture="environment" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
@@ -167,12 +158,12 @@
     </form>
   </div>
 
-  <!-- ================= UNDER VERIFICATION SCREEN ================= -->
+  <!-- ================= 2. UNDER VERIFICATION SCREEN ================= -->
   <div id="pending-verification-section" class="hidden w-full max-w-md my-auto text-center bg-slate-900 p-6 rounded-2xl border-2 border-amber-500 shadow-2xl space-y-4">
     <div class="text-4xl animate-bounce">⏳</div>
     <h2 class="text-lg font-black text-amber-400">Account Under Verification</h2>
     <p class="text-xs text-slate-300 leading-relaxed">
-      Aapke saare KYC aur vehicle documents receive ho chuke hain. Admin panel se approval milte hi live rides accept karna shuru kar sakenge.
+      Aapka application receive ho gaya hai aur verification pending hai. Admin approval milte hi ride accept karna shuru kar sakenge.
     </p>
     <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-[11px] text-slate-400 space-y-1">
       <div><b>Name:</b> <span id="pending-name">-</span></div>
@@ -190,41 +181,41 @@
     </div>
   </div>
 
-  <!-- ================= ADDITIONAL DOCUMENT UPLOAD ACTION CARD ================= -->
+  <!-- ================= 3. ADDITIONAL DOCUMENT UPLOAD SCREEN ================= -->
   <div id="additional-doc-section" class="hidden w-full max-w-md my-auto bg-slate-900 p-6 rounded-2xl border-2 border-orange-500 shadow-2xl space-y-4">
     <div class="text-center space-y-1">
-      <div class="text-3xl">📑</div>
+      <div class="text-3xl animate-pulse">📑</div>
       <h2 class="text-base font-black text-orange-400">Additional Document Required</h2>
       <p class="text-xs text-slate-300">
-        Admin ne approval ke liye aapse ek aur document manga hai:
+        Admin ne approval ke liye aapse yeh document dobara/extra manga hai:
       </p>
-      <div class="bg-slate-950 border border-orange-500/40 p-2.5 rounded-xl text-xs font-bold text-orange-300" id="requested-doc-name-display">
+      <div class="bg-slate-950 border border-orange-500/50 p-3 rounded-xl text-sm font-bold text-amber-300" id="requested-doc-name-display">
         -
       </div>
     </div>
 
-    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
-      <label class="text-[11px] font-bold text-slate-400 block mb-1">📸 Upload / Camera Click:</label>
-      <input type="file" id="extra-doc-file" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-orange-500 file:text-slate-950" />
+    <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-2">
+      <label class="text-[11px] font-bold text-slate-300 block">📸 Select File / Take Photo:</label>
+      <input type="file" id="extra-doc-file" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-2 file:px-3.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-orange-500 file:text-slate-950 hover:file:bg-orange-400 cursor-pointer" />
     </div>
 
-    <button id="btn-submit-extra-doc" onclick="submitExtraDocument()" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-black py-3 rounded-xl text-xs transition shadow-lg">
-      SUBMIT ADDITIONAL DOCUMENT
+    <button id="btn-submit-extra-doc" onclick="submitExtraDocument()" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-black py-3.5 rounded-xl text-xs transition shadow-lg">
+      SUBMIT REQUESTED DOCUMENT
     </button>
 
     <div class="grid grid-cols-2 gap-2 pt-1">
-      <button onclick="logoutDriver()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2 rounded-xl text-xs">
+      <button onclick="logoutDriver()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs">
         Logout
       </button>
-      <button onclick="deleteAccountDriver()" class="bg-red-950/60 border border-red-800 text-red-300 font-bold py-2 rounded-xl text-xs">
+      <button onclick="deleteAccountDriver()" class="bg-red-950/60 border border-red-800 text-red-300 font-bold py-2.5 rounded-xl text-xs">
         Delete Account
       </button>
     </div>
   </div>
 
-  <!-- ================= MAIN DRIVER RIDE DASHBOARD (APPROVED ONLY) ================= -->
+  <!-- ================= 4. MAIN DRIVER DASHBOARD (APPROVED ONLY) ================= -->
   <div id="main-driver-dashboard" class="hidden w-full max-w-md pb-12">
-    <!-- Header with Logout & Delete Account Button -->
+    <!-- Header -->
     <div class="flex justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow mb-4">
       <div>
         <h1 class="text-base font-bold text-amber-400 flex items-center gap-1.5">
@@ -246,7 +237,7 @@
       </div>
     </div>
 
-    <!-- One-Click Driver PWA Install Banner -->
+    <!-- PWA Install Banner -->
     <div id="pwa-driver-install-banner" class="hidden mb-4 bg-emerald-600 text-white p-3 rounded-2xl flex items-center justify-between shadow-xl border border-emerald-500">
       <div class="flex items-center gap-2.5">
         <span class="text-2xl">👨‍✈️</span>
@@ -274,7 +265,6 @@
         <div>🏁 <b>Drop:</b> <span id="active-drop">-</span></div>
       </div>
 
-      <!-- Action Buttons -->
       <div class="grid grid-cols-2 gap-2">
         <button id="btn-arrived" onclick="notifyArrived()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition text-xs shadow-md">
           🔔 I have Arrived
@@ -284,7 +274,6 @@
         </a>
       </div>
 
-      <!-- Step 1: OTP Entry -->
       <div id="otp-section" class="hidden pt-2 border-t border-slate-800">
         <label class="text-[11px] text-slate-400 block mb-1.5 font-medium">Rider se 4-digit OTP lekar enter karein:</label>
         <div class="flex gap-2">
@@ -295,7 +284,6 @@
         </div>
       </div>
 
-      <!-- Step 2: Trip In Progress -->
       <div id="trip-running-section" class="hidden pt-2 border-t border-slate-800 space-y-3">
         <div class="text-center text-xs text-green-400 font-bold bg-green-950/40 border border-green-800 p-2.5 rounded-xl animate-pulse">
           🟢 TRIP ONGOING TO DROP DESTINATION
@@ -384,6 +372,7 @@
     let geoWatchId = null;
     let wakeLock = null;
 
+    // Fast Client-Side Image Compression
     function compressImageFile(file) {
       return new Promise((resolve) => {
         if (!file) return resolve('');
@@ -501,6 +490,10 @@
 
     async function handleDriverLogin(e) {
       e.preventDefault();
+      const loginBtn = document.getElementById('btn-login-submit');
+      loginBtn.disabled = true;
+      loginBtn.innerText = '⏳ Logging in...';
+
       const payload = {
         phone: document.getElementById('login-phone').value,
         password: document.getElementById('login-password').value
@@ -521,6 +514,9 @@
         }
       } catch (err) {
         alert('Login failed. Please check internet connection.');
+      } finally {
+        loginBtn.disabled = false;
+        loginBtn.innerText = 'LOGIN TO PARTNER PORTAL';
       }
     }
 
@@ -551,12 +547,13 @@
     }
 
     async function submitExtraDocument() {
-      const file = document.getElementById('extra-doc-file').files[0];
+      const fileInput = document.getElementById('extra-doc-file');
+      const file = fileInput.files[0];
       if (!file) return alert("Kripya photo select ya click karein.");
 
       const btn = document.getElementById('btn-submit-extra-doc');
       btn.disabled = true;
-      btn.innerText = "⏳ Uploading...";
+      btn.innerText = "⏳ Compressing & Uploading...";
 
       const base64 = await compressImageFile(file);
       try {
@@ -581,13 +578,22 @@
         alert("Upload failed.");
       } finally {
         btn.disabled = false;
-        btn.innerText = "SUBMIT ADDITIONAL DOCUMENT";
+        btn.innerText = "SUBMIT REQUESTED DOCUMENT";
       }
     }
 
+    function hideAllSections() {
+      document.getElementById('auth-section').classList.add('hidden');
+      document.getElementById('pending-verification-section').classList.add('hidden');
+      document.getElementById('additional-doc-section').classList.add('hidden');
+      document.getElementById('main-driver-dashboard').classList.add('hidden');
+    }
+
     function initDriverSession(driver) {
+      if (!driver) return;
       currentDriver = driver;
 
+      // Listen for Live Admin Status Updates
       socket.on(`driver:status:${driver.driverId}`, ({ status, docName }) => {
         driver.status = status;
         if (docName) {
@@ -598,37 +604,32 @@
         initDriverSession(driver);
       });
 
+      hideAllSections();
+
       if (driver.status === 'SUSPENDED') {
         alert("⚠️ Aapka account Admin dwara suspend kar diya gaya hai.");
         logoutDriver();
         return;
       }
 
+      // Condition 1: Admin ne koi additional doc manga hai
       if (driver.status === 'ADDITIONAL_DOC_REQUIRED') {
-        document.getElementById('auth-section').classList.add('hidden');
-        document.getElementById('main-driver-dashboard').classList.add('hidden');
-        document.getElementById('pending-verification-section').classList.add('hidden');
         document.getElementById('additional-doc-section').classList.remove('hidden');
-        document.getElementById('requested-doc-name-display').innerText = driver.documents?.additionalDocName || 'Document Required';
+        document.getElementById('requested-doc-name-display').innerText = driver.documents?.additionalDocName || 'Document Required by Admin';
         return;
       }
 
+      // Condition 2: Verification Pending hai
       if (driver.status === 'PENDING_APPROVAL') {
-        document.getElementById('auth-section').classList.add('hidden');
-        document.getElementById('main-driver-dashboard').classList.add('hidden');
-        document.getElementById('additional-doc-section').classList.add('hidden');
         document.getElementById('pending-verification-section').classList.remove('hidden');
         document.getElementById('pending-name').innerText = driver.name;
         document.getElementById('pending-vehicle').innerText = driver.vehicleNo;
         return;
       }
 
+      // Condition 3: Approved Driver
       if (driver.status === 'APPROVED') {
-        document.getElementById('auth-section').classList.add('hidden');
-        document.getElementById('pending-verification-section').classList.add('hidden');
-        document.getElementById('additional-doc-section').classList.add('hidden');
         document.getElementById('main-driver-dashboard').classList.remove('hidden');
-
         document.getElementById('driver-header-name').innerText = `${driver.name} (${driver.vehicleNo})`;
         const rates = { HATCHBACK: '₹16/km', SEDAN: '₹20/km', SUV: '₹25/km' };
         document.getElementById('driver-header-rate').innerText = rates[driver.cabType] || '₹16/km';
@@ -638,6 +639,7 @@
       }
     }
 
+    // Auto Session Restore on Page Load
     window.addEventListener('load', () => {
       const saved = localStorage.getItem('67_driver_session');
       if (saved) {
