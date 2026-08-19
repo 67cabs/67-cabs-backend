@@ -55,6 +55,16 @@ if (MONGO_URI) {
   console.warn('⚠️ MONGO_URI not found in .env. Running memory-only mode.');
 }
 
+// Phone Sanitizer Helper: Strips spaces, +91, and leading 0s to get clean 10 digits
+function sanitizePhone(phone) {
+  if (!phone) return '';
+  let cleaned = phone.toString().replace(/\D/g, '');
+  if (cleaned.length > 10) {
+    cleaned = cleaned.slice(-10);
+  }
+  return cleaned;
+}
+
 // 1. Driver Account Schema (Auth, Approval Flow & KYC Documents)
 const driverSchema = new mongoose.Schema({
   driverId: { type: String, required: true, unique: true, index: true },
@@ -174,10 +184,17 @@ app.post('/api/driver/signup', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Name, Phone, Password, aur Vehicle Number zaroori hain.' });
     }
 
-    const cleanPhone = phone.trim();
+    const cleanPhone = sanitizePhone(phone);
     const cleanVehicle = vehicleNo.trim().toUpperCase();
 
-    const existing = await Driver.findOne({ phone: cleanPhone });
+    // Check with sanitized phone or raw phone
+    const existing = await Driver.findOne({ 
+      $or: [
+        { phone: cleanPhone },
+        { phone: phone.trim() }
+      ]
+    });
+
     if (existing) {
       return res.status(400).json({ success: false, message: 'Yeh mobile number pehle se registered hai.' });
     }
@@ -216,7 +233,7 @@ app.post('/api/driver/signup', async (req, res) => {
   }
 });
 
-// Driver Login
+// Driver Login (Robust Match for with-zero and without-zero phone formats)
 app.post('/api/driver/login', async (req, res) => {
   try {
     const { phone, password } = req.body;
@@ -224,8 +241,19 @@ app.post('/api/driver/login', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Phone number aur Password enter karein.' });
     }
 
-    const cleanPhone = phone.trim();
-    const driver = await Driver.findOne({ phone: cleanPhone, password: password.trim() });
+    const cleanPhone = sanitizePhone(phone);
+    const rawPhone = phone.trim();
+
+    // Search for sanitized 10 digits OR exact raw string entered previously
+    const driver = await Driver.findOne({
+      $or: [
+        { phone: cleanPhone },
+        { phone: rawPhone },
+        { phone: `0${cleanPhone}` },
+        { phone: `+91${cleanPhone}` }
+      ],
+      password: password.trim()
+    });
     
     if (!driver) {
       return res.status(401).json({ success: false, message: 'Galat Phone number ya Password!' });
@@ -233,6 +261,12 @@ app.post('/api/driver/login', async (req, res) => {
 
     if (driver.status === 'SUSPENDED') {
       return res.status(403).json({ success: false, message: 'Aapka account Admin dwara permanently suspend/block kar diya gaya hai.' });
+    }
+
+    // Auto normalize phone in DB if it had leading zero
+    if (driver.phone !== cleanPhone) {
+      driver.phone = cleanPhone;
+      await driver.save();
     }
 
     return res.json({
@@ -245,7 +279,7 @@ app.post('/api/driver/login', async (req, res) => {
         vehicleNo: driver.vehicleNo,
         upiId: driver.upiId,
         status: driver.status,
-        documents: driver.documents
+        documents: driver.documents || {}
       }
     });
   } catch (err) {
@@ -308,7 +342,8 @@ app.get('/api/admin/drivers', async (req, res) => {
     const audits = await DriverAudit.find().lean();
 
     const driversWithAudit = drivers.map(d => {
-      const pastRecord = audits.find(a => a.phone === d.phone || a.vehicleNo === d.vehicleNo);
+      const cleanPhone = sanitizePhone(d.phone);
+      const pastRecord = audits.find(a => sanitizePhone(a.phone) === cleanPhone || a.vehicleNo === d.vehicleNo);
       return {
         ...d,
         hasPastRecord: !!pastRecord,
@@ -341,7 +376,10 @@ app.post('/api/admin/driver/status', async (req, res) => {
     }
 
     // Live Socket Alert to Driver
-    io.emit(`driver:status:${driverId}`, { status: updated.status });
+    io.emit(`driver:status:${driverId}`, { 
+      status: updated.status,
+      docName: updated.documents?.additionalDocName || ''
+    });
 
     return res.json({ success: true, message: `Driver status changed to ${status}`, driver: updated });
   } catch (err) {
@@ -388,7 +426,7 @@ app.post('/api/admin/driver/suspend', async (req, res) => {
 
     // Save in Audit History for future detection
     await DriverAudit.create({
-      phone: driver.phone,
+      phone: sanitizePhone(driver.phone),
       vehicleNo: driver.vehicleNo,
       name: driver.name,
       reason: reason || 'Suspended by admin due to violations'

@@ -12,7 +12,7 @@
 </head>
 <body class="bg-slate-950 text-white min-h-screen p-4 flex flex-col items-center select-none">
 
-  <!-- ================= 1. AUTH VIEW (LOGIN / SIGNUP) ================= -->
+  <!-- ================= AUTH VIEW (LOGIN / SIGNUP) ================= -->
   <div id="auth-section" class="w-full max-w-md my-auto space-y-4">
     <div class="text-center space-y-1">
       <div class="text-4xl">🚖</div>
@@ -506,14 +506,14 @@
           body: JSON.stringify(payload)
         });
         const data = await res.json();
-        if (data.success) {
+        if (data.success && data.driver) {
           localStorage.setItem('67_driver_session', JSON.stringify(data.driver));
           initDriverSession(data.driver);
         } else {
-          alert(`⚠️ ${data.message || data.error}`);
+          alert(`⚠️ ${data.message || 'Login failed. Please check credentials.'}`);
         }
       } catch (err) {
-        alert('Login failed. Please check internet connection.');
+        alert('Server response error. Please try again.');
       } finally {
         loginBtn.disabled = false;
         loginBtn.innerText = 'LOGIN TO PARTNER PORTAL';
