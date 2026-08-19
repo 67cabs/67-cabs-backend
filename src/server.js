@@ -67,10 +67,15 @@ const driverSchema = new mongoose.Schema({
   upiId: { type: String, default: '67cabs@upi' },
   documents: {
     selfiePhoto: { type: String, default: '' },
-    aadhaarCard: { type: String, default: '' },
-    panCard: { type: String, default: '' },
-    drivingLicense: { type: String, default: '' },
+    drivingLicenseFront: { type: String, default: '' },
+    drivingLicenseBack: { type: String, default: '' },
     vehicleRc: { type: String, default: '' },
+    vehicleFitness: { type: String, default: '' },
+    vehiclePermit: { type: String, default: '' },
+    permitAuthorization: { type: String, default: '' },
+    aadhaarCardFront: { type: String, default: '' },
+    aadhaarCardBack: { type: String, default: '' },
+    panCard: { type: String, default: '' },
     bankPassbook: { type: String, default: '' }
   },
   status: { 

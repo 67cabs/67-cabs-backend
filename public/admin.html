@@ -54,7 +54,7 @@
 
   <!-- Document Inspection Modal -->
   <div id="doc-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md hidden items-center justify-center p-4 z-50 overflow-y-auto">
-    <div class="bg-slate-900 border border-slate-700 w-full max-w-3xl rounded-2xl p-6 shadow-2xl space-y-4 my-8">
+    <div class="bg-slate-900 border border-slate-700 w-full max-w-4xl rounded-2xl p-6 shadow-2xl space-y-4 my-8">
       <div class="flex justify-between items-center border-b border-slate-800 pb-3">
         <div>
           <h3 class="text-base font-bold text-amber-400" id="modal-driver-title">Driver Documents</h3>
@@ -63,7 +63,7 @@
         <button onclick="closeDocModal()" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[65vh] overflow-y-auto p-1" id="modal-doc-grid"></div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 max-h-[65vh] overflow-y-auto p-1" id="modal-doc-grid"></div>
 
       <div class="border-t border-slate-800 pt-3 flex justify-end gap-3" id="modal-action-buttons"></div>
     </div>
@@ -124,7 +124,7 @@
             <td class="p-3.5 text-slate-300">${d.upiId || '67cabs@upi'}</td>
             <td class="p-3.5">
               <button onclick="viewDocuments('${d.driverId}')" class="bg-indigo-950 border border-indigo-700 hover:bg-indigo-900 text-indigo-300 font-bold px-2.5 py-1 rounded-lg transition">
-                👁️ View KYC (8)
+                👁️ View All Docs
               </button>
             </td>
             <td class="p-3.5">${badge}</td>
@@ -149,19 +149,22 @@
       const driver = loadedDriversList.find(d => d.driverId === driverId);
       if (!driver) return;
 
-      document.getElementById('modal-driver-title').innerText = `${driver.name} - KYC Documents`;
+      document.getElementById('modal-driver-title').innerText = `${driver.name} - All Vehicle & KYC Documents`;
       document.getElementById('modal-driver-subtitle').innerText = `Phone: ${driver.phone} | Vehicle: ${driver.vehicleNo} (${driver.cabType})`;
 
       const docs = driver.documents || {};
       const docTypes = [
         { key: 'selfiePhoto', title: '📸 Live Selfie / Profile' },
-        { key: 'drivingLicenseFront', title: '🪪 Driving License (Front)' },
-        { key: 'drivingLicenseBack', title: '🪪 Driving License (Back)' },
+        { key: 'drivingLicenseFront', title: '🪪 DL (Front)' },
+        { key: 'drivingLicenseBack', title: '🪪 DL (Back)' },
         { key: 'vehicleRc', title: '📄 Vehicle RC' },
-        { key: 'aadhaarCardFront', title: '🆔 Aadhaar Card (Front)' },
-        { key: 'aadhaarCardBack', title: '🆔 Aadhaar Card (Back)' },
+        { key: 'vehicleFitness', title: '🛡️ Vehicle Fitness' },
+        { key: 'vehiclePermit', title: '📋 Vehicle Permit (Opt)' },
+        { key: 'permitAuthorization', title: '📑 Permit Auth (Opt)' },
+        { key: 'aadhaarCardFront', title: '🆔 Aadhaar (Front)' },
+        { key: 'aadhaarCardBack', title: '🆔 Aadhaar (Back)' },
         { key: 'panCard', title: '💳 PAN Card' },
-        { key: 'bankPassbook', title: '🏦 Bank Statement / Passbook' }
+        { key: 'bankPassbook', title: '🏦 Bank Passbook / Statement' }
       ];
 
       let gridHtml = '';
@@ -169,18 +172,18 @@
         const imgSrc = docs[t.key];
         if (imgSrc) {
           gridHtml += `
-            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
-              <div class="text-xs font-bold text-amber-400">${t.title}</div>
-              <a href="${imgSrc}" target="_blank" title="Click to view full resolution">
-                <img src="${imgSrc}" class="w-full h-44 object-contain rounded-lg bg-black/40 border border-slate-800 hover:opacity-90 transition cursor-zoom-in" />
+            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1.5">
+              <div class="text-[11px] font-bold text-amber-400 truncate">${t.title}</div>
+              <a href="${imgSrc}" target="_blank" title="Click to open full view">
+                <img src="${imgSrc}" class="w-full h-36 object-contain rounded-lg bg-black/40 border border-slate-800 hover:opacity-90 transition cursor-zoom-in" />
               </a>
             </div>
           `;
         } else {
           gridHtml += `
             <div class="bg-slate-950 p-4 rounded-xl border border-dashed border-slate-800 flex flex-col items-center justify-center text-slate-500 text-xs">
-              <div>${t.title}</div>
-              <div class="text-[10px] text-red-400 mt-1">Not Uploaded</div>
+              <div class="font-semibold">${t.title}</div>
+              <div class="text-[10px] text-slate-600 mt-1">Not Uploaded</div>
             </div>
           `;
         }

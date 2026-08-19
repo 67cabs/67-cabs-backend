@@ -45,7 +45,7 @@
       </button>
     </form>
 
-    <!-- Sign Up Form -->
+    <!-- Sign Up Form (With Document & Camera Uploads) -->
     <form id="signup-form" onsubmit="handleDriverSignup(event)" class="hidden bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl space-y-3 max-h-[80vh] overflow-y-auto">
       <div>
         <label class="text-[11px] font-bold text-slate-400 uppercase">Driver Full Name *</label>
@@ -94,7 +94,7 @@
 
         <!-- 1. Driver Profile Photo -->
         <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-          <label class="text-[11px] font-bold text-slate-300 block mb-1">📸 Driver Profile Photo / Selfie *</label>
+          <label class="text-[11px] font-bold text-slate-300 block mb-1">📸 Driver Profile Photo / Live Selfie *</label>
           <input type="file" id="doc-selfie" accept="image/*" capture="user" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
         </div>
 
@@ -117,7 +117,25 @@
           <input type="file" id="doc-rc" accept="image/*" capture="environment" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
         </div>
 
-        <!-- 4. Aadhaar Card (Front & Back) -->
+        <!-- 4. Vehicle Fitness -->
+        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+          <label class="text-[11px] font-bold text-slate-300 block mb-1">🛡️ Vehicle Fitness Certificate *</label>
+          <input type="file" id="doc-fitness" accept="image/*" capture="environment" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
+        </div>
+
+        <!-- 5. Vehicle Permit (Optional) -->
+        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+          <label class="text-[11px] font-bold text-slate-400 block mb-1">📋 Vehicle Permit (Optional)</label>
+          <input type="file" id="doc-permit" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-300" />
+        </div>
+
+        <!-- 6. Permit Authorization (Optional) -->
+        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+          <label class="text-[11px] font-bold text-slate-400 block mb-1">📑 Permit Authorization (Optional)</label>
+          <input type="file" id="doc-permit-auth" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-300" />
+        </div>
+
+        <!-- 7. Aadhaar Card (Front & Back) -->
         <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-2">
           <label class="text-[11px] font-bold text-slate-300 block">🆔 Aadhaar Card (Front & Back) *</label>
           <div>
@@ -130,15 +148,15 @@
           </div>
         </div>
 
-        <!-- 5. PAN Card -->
+        <!-- 8. PAN Card -->
         <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
           <label class="text-[11px] font-bold text-slate-300 block mb-1">💳 PAN Card *</label>
           <input type="file" id="doc-pan" accept="image/*" capture="environment" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
         </div>
 
-        <!-- 6. Bank Passbook / Statement -->
+        <!-- 9. Bank Passbook / Statement -->
         <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-          <label class="text-[11px] font-bold text-slate-300 block mb-1">🏦 Bank Passbook / Statement *</label>
+          <label class="text-[11px] font-bold text-slate-300 block mb-1">🏦 Bank Passbook / Cancelled Cheque / Statement *</label>
           <input type="file" id="doc-bank" accept="image/*" capture="environment" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
         </div>
       </div>
@@ -154,7 +172,7 @@
     <div class="text-4xl animate-bounce">⏳</div>
     <h2 class="text-lg font-black text-amber-400">Account Under Verification</h2>
     <p class="text-xs text-slate-300 leading-relaxed">
-      Aapke saare KYC documents receive ho chuke hain. Admin panel se approval milte hi live ride accept start ho jayega.
+      Aapke saare KYC aur vehicle documents receive ho chuke hain. Admin panel se approval milte hi live rides accept karna shuru kar sakenge.
     </p>
     <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-[11px] text-slate-400 space-y-1">
       <div><b>Name:</b> <span id="pending-name">-</span></div>
@@ -168,7 +186,7 @@
 
   <!-- ================= MAIN DRIVER RIDE DASHBOARD (APPROVED ONLY) ================= -->
   <div id="main-driver-dashboard" class="hidden w-full max-w-md pb-12">
-    <!-- Header -->
+    <!-- Header with Logout Button -->
     <div class="flex justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow mb-4">
       <div>
         <h1 class="text-base font-bold text-amber-400 flex items-center gap-1.5">
@@ -178,7 +196,7 @@
         <p id="gps-status-indicator" class="text-[11px] text-amber-400 font-bold">● Requesting GPS Permission...</p>
       </div>
       <div class="text-right">
-        <button onclick="logoutDriver()" class="text-[10px] bg-red-950/60 border border-red-800 text-red-300 px-2 py-0.5 rounded font-bold mb-1">
+        <button onclick="logoutDriver()" class="text-[10px] bg-red-950/60 border border-red-800 text-red-300 px-2.5 py-1 rounded font-bold mb-1 hover:bg-red-900 transition">
           Logout
         </button>
         <div id="driver-header-rate" class="text-sm font-bold text-amber-400">₹16/km</div>
@@ -381,13 +399,16 @@
       e.preventDefault();
       const submitBtn = document.getElementById('submit-signup-btn');
       submitBtn.disabled = true;
-      submitBtn.innerText = '⏳ Compressing & Uploading...';
+      submitBtn.innerText = '⏳ Compressing & Uploading Documents...';
 
       try {
         const selfieBase64 = await compressImageFile(document.getElementById('doc-selfie').files[0]);
         const dlFrontBase64 = await compressImageFile(document.getElementById('doc-dl-front').files[0]);
         const dlBackBase64 = await compressImageFile(document.getElementById('doc-dl-back').files[0]);
         const rcBase64 = await compressImageFile(document.getElementById('doc-rc').files[0]);
+        const fitnessBase64 = await compressImageFile(document.getElementById('doc-fitness').files[0]);
+        const permitBase64 = await compressImageFile(document.getElementById('doc-permit').files[0]);
+        const permitAuthBase64 = await compressImageFile(document.getElementById('doc-permit-auth').files[0]);
         const aadhaarFrontBase64 = await compressImageFile(document.getElementById('doc-aadhaar-front').files[0]);
         const aadhaarBackBase64 = await compressImageFile(document.getElementById('doc-aadhaar-back').files[0]);
         const panBase64 = await compressImageFile(document.getElementById('doc-pan').files[0]);
@@ -406,6 +427,9 @@
             drivingLicenseFront: dlFrontBase64,
             drivingLicenseBack: dlBackBase64,
             vehicleRc: rcBase64,
+            vehicleFitness: fitnessBase64,
+            vehiclePermit: permitBase64,
+            permitAuthorization: permitAuthBase64,
             aadhaarCardFront: aadhaarFrontBase64,
             aadhaarCardBack: aadhaarBackBase64,
             panCard: panBase64,
@@ -426,7 +450,7 @@
           alert(`⚠️ ${data.message || data.error}`);
         }
       } catch (err) {
-        alert('Registration failed. Please check internet connection.');
+        alert('Upload/Registration failed. Please check internet connection.');
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerText = 'SUBMIT APPLICATION & DOCUMENTS';
