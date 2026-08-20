@@ -95,7 +95,7 @@ const driverSchema = new mongoose.Schema({
   },
   status: { 
     type: String, 
-    enum: ['PENDING_APPROVAL', 'APPROVED', 'BLOCKED', 'ADDITIONAL_DOC_REQUIRED', 'SUSPENDED'], 
+    enum: ['PENDING_APPROVAL', 'APPROVED', 'BLOCKED', 'ADDITIONAL_DOC_REQUIRED', 'SUSPENDED', 'NEEDS_KYC'], 
     default: 'PENDING_APPROVAL' 
   },
   isOnline: { type: Boolean, default: false }
@@ -194,7 +194,94 @@ function isWithinJaipur(lat, lng) {
 
 // ---------------- AUTH & ONBOARDING ROUTES ----------------
 
-// Driver Registration (Sign Up with Documents + Referral Auto-link)
+// Fast 5-Sec Driver Signup (Deferred KYC)
+app.post('/api/driver/signup-fast', async (req, res) => {
+  try {
+    const { name, phone, password, vehicleNo, cabType, referralCode } = req.body;
+
+    if (!name || !phone || !password || !vehicleNo) {
+      return res.status(400).json({ success: false, message: 'Name, Phone, Password, aur Vehicle Number zaroori hain.' });
+    }
+
+    const cleanPhone = sanitizePhone(phone);
+    const cleanVehicle = vehicleNo.trim().toUpperCase();
+
+    const existing = await Driver.findOne({
+      $or: [
+        { phone: cleanPhone },
+        { phone: phone.trim() },
+        { phone: { $regex: cleanPhone + '$' } }
+      ]
+    });
+
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'Yeh mobile number pehle se registered hai.' });
+    }
+
+    const driverId = `DRV_${Date.now()}`;
+    const newDriver = await Driver.create({
+      driverId,
+      name: name.trim(),
+      phone: cleanPhone,
+      password: password.trim(),
+      vehicleNo: cleanVehicle,
+      cabType: (cabType || 'HATCHBACK').toUpperCase(),
+      upiId: '67cabs@upi',
+      referralCode: referralCode ? referralCode.trim() : '',
+      walletBalance: 150,
+      bonusFreeRides: 3,
+      documents: {},
+      status: 'NEEDS_KYC',
+      isOnline: false
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Account registered! Please upload documents.',
+      driver: {
+        driverId: newDriver.driverId,
+        name: newDriver.name,
+        phone: newDriver.phone,
+        cabType: newDriver.cabType,
+        vehicleNo: newDriver.vehicleNo,
+        upiId: newDriver.upiId,
+        walletBalance: newDriver.walletBalance,
+        bonusFreeRides: newDriver.bonusFreeRides,
+        status: newDriver.status,
+        documents: {}
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Upload KYC Documents Post-Signup
+app.post('/api/driver/upload-kyc-docs', async (req, res) => {
+  try {
+    const { driverId, documents } = req.body;
+    if (!driverId || !documents) {
+      return res.status(400).json({ success: false, message: 'Driver ID and documents required.' });
+    }
+
+    const updated = await Driver.findOneAndUpdate(
+      { driverId },
+      { 
+        documents: documents,
+        status: 'PENDING_APPROVAL'
+      },
+      { new: true }
+    );
+
+    if (!updated) return res.status(404).json({ success: false, message: 'Driver nahi mila.' });
+
+    return res.json({ success: true, message: 'KYC submitted for admin approval.', driver: updated });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Complete Driver Registration (Legacy Single Step Signup Support)
 app.post('/api/driver/signup', async (req, res) => {
   try {
     const { name, phone, password, email, vehicleNo, cabType, upiId, referralCode, documents } = req.body;
@@ -648,7 +735,6 @@ io.on('connection', (socket) => {
       console.warn(`Initial DB Save Warning for ${rideId}:`, dbErr.message);
     }
 
-    // Direct Targeted Dispatch: Send offer only to selected driver's active socket
     let targetedSocketId = null;
     activeDrivers.forEach((driver, sId) => {
       if (driver.driverId === targetDriverId) {
@@ -722,6 +808,7 @@ io.on('connection', (socket) => {
       activeRides.delete(rideId);
       io.emit('ride:cancelled', { rideId });
       io.emit('ride:taken', { rideId });
+      console.log(`❌ Ride ${rideId} cancelled by Rider.`);
     } catch (e) {
       console.error('Cancel Error:', e.message);
     }

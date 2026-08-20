@@ -19,14 +19,14 @@
     }
   </style>
 </head>
-<body class="bg-slate-950 text-white min-h-screen p-4 flex flex-col items-center select-none font-sans">
+<body class="bg-slate-950 text-white min-h-screen p-4 flex flex-col items-center select-none font-sans relative">
 
   <!-- ================= 1. AUTH VIEW ================= -->
   <div id="auth-section" class="w-full max-w-md my-auto space-y-4">
     <div class="text-center space-y-1">
       <div class="text-4xl">🚖</div>
       <h1 class="text-2xl font-black text-amber-400">67 Partner Portal</h1>
-      <p class="text-xs text-slate-400">Login to your account or Register with KYC</p>
+      <p class="text-xs text-slate-400">Login to your account or Register with Quick KYC</p>
     </div>
 
     <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
@@ -34,7 +34,7 @@
         Login
       </button>
       <button onclick="switchAuthTab('signup')" id="tab-signup-btn" class="w-1/2 py-2 text-xs font-black rounded-lg text-slate-400 hover:text-white transition">
-        Sign Up & KYC
+        Sign Up (5-Sec)
       </button>
     </div>
 
@@ -53,7 +53,7 @@
       </button>
     </form>
 
-    <!-- Sign Up Form -->
+    <!-- Sign Up Form (Instant 5-Sec Signup) -->
     <form id="signup-form" onsubmit="handleDriverSignup(event)" class="hidden bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl space-y-3 max-h-[80vh] overflow-y-auto custom-scrollbar">
       <div>
         <label class="text-[11px] font-bold text-slate-400 uppercase">Driver Full Name *</label>
@@ -101,85 +101,101 @@
         <input type="email" id="reg-email" placeholder="Optional email" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-2.5 text-xs outline-none focus:border-amber-400 mt-1" />
       </div>
 
-      <!-- KYC Uploads -->
-      <div class="pt-2 border-t border-slate-800 space-y-3">
-        <div class="text-xs font-bold text-amber-400 uppercase">KYC & Vehicle Documents (Upload / Camera)</div>
-
-        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-          <label class="text-[11px] font-bold text-slate-300 block mb-1">📸 Driver Profile Photo / Live Selfie *</label>
-          <input type="file" id="doc-selfie" accept="image/*" capture="user" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
-        </div>
-
-        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-2">
-          <label class="text-[11px] font-bold text-slate-300 block">🪪 Driving License (Front & Back) *</label>
-          <div>
-            <span class="text-[10px] text-amber-400 font-semibold">Front Side:</span>
-            <input type="file" id="doc-dl-front" accept="image/*" capture="environment" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-200" />
-          </div>
-          <div>
-            <span class="text-[10px] text-amber-400 font-semibold">Back Side:</span>
-            <input type="file" id="doc-dl-back" accept="image/*" capture="environment" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-200" />
-          </div>
-        </div>
-
-        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-          <label class="text-[11px] font-bold text-slate-300 block mb-1">📄 Vehicle Registration Certificate (RC) *</label>
-          <input type="file" id="doc-rc" accept="image/*" capture="environment" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
-        </div>
-
-        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-          <label class="text-[11px] font-bold text-slate-300 block mb-1">🛡️ Vehicle Fitness Certificate *</label>
-          <input type="file" id="doc-fitness" accept="image/*" capture="environment" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
-        </div>
-
-        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-2">
-          <label class="text-[11px] font-bold text-slate-300 block">🆔 Aadhaar Card (Front & Back) *</label>
-          <div>
-            <span class="text-[10px] text-amber-400 font-semibold">Front Side:</span>
-            <input type="file" id="doc-aadhaar-front" accept="image/*" capture="environment" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-200" />
-          </div>
-          <div>
-            <span class="text-[10px] text-amber-400 font-semibold">Back Side:</span>
-            <input type="file" id="doc-aadhaar-back" accept="image/*" capture="environment" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-200" />
-          </div>
-        </div>
-
-        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-          <label class="text-[11px] font-bold text-slate-300 block mb-1">💳 PAN Card *</label>
-          <input type="file" id="doc-pan" accept="image/*" capture="environment" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
-        </div>
-
-        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-          <label class="text-[11px] font-bold text-slate-300 block mb-1">🏦 Bank Passbook / Statement *</label>
-          <input type="file" id="doc-bank" accept="image/*" capture="environment" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
-        </div>
-      </div>
+      <p class="text-[10px] text-slate-500 leading-tight">
+        ℹ️ Instant signup hone ke baad aap documents upload kar sakte hain.
+      </p>
 
       <button id="submit-signup-btn" type="submit" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3.5 rounded-xl text-xs transition shadow-lg mt-3">
-        SUBMIT APPLICATION & DOCUMENTS
+        🚀 INSTANT 5-SECOND SIGNUP
       </button>
     </form>
   </div>
 
-  <!-- ================= 2. UNDER VERIFICATION SCREEN ================= -->
+  <!-- ================= 2. POST-SIGNUP KYC DOCUMENT UPLOAD & UNDER VERIFICATION SCREEN ================= -->
   <div id="pending-verification-section" class="hidden w-full max-w-md my-auto text-center bg-slate-900 p-6 rounded-2xl border-2 border-amber-500 shadow-2xl space-y-4">
     <div class="text-4xl animate-bounce">⏳</div>
-    <h2 class="text-lg font-black text-amber-400">Account Under Verification</h2>
+    <h2 class="text-lg font-black text-amber-400">Account Registered & KYC Center</h2>
     <p class="text-xs text-slate-300 leading-relaxed">
-      Aapka application receive ho gaya hai aur verification pending hai. Admin approval milte hi ride accept karna shuru kar sakenge.
+      Aapka account create ho gaya hai. Rides accept karne ke liye apne physical documents upload karein.
     </p>
+
+    <!-- Document Upload Box Inside KYC Section -->
+    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-left space-y-3 max-h-[50vh] overflow-y-auto custom-scrollbar">
+      <div class="text-xs font-bold text-amber-400 uppercase border-b border-slate-800 pb-1.5">Upload Verification Documents</div>
+
+      <div>
+        <label class="text-[11px] font-bold text-slate-300 block mb-1">📸 Driver Profile Photo / Live Selfie *</label>
+        <input type="file" id="doc-selfie" accept="image/*" capture="user" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
+      </div>
+
+      <div class="space-y-2 pt-1 border-t border-slate-900">
+        <label class="text-[11px] font-bold text-slate-300 block">🪪 Driving License (Front & Back) *</label>
+        <div>
+          <span class="text-[10px] text-amber-400 font-semibold">Front Side:</span>
+          <input type="file" id="doc-dl-front" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-200" />
+        </div>
+        <div>
+          <span class="text-[10px] text-amber-400 font-semibold">Back Side:</span>
+          <input type="file" id="doc-dl-back" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-200" />
+        </div>
+      </div>
+
+      <div class="pt-1 border-t border-slate-900">
+        <label class="text-[11px] font-bold text-slate-300 block mb-1">📄 Vehicle Registration Certificate (RC) *</label>
+        <input type="file" id="doc-rc" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
+      </div>
+
+      <div class="pt-1 border-t border-slate-900">
+        <label class="text-[11px] font-bold text-slate-300 block mb-1">🛡️ Vehicle Fitness Certificate *</label>
+        <input type="file" id="doc-fitness" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
+      </div>
+
+      <div class="pt-1 border-t border-slate-900">
+        <label class="text-[11px] font-bold text-slate-400 block mb-1">📋 Vehicle Permit (Optional)</label>
+        <input type="file" id="doc-permit" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-300" />
+      </div>
+
+      <div class="pt-1 border-t border-slate-900">
+        <label class="text-[11px] font-bold text-slate-400 block mb-1">📑 Permit Authorization (Optional)</label>
+        <input type="file" id="doc-permit-auth" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-300" />
+      </div>
+
+      <div class="space-y-2 pt-1 border-t border-slate-900">
+        <label class="text-[11px] font-bold text-slate-300 block">🆔 Identity Card (Front & Back) *</label>
+        <div>
+          <span class="text-[10px] text-amber-400 font-semibold">Front Side:</span>
+          <input type="file" id="doc-id-front" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-200" />
+        </div>
+        <div>
+          <span class="text-[10px] text-amber-400 font-semibold">Back Side:</span>
+          <input type="file" id="doc-id-back" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-200" />
+        </div>
+      </div>
+
+      <div class="pt-1 border-t border-slate-900">
+        <label class="text-[11px] font-bold text-slate-300 block mb-1">💳 PAN Card *</label>
+        <input type="file" id="doc-pan" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
+      </div>
+
+      <div class="pt-1 border-t border-slate-900">
+        <label class="text-[11px] font-bold text-slate-300 block mb-1">🏦 Bank Passbook / Statement *</label>
+        <input type="file" id="doc-bank" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
+      </div>
+
+      <button id="btn-submit-kyc" onclick="submitDeferredKYC()" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3 rounded-xl text-xs transition shadow-lg mt-2 sticky bottom-0">
+        SUBMIT DOCUMENTS FOR VERIFICATION
+      </button>
+    </div>
+
     <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-[11px] text-slate-400 space-y-1">
       <div><b>Name:</b> <span id="pending-name">-</span></div>
       <div><b>Vehicle:</b> <span id="pending-vehicle" class="font-mono text-amber-400">-</span></div>
-      <div><b>Status:</b> <span class="text-amber-400 font-bold">PENDING APPROVAL</span></div>
+      <div><b>Status:</b> <span class="text-amber-400 font-bold" id="pending-status-text">DOCUMENTS PENDING</span></div>
     </div>
     
-    <div class="grid grid-cols-2 gap-2 pt-2">
-      <button onclick="logoutDriver()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs">
+    <div class="pt-2">
+      <button onclick="logoutDriver()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs">
         Logout
-      </button>
-      <button onclick="deleteAccountDriver()" class="bg-red-950/60 border border-red-800 hover:bg-red-900 text-red-300 font-bold py-2.5 rounded-xl text-xs">
-        🗑️ Delete Account
       </button>
     </div>
   </div>
@@ -206,19 +222,16 @@
       SUBMIT REQUESTED DOCUMENT
     </button>
 
-    <div class="grid grid-cols-2 gap-2 pt-1">
-      <button onclick="logoutDriver()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs">
+    <div class="pt-1">
+      <button onclick="logoutDriver()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs">
         Logout
-      </button>
-      <button onclick="deleteAccountDriver()" class="bg-red-950/60 border border-red-800 text-red-300 font-bold py-2.5 rounded-xl text-xs">
-        Delete Account
       </button>
     </div>
   </div>
 
   <!-- ================= 4. MAIN DRIVER DASHBOARD (APPROVED ONLY) ================= -->
   <div id="main-driver-dashboard" class="hidden w-full max-w-md pb-12">
-    <!-- Header -->
+    <!-- Header with Setting Button (Delete button securely moved to Settings) -->
     <div class="flex justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow mb-3">
       <div>
         <h1 class="text-base font-bold text-amber-400 flex items-center gap-1.5">
@@ -227,22 +240,19 @@
         <p id="driver-header-name" class="text-sm font-semibold">Driver Name (WagonR)</p>
         <p id="gps-status-indicator" class="text-[11px] text-amber-400 font-bold">● Requesting GPS Permission...</p>
       </div>
-      <div class="text-right space-y-1">
-        <div class="flex gap-1.5 justify-end">
-          <button onclick="logoutDriver()" class="text-[10px] bg-slate-800 border border-slate-700 text-slate-300 px-2 py-0.5 rounded font-bold hover:bg-slate-700 transition">
-            Logout
-          </button>
-          <button onclick="deleteAccountDriver()" class="text-[10px] bg-red-950/60 border border-red-800 text-red-300 px-2 py-0.5 rounded font-bold hover:bg-red-900 transition" title="Delete Profile Permanently">
-            🗑️ Delete
-          </button>
-        </div>
-        <div id="driver-header-rate" class="text-sm font-bold text-amber-400">₹16/km</div>
+      <div class="flex items-center gap-2">
+        <button onclick="openSettingsModal()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-2 rounded-xl font-bold hover:text-amber-400 text-xs transition flex items-center gap-1 shadow">
+          ⚙️ <span>Settings</span>
+        </button>
+        <button onclick="logoutDriver()" class="text-[10px] bg-slate-800 border border-slate-700 text-slate-300 px-2 py-2 rounded-xl font-bold hover:bg-slate-700 transition">
+          Logout
+        </button>
       </div>
     </div>
 
     <!-- Quick Tools Bar: Wallet & Referral Engine Toggle -->
     <div class="grid grid-cols-2 gap-2 mb-3">
-      <button onclick="openWalletModal()" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 p-2.5 rounded-2xl flex items-center justify-between text-left transition">
+      <button onclick="openSettingsModalTab('account')" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 p-2.5 rounded-2xl flex items-center justify-between text-left transition">
         <div>
           <div class="text-[10px] text-slate-400 font-bold uppercase">Wallet Balance</div>
           <div id="dash-wallet-bal" class="text-base font-black text-green-400">₹150.00</div>
@@ -250,7 +260,7 @@
         <span class="text-xl">💳</span>
       </button>
 
-      <button onclick="openReferralModal()" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 p-2.5 rounded-2xl flex items-center justify-between text-left transition">
+      <button onclick="openSettingsModalTab('profile')" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 p-2.5 rounded-2xl flex items-center justify-between text-left transition">
         <div>
           <div class="text-[10px] text-slate-400 font-bold uppercase">Bonus Free Rides</div>
           <div id="dash-bonus-rides" class="text-base font-black text-amber-400">3 Rides</div>
@@ -340,74 +350,111 @@
     </div>
   </div>
 
-  <!-- ================= MODAL: DUAL REFERRAL QR CODES ================= -->
-  <div id="referral-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm">
-    <div class="bg-slate-900 rounded-3xl p-5 max-w-sm w-full shadow-2xl border border-slate-800 space-y-4 text-center">
+  <!-- ================= 5. MASTER SETTINGS MODAL (PROFILE, DUAL QR, WALLET & DELETE ZONE) ================= -->
+  <div id="settings-modal" class="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4 hidden backdrop-blur-sm">
+    <div class="bg-slate-900 rounded-3xl p-5 max-w-sm w-full shadow-2xl border border-slate-800 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
       <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-        <h3 class="text-sm font-black text-amber-400">Referral QR Codes Engine</h3>
-        <button onclick="closeReferralModal()" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
+        <h3 class="text-base font-black text-amber-400 flex items-center gap-1.5">⚙️ Partner Settings</h3>
+        <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
       </div>
 
+      <!-- Settings Tabs Switcher -->
       <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
-        <button onclick="switchQRTab('rider')" id="tab-qr-rider" class="w-1/2 py-2 text-xs font-bold rounded-lg bg-amber-500 text-slate-950 transition">
-          Rider QR
+        <button onclick="switchSettingsTab('profile')" id="tab-setting-profile" class="w-1/2 py-2 text-xs font-bold rounded-lg bg-amber-500 text-slate-950 transition">
+          Profile Settings
         </button>
-        <button onclick="switchQRTab('driver')" id="tab-qr-driver" class="w-1/2 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition">
-          Driver QR
+        <button onclick="switchSettingsTab('account')" id="tab-setting-account" class="w-1/2 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition">
+          Account Settings
         </button>
       </div>
 
-      <div class="bg-white p-3.5 rounded-2xl inline-block shadow-inner mx-auto">
-        <div id="referral-qrcode-target" class="flex justify-center"></div>
-      </div>
-
-      <div class="text-xs text-slate-300">
-        <p id="qr-desc-text" class="font-medium text-amber-300">Scan to register Rider with bonus</p>
-        <p class="text-[10px] text-slate-500 mt-0.5">Your Referral Code: <b id="display-ref-code" class="text-white font-mono">-</b></p>
-      </div>
-    </div>
-  </div>
-
-  <!-- ================= MODAL: DRIVER WALLET & COUPONS ================= -->
-  <div id="wallet-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm">
-    <div class="bg-slate-900 rounded-3xl p-5 max-w-sm w-full shadow-2xl border border-slate-800 space-y-4">
-      <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-        <h3 class="text-sm font-black text-white">Driver Wallet & Recharge</h3>
-        <button onclick="closeWalletModal()" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
-      </div>
-
-      <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 flex justify-between items-center">
-        <div>
-          <div class="text-[10px] text-slate-400 uppercase font-bold">Current Balance</div>
-          <div id="modal-wallet-balance" class="text-2xl font-black text-green-400">₹150.00</div>
+      <!-- TAB 1: PROFILE SETTINGS & DUAL REFERRAL QR CODES -->
+      <div id="setting-pane-profile" class="space-y-4">
+        <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-2 text-xs">
+          <div class="flex justify-between">
+            <span class="text-slate-400">Driver Name:</span>
+            <span id="set-profile-name" class="font-bold text-white">-</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">Vehicle Number:</span>
+            <span id="set-profile-vehicle" class="font-bold text-amber-400 font-mono">-</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">Cab Category:</span>
+            <span id="set-profile-category" class="font-bold text-slate-300">-</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">UPI Settlement ID:</span>
+            <span id="set-profile-upi" class="font-bold text-green-400 font-mono">-</span>
+          </div>
         </div>
-        <div class="text-right">
-          <div class="text-[10px] text-slate-400 uppercase font-bold">Bonus Pool</div>
-          <div id="modal-bonus-rides" class="text-xs font-black text-amber-400">3 Free Rides</div>
-        </div>
-      </div>
 
-      <div class="space-y-2 text-xs">
-        <label class="font-bold text-slate-400 uppercase text-[10px]">Recharge Amount (₹)</label>
-        <div class="grid grid-cols-3 gap-2">
-          <button onclick="setRechargeAmount(100)" class="bg-slate-950 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400">₹100</button>
-          <button onclick="setRechargeAmount(250)" class="bg-slate-950 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400">₹250</button>
-          <button onclick="setRechargeAmount(500)" class="bg-slate-950 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400">₹500</button>
-        </div>
-        <input type="number" id="custom-recharge-amt" placeholder="Enter custom amount" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 outline-none focus:border-amber-400 font-mono mt-1" />
-      </div>
+        <!-- Dual Referral QR Engine -->
+        <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 text-center space-y-3">
+          <div class="text-xs font-bold text-amber-400 uppercase">Referral QR Codes Engine</div>
+          
+          <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
+            <button onclick="switchQRTab('rider')" id="tab-qr-rider" class="w-1/2 py-1.5 text-[11px] font-bold rounded-lg bg-amber-500 text-slate-950 transition">
+              Rider QR
+            </button>
+            <button onclick="switchQRTab('driver')" id="tab-qr-driver" class="w-1/2 py-1.5 text-[11px] font-bold rounded-lg text-slate-400 hover:text-white transition">
+              Driver QR
+            </button>
+          </div>
 
-      <div class="space-y-1.5 text-xs">
-        <label class="font-bold text-slate-400 uppercase text-[10px]">Apply Promo Coupon</label>
-        <div class="flex gap-2">
-          <input type="text" id="coupon-code-input" placeholder="e.g. WELCOME100" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 outline-none focus:border-amber-400 font-mono uppercase" />
-          <button onclick="applyCouponCode()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 px-4 rounded-xl font-bold transition">Apply</button>
+          <div class="bg-white p-3 rounded-2xl inline-block shadow-inner mx-auto">
+            <div id="referral-qrcode-target" class="flex justify-center"></div>
+          </div>
+
+          <p id="qr-desc-text" class="text-[11px] font-medium text-amber-300">Scan to register Rider with bonus</p>
+          <p class="text-[10px] text-slate-500">Your Code: <b id="display-ref-code" class="text-white font-mono">-</b></p>
         </div>
       </div>
 
-      <button onclick="executeWalletRecharge()" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3 rounded-xl text-xs transition shadow-lg">
-        ⚡ Pay & Recharge via UPI
-      </button>
+      <!-- TAB 2: ACCOUNT SETTINGS, WALLET, COUPONS & SECURE DELETE ZONE -->
+      <div id="setting-pane-account" class="hidden space-y-4">
+        <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 flex justify-between items-center">
+          <div>
+            <div class="text-[10px] text-slate-400 uppercase font-bold">Wallet Balance</div>
+            <div id="modal-wallet-balance" class="text-2xl font-black text-green-400">₹150.00</div>
+          </div>
+          <div class="text-right">
+            <div class="text-[10px] text-slate-400 uppercase font-bold">Bonus Pool</div>
+            <div id="modal-bonus-rides" class="text-xs font-black text-amber-400">3 Free Rides</div>
+          </div>
+        </div>
+
+        <div class="space-y-2 text-xs">
+          <label class="font-bold text-slate-400 uppercase text-[10px]">Recharge Amount (₹)</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button onclick="setRechargeAmount(100)" class="bg-slate-950 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400">₹100</button>
+            <button onclick="setRechargeAmount(250)" class="bg-slate-950 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400">₹250</button>
+            <button onclick="setRechargeAmount(500)" class="bg-slate-950 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400">₹500</button>
+          </div>
+          <input type="number" id="custom-recharge-amt" placeholder="Enter custom amount" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 outline-none focus:border-amber-400 font-mono mt-1" />
+        </div>
+
+        <div class="space-y-1.5 text-xs">
+          <label class="font-bold text-slate-400 uppercase text-[10px]">Apply Promo Coupon</label>
+          <div class="flex gap-2">
+            <input type="text" id="coupon-code-input" placeholder="e.g. WELCOME100" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 outline-none focus:border-amber-400 font-mono uppercase" />
+            <button onclick="applyCouponCode()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 px-4 rounded-xl font-bold transition">Apply</button>
+          </div>
+        </div>
+
+        <button onclick="executeWalletRecharge()" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3 rounded-xl text-xs transition shadow-lg">
+          ⚡ Pay & Recharge via UPI
+        </button>
+
+        <!-- Protected Dangerous Action Red-Zone -->
+        <div class="pt-4 border-t border-slate-800 space-y-2">
+          <div class="text-[10px] font-bold text-red-400 uppercase">Danger Zone</div>
+          <button onclick="deleteAccountDriver()" class="w-full bg-red-950/60 border border-red-800 hover:bg-red-900 text-red-300 font-bold py-2.5 rounded-xl text-xs transition shadow flex items-center justify-center gap-1.5">
+            🗑️ Permanently Delete Account
+          </button>
+          <p class="text-[9px] text-slate-500 text-center">Deleting account removes your profile, wallet and ride metrics permanently.</p>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -510,6 +557,7 @@
     let currentTripPhase = 'TO_PICKUP';
     let geoWatchId = null;
     let wakeLock = null;
+    let currentQRTab = 'rider';
 
     // Driver Audio Recording
     let driverMediaRecorder = null;
@@ -569,7 +617,6 @@
       }
     }
 
-    // Auto-detect referral code from QR scan URL parameter (?ref=DRV_123)
     window.addEventListener('DOMContentLoaded', () => {
       const urlParams = new URLSearchParams(window.location.search);
       const refCode = urlParams.get('ref');
@@ -579,46 +626,27 @@
       }
     });
 
+    // 1. FAST 5-SECOND SIGNUP (Deferred KYC)
     async function handleDriverSignup(e) {
       e.preventDefault();
       const submitBtn = document.getElementById('submit-signup-btn');
       submitBtn.disabled = true;
-      submitBtn.innerText = '⏳ Compressing & Uploading Documents...';
+      submitBtn.innerText = '⏳ Creating Partner Account...';
+
+      const payload = {
+        name: document.getElementById('reg-name').value.trim(),
+        phone: document.getElementById('reg-phone').value.trim(),
+        password: document.getElementById('reg-password').value.trim(),
+        vehicleNo: document.getElementById('reg-vehicle').value.trim(),
+        cabType: document.getElementById('reg-cabtype').value,
+        referralCode: document.getElementById('reg-referral').value.trim() || '',
+        upiId: document.getElementById('reg-upi')?.value?.trim() || '67cabs@upi',
+        email: document.getElementById('reg-email')?.value?.trim() || '',
+        documents: {}
+      };
 
       try {
-        const selfieBase64 = await compressImageFile(document.getElementById('doc-selfie').files[0]);
-        const dlFrontBase64 = await compressImageFile(document.getElementById('doc-dl-front').files[0]);
-        const dlBackBase64 = await compressImageFile(document.getElementById('doc-dl-back').files[0]);
-        const rcBase64 = await compressImageFile(document.getElementById('doc-rc').files[0]);
-        const fitnessBase64 = await compressImageFile(document.getElementById('doc-fitness').files[0]);
-        const aadhaarFrontBase64 = await compressImageFile(document.getElementById('doc-aadhaar-front').files[0]);
-        const aadhaarBackBase64 = await compressImageFile(document.getElementById('doc-aadhaar-back').files[0]);
-        const panBase64 = await compressImageFile(document.getElementById('doc-pan').files[0]);
-        const bankBase64 = await compressImageFile(document.getElementById('doc-bank').files[0]);
-
-        const payload = {
-          name: document.getElementById('reg-name').value,
-          phone: document.getElementById('reg-phone').value,
-          password: document.getElementById('reg-password').value,
-          vehicleNo: document.getElementById('reg-vehicle').value,
-          cabType: document.getElementById('reg-cabtype').value,
-          referralCode: document.getElementById('reg-referral').value || '',
-          upiId: document.getElementById('reg-upi').value || '67cabs@upi',
-          email: document.getElementById('reg-email')?.value || '',
-          documents: {
-            selfiePhoto: selfieBase64,
-            drivingLicenseFront: dlFrontBase64,
-            drivingLicenseBack: dlBackBase64,
-            vehicleRc: rcBase64,
-            vehicleFitness: fitnessBase64,
-            aadhaarCardFront: aadhaarFrontBase64,
-            aadhaarCardBack: aadhaarBackBase64,
-            panCard: panBase64,
-            bankPassbook: bankBase64
-          }
-        };
-
-        const res = await fetch('/api/driver/signup', {
+        const res = await fetch('/api/driver/signup-fast', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -631,10 +659,69 @@
           alert(`⚠️ ${data.message || data.error}`);
         }
       } catch (err) {
-        alert('Upload/Registration failed. Please check internet connection.');
+        alert('Registration failed. Please check internet connection.');
       } finally {
         submitBtn.disabled = false;
-        submitBtn.innerText = 'SUBMIT APPLICATION & DOCUMENTS';
+        submitBtn.innerText = '🚀 INSTANT 5-SECOND SIGNUP';
+      }
+    }
+
+    // 2. SUBMIT ALL DEFERRED KYC DOCUMENTS POST-SIGNUP
+    async function submitDeferredKYC() {
+      const submitBtn = document.getElementById('btn-submit-kyc');
+      submitBtn.disabled = true;
+      submitBtn.innerText = '⏳ Compressing & Uploading Documents...';
+
+      try {
+        const selfieBase64 = await compressImageFile(document.getElementById('doc-selfie').files[0]);
+        const dlFrontBase64 = await compressImageFile(document.getElementById('doc-dl-front').files[0]);
+        const dlBackBase64 = await compressImageFile(document.getElementById('doc-dl-back').files[0]);
+        const rcBase64 = await compressImageFile(document.getElementById('doc-rc').files[0]);
+        const fitnessBase64 = await compressImageFile(document.getElementById('doc-fitness').files[0]);
+        const permitBase64 = await compressImageFile(document.getElementById('doc-permit')?.files[0]);
+        const permitAuthBase64 = await compressImageFile(document.getElementById('doc-permit-auth')?.files[0]);
+        const idFrontBase64 = await compressImageFile(document.getElementById('doc-id-front').files[0]);
+        const idBackBase64 = await compressImageFile(document.getElementById('doc-id-back').files[0]);
+        const panBase64 = await compressImageFile(document.getElementById('doc-pan').files[0]);
+        const bankBase64 = await compressImageFile(document.getElementById('doc-bank').files[0]);
+
+        const documentsPayload = {
+          selfiePhoto: selfieBase64,
+          drivingLicenseFront: dlFrontBase64,
+          drivingLicenseBack: dlBackBase64,
+          vehicleRc: rcBase64,
+          vehicleFitness: fitnessBase64,
+          vehiclePermit: permitBase64,
+          permitAuthorization: permitAuthBase64,
+          aadhaarCardFront: idFrontBase64,
+          aadhaarCardBack: idBackBase64,
+          panCard: panBase64,
+          bankPassbook: bankBase64
+        };
+
+        const res = await fetch('/api/driver/upload-kyc-docs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            driverId: currentDriver.driverId,
+            documents: documentsPayload
+          })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          alert("✅ Documents submitted successfully! Verification pending approval.");
+          currentDriver.status = 'PENDING_APPROVAL';
+          localStorage.setItem('67_driver_session', JSON.stringify(currentDriver));
+          initDriverSession(currentDriver);
+        } else {
+          alert(`⚠️ ${data.message}`);
+        }
+      } catch (err) {
+        alert("Document upload failed. Please try again.");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'SUBMIT DOCUMENTS FOR VERIFICATION';
       }
     }
 
@@ -768,18 +855,25 @@
         return;
       }
 
-      if (driver.status === 'PENDING_APPROVAL') {
+      if (driver.status === 'PENDING_APPROVAL' || driver.status === 'NEEDS_KYC') {
         document.getElementById('pending-verification-section').classList.remove('hidden');
         document.getElementById('pending-name').innerText = driver.name;
         document.getElementById('pending-vehicle').innerText = driver.vehicleNo;
+        document.getElementById('pending-status-text').innerText = driver.status === 'NEEDS_KYC' ? 'DOCUMENTS PENDING' : 'PENDING APPROVAL';
         return;
       }
 
       if (driver.status === 'APPROVED') {
         document.getElementById('main-driver-dashboard').classList.remove('hidden');
         document.getElementById('driver-header-name').innerText = `${driver.name} (${driver.vehicleNo})`;
-        const rates = { HATCHBACK: '₹16/km', SEDAN: '₹20/km', SUV: '₹25/km' };
-        document.getElementById('driver-header-rate').innerText = rates[driver.cabType] || '₹16/km';
+
+        // Pre-fill profile settings modal
+        document.getElementById('set-profile-name').innerText = driver.name;
+        document.getElementById('set-profile-vehicle').innerText = driver.vehicleNo;
+        document.getElementById('set-profile-category').innerText = driver.cabType;
+        document.getElementById('set-profile-upi').innerText = driver.upiId || '67cabs@upi';
+        document.getElementById('modal-wallet-balance').innerText = `₹${driver.walletBalance || 150}.00`;
+        document.getElementById('modal-bonus-rides').innerText = `${driver.bonusFreeRides || 3} Free Rides`;
         document.getElementById('dash-wallet-bal').innerText = `₹${driver.walletBalance || 150}.00`;
         document.getElementById('dash-bonus-rides').innerText = `${driver.bonusFreeRides || 3} Rides`;
 
@@ -1014,7 +1108,6 @@
       currentActiveRideId = rideId;
       currentTripPhase = 'TO_PICKUP';
 
-      // Auto-Decline all other pending offers
       activeOffersMap.clear();
       syncSirenState();
       document.getElementById('offers-container').innerHTML = '';
@@ -1173,17 +1266,41 @@
     }
 
     // ==========================================
-    // DUAL REFERRAL QR ENGINE (DRIVER & RIDER)
+    // SETTINGS MODAL LOGIC (PROFILE & ACCOUNT)
     // ==========================================
-    let currentQRTab = 'rider';
-
-    function openReferralModal() {
-      document.getElementById('referral-modal').classList.remove('hidden');
+    function openSettingsModal() {
+      document.getElementById('settings-modal').classList.remove('hidden');
       document.getElementById('display-ref-code').innerText = currentDriver?.driverId || 'DRV_67';
       renderReferralQR();
     }
 
-    function closeReferralModal() { document.getElementById('referral-modal').classList.add('hidden'); }
+    function openSettingsModalTab(tab) {
+      openSettingsModal();
+      switchSettingsTab(tab);
+    }
+
+    function closeSettingsModal() {
+      document.getElementById('settings-modal').classList.add('hidden');
+    }
+
+    function switchSettingsTab(tab) {
+      const btnProfile = document.getElementById('tab-setting-profile');
+      const btnAccount = document.getElementById('tab-setting-account');
+      const paneProfile = document.getElementById('setting-pane-profile');
+      const paneAccount = document.getElementById('setting-pane-account');
+
+      if (tab === 'profile') {
+        btnProfile.className = "w-1/2 py-2 text-xs font-bold rounded-lg bg-amber-500 text-slate-950 transition";
+        btnAccount.className = "w-1/2 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition";
+        paneProfile.classList.remove('hidden');
+        paneAccount.classList.add('hidden');
+      } else {
+        btnAccount.className = "w-1/2 py-2 text-xs font-bold rounded-lg bg-amber-500 text-slate-950 transition";
+        btnProfile.className = "w-1/2 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition";
+        paneAccount.classList.remove('hidden');
+        paneProfile.classList.add('hidden');
+      }
+    }
 
     function switchQRTab(tab) {
       currentQRTab = tab;
@@ -1192,12 +1309,12 @@
       const desc = document.getElementById('qr-desc-text');
 
       if (tab === 'rider') {
-        btnRider.className = "w-1/2 py-2 text-xs font-bold rounded-lg bg-amber-500 text-slate-950 transition";
-        btnDriver.className = "w-1/2 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition";
+        btnRider.className = "w-1/2 py-1.5 text-[11px] font-bold rounded-lg bg-amber-500 text-slate-950 transition";
+        btnDriver.className = "w-1/2 py-1.5 text-[11px] font-bold rounded-lg text-slate-400 hover:text-white transition";
         desc.innerText = "Scan to register Rider (Earn 1 Free Ride upon 1st trip)";
       } else {
-        btnDriver.className = "w-1/2 py-2 text-xs font-bold rounded-lg bg-amber-500 text-slate-950 transition";
-        btnRider.className = "w-1/2 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition";
+        btnDriver.className = "w-1/2 py-1.5 text-[11px] font-bold rounded-lg bg-amber-500 text-slate-950 transition";
+        btnRider.className = "w-1/2 py-1.5 text-[11px] font-bold rounded-lg text-slate-400 hover:text-white transition";
         desc.innerText = "Scan to register Partner Driver (Earn 1 Free Ride upon 1st trip)";
       }
       renderReferralQR();
@@ -1214,24 +1331,14 @@
 
       new QRCode(qrTarget, {
         text: targetUrl,
-        width: 160,
-        height: 160,
+        width: 150,
+        height: 150,
         colorDark: "#000000",
         colorLight: "#ffffff",
         correctLevel: QRCode.CorrectLevel.M
       });
     }
 
-    // ==========================================
-    // DRIVER WALLET & COUPONS ENGINE
-    // ==========================================
-    function openWalletModal() {
-      document.getElementById('wallet-modal').classList.remove('hidden');
-      document.getElementById('modal-wallet-balance').innerText = `₹${currentDriver?.walletBalance || 150}.00`;
-      document.getElementById('modal-bonus-rides').innerText = `${currentDriver?.bonusFreeRides || 3} Free Rides`;
-    }
-
-    function closeWalletModal() { document.getElementById('wallet-modal').classList.add('hidden'); }
     function setRechargeAmount(amt) { document.getElementById('custom-recharge-amt').value = amt; }
 
     function applyCouponCode() {
@@ -1253,12 +1360,9 @@
       if (currentDriver) currentDriver.walletBalance = (currentDriver.walletBalance || 150) + parseInt(amt);
       document.getElementById('modal-wallet-balance').innerText = `₹${currentDriver.walletBalance}.00`;
       document.getElementById('dash-wallet-bal').innerText = `₹${currentDriver.walletBalance}.00`;
-      closeWalletModal();
+      closeSettingsModal();
     }
 
-    // ==========================================
-    // DRIVER SAFETY AUDIO RECORDER (LOCAL)
-    // ==========================================
     async function toggleDriverSafetyAudio() {
       if (!isDriverRecording) {
         try {
