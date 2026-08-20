@@ -228,7 +228,7 @@
     </div>
   </div>
 
-  <!-- ================= 4. MAIN DRIVER DASHBOARD (APPROVED ONLY) ================= -->
+  <!-- ================= 4. MAIN DRIVER DASHBOARD ================= -->
   <div id="main-driver-dashboard" class="hidden w-full max-w-md pb-12">
     <!-- Header with Settings Button -->
     <div class="flex justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow mb-3">
@@ -879,8 +879,6 @@
       if (driver.status === 'APPROVED') {
         document.getElementById('main-driver-dashboard').classList.remove('hidden');
         document.getElementById('driver-header-name').innerText = `${driver.name} (${driver.vehicleNo})`;
-        const rates = { HATCHBACK: '₹16/km', SEDAN: '₹20/km', SUV: '₹25/km' };
-        document.getElementById('driver-header-rate').innerText = rates[driver.cabType] || '₹16/km';
         document.getElementById('dash-wallet-bal').innerText = `₹${driver.walletBalance || 0}.00`;
         document.getElementById('dash-bonus-rides').innerText = `${driver.bonusFreeRides || 0} Rides`;
 
@@ -951,7 +949,7 @@
       if (socket.connected && currentDriver?.status === 'APPROVED') {
         registerDriver();
       }
-    }, 5000);
+    }, 4000);
 
     async function reverseGeocode(lat, lng) {
       try {
@@ -1108,7 +1106,7 @@
       activeOffersMap.set(offer.rideId, offer);
       renderOffersList();
 
-      // Auto-Expire Offer Card After 15 Seconds (Sleeps & removes card automatically)
+      // Auto-Expire Offer Card After 15 Seconds
       if (offerExpireTimers.has(offer.rideId)) {
         clearTimeout(offerExpireTimers.get(offer.rideId));
       }
