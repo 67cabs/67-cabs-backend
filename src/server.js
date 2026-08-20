@@ -104,10 +104,11 @@ const driverSchema = new mongoose.Schema({
 
 const Driver = mongoose.model('Driver', driverSchema);
 
-// 2. Rider Account Schema (MongoDB Persistence)
+// 2. Rider Account Schema (MongoDB Persistence with Password & KYC)
 const riderSchema = new mongoose.Schema({
   riderId: { type: String, required: true, unique: true, index: true },
   phone: { type: String, required: true, index: true },
+  password: { type: String, required: true },
   name: { type: String, required: true },
   referralCode: { type: String, default: '' },
   govIdNumber: { type: String, default: '' },
@@ -221,12 +222,12 @@ function isWithinJaipur(lat, lng) {
 
 // ---------------- RIDER AUTH & KYC ROUTES (MONGODB SYNC) ----------------
 
-// Fast 5-Sec Rider Signup API
+// Fast 5-Sec Rider Signup API with Password
 app.post('/api/rider/signup', async (req, res) => {
   try {
-    const { name, phone, referralCode } = req.body;
-    if (!name || !phone) {
-      return res.status(400).json({ success: false, message: 'Name aur Phone number zaroori hain.' });
+    const { name, phone, password, referralCode } = req.body;
+    if (!name || !phone || !password) {
+      return res.status(400).json({ success: false, message: 'Name, Phone aur Password zaroori hain.' });
     }
 
     const cleanPhone = sanitizePhone(phone);
@@ -239,11 +240,7 @@ app.post('/api/rider/signup', async (req, res) => {
     });
 
     if (existing) {
-      return res.json({
-        success: true,
-        message: 'Welcome back! Logged in successfully.',
-        rider: existing
-      });
+      return res.status(400).json({ success: false, message: 'Yeh mobile number pehle se registered hai. Kripya Login karein.' });
     }
 
     const riderId = `RDR_${Date.now()}`;
@@ -251,6 +248,7 @@ app.post('/api/rider/signup', async (req, res) => {
       riderId,
       name: name.trim(),
       phone: cleanPhone,
+      password: password.trim(),
       referralCode: referralCode ? referralCode.trim() : '',
       walletBalance: 0,
       bonusFreeRides: 0,
@@ -261,14 +259,71 @@ app.post('/api/rider/signup', async (req, res) => {
     return res.status(201).json({
       success: true,
       message: 'Rider account successfully created!',
-      rider: newRider
+      rider: {
+        riderId: newRider.riderId,
+        name: newRider.name,
+        phone: newRider.phone,
+        referralCode: newRider.referralCode,
+        govIdNumber: newRider.govIdNumber,
+        walletBalance: newRider.walletBalance,
+        bonusFreeRides: newRider.bonusFreeRides,
+        isKycDone: newRider.isKycDone,
+        status: newRider.status
+      }
     });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Rider KYC Upload API (ID Verification)
+// Rider Login API
+app.post('/api/rider/login', async (req, res) => {
+  try {
+    const { phone, password } = req.body;
+    if (!phone || !password) {
+      return res.status(400).json({ success: false, message: 'Phone number aur Password enter karein.' });
+    }
+
+    const cleanPhone = sanitizePhone(phone);
+    const rider = await Rider.findOne({
+      $or: [
+        { phone: cleanPhone },
+        { phone: phone.trim() },
+        { phone: `+91${cleanPhone}` },
+        { phone: { $regex: cleanPhone + '$' } }
+      ],
+      password: password.trim()
+    });
+
+    if (!rider) {
+      return res.status(401).json({ success: false, message: 'Galat Phone number ya Password!' });
+    }
+
+    if (rider.status === 'BLOCKED') {
+      return res.status(403).json({ success: false, message: 'Aapka account admin dwara suspend kiya gaya hai.' });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Login successful!',
+      rider: {
+        riderId: rider.riderId,
+        name: rider.name,
+        phone: rider.phone,
+        referralCode: rider.referralCode,
+        govIdNumber: rider.govIdNumber,
+        walletBalance: rider.walletBalance || 0,
+        bonusFreeRides: rider.bonusFreeRides || 0,
+        isKycDone: rider.isKycDone,
+        status: rider.status
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Rider KYC Upload API (Govt ID Verification)
 app.post('/api/rider/upload-kyc', async (req, res) => {
   try {
     const { phone, govIdNumber, govIdFront, govIdBack } = req.body;
@@ -1097,7 +1152,9 @@ io.on('connection', (socket) => {
       ride.earlyDropOtp = strOtp;
       activeRides.set(rideId, ride);
     }
-    await Trip.updateOne({ rideId }, { earlyDropOtp: strOtp }).catch(() => {});
+    try {
+      await Trip.updateOne({ rideId }, { earlyDropOtp: strOtp });
+    } catch (e) {}
   });
 
   // 4.2 Driver Ends Trip Early with Rider OTP
@@ -1157,14 +1214,13 @@ io.on('connection', (socket) => {
         },
         { new: true }
       );
-      if (completedTrip?.driverData?.upiId) {
+      if (completedTrip && completedTrip.driverData?.upiId) {
         upiId = completedTrip.driverData.upiId;
       }
 
       // ==============================================================
       // ONE-TIME 1 FREE RIDE REWARD ENGINE (REFERRER DRIVER ONLY)
       // ==============================================================
-      // 1. Check if Rider was referred & reward Referrer Driver once
       if (completedTrip?.riderData?.phone) {
         const riderPhone = sanitizePhone(completedTrip.riderData.phone);
         const riderDoc = await Rider.findOne({ phone: riderPhone });
@@ -1181,7 +1237,6 @@ io.on('connection', (socket) => {
         }
       }
 
-      // 2. Check if Driver was referred & reward Referrer Driver once
       if (completedTrip?.driverData?.driverId) {
         const currentDriverDoc = await Driver.findOne({ driverId: completedTrip.driverData.driverId });
         if (currentDriverDoc && currentDriverDoc.referralCode && !currentDriverDoc.isFirstTripRewardClaimed) {
@@ -1207,7 +1262,7 @@ io.on('connection', (socket) => {
       isEarlyDrop
     };
 
-    if (ride?.riderSocketId) {
+    if (ride && ride.riderSocketId) {
       io.to(ride.riderSocketId).emit('ride:completed', completionPayload);
     }
     io.emit(`ride:completed:${rideId}`, completionPayload);
