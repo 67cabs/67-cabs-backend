@@ -970,6 +970,17 @@
         return;
       }
 
+      // 1. Instant fallback coordinates to immediately go ONLINE
+      const fallbackPos = {
+        coords: {
+          latitude: (currentDriver?.location?.lat) || 26.9124,
+          longitude: (currentDriver?.location?.lng) || 75.7873,
+          heading: 0
+        }
+      };
+      updatePosition(fallbackPos);
+
+      // 2. High accuracy hardware GPS acquisition
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           updatePosition(pos);
@@ -982,16 +993,16 @@
           }
         },
         (err) => {
-          // Fallback location acquisition
-          navigator.geolocation.getCurrentPosition(
-            (fallbackPos) => updatePosition(fallbackPos),
-            () => {
-              document.getElementById('gps-status-indicator').innerHTML = `● <span class="text-amber-400">GPS Location Active</span>`;
-            },
-            { enableHighAccuracy: false, timeout: 10000 }
-          );
+          console.warn("GPS lookup using fallback coordinates:", err.message);
+          if (!geoWatchId) {
+            geoWatchId = navigator.geolocation.watchPosition(
+              updatePosition,
+              (e) => console.warn("Watch fallback err:", e.message),
+              { enableHighAccuracy: false, maximumAge: 5000, timeout: 15000 }
+            );
+          }
         },
-        { enableHighAccuracy: true, timeout: 15000 }
+        { enableHighAccuracy: true, timeout: 10000 }
       );
     }
 
