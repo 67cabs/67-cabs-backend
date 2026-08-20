@@ -142,7 +142,7 @@ const driverAuditSchema = new mongoose.Schema({
 
 const DriverAudit = mongoose.model('DriverAudit', driverAuditSchema);
 
-// 4. Trip History Schema (Ratings & Fares in MongoDB)
+// 4. Trip History Schema (Ratings, Fares & Settlement Persistence in MongoDB)
 const tripSchema = new mongoose.Schema({
   rideId: { type: String, required: true, unique: true, index: true },
   cabType: { type: String, required: true },
@@ -184,6 +184,8 @@ const tripSchema = new mongoose.Schema({
     enum: ['SEARCHING', 'ACCEPTED', 'ARRIVED', 'ONGOING', 'COMPLETED', 'CANCELLED'], 
     default: 'SEARCHING' 
   },
+  isRiderDismissed: { type: Boolean, default: false },
+  isDriverDismissed: { type: Boolean, default: false },
   startTime: Date,
   endTime: Date
 }, { timestamps: true });
@@ -380,7 +382,7 @@ app.post('/api/rider/delete-account', async (req, res) => {
   }
 });
 
-// ---------------- ACTIVE RIDE RECOVERY APIS (CRASH / REBOOT RESILIENT) ----------------
+// ---------------- ACTIVE RIDE & SETTLEMENT RECOVERY APIS ----------------
 
 app.get('/api/driver/active-ride', async (req, res) => {
   try {
@@ -389,7 +391,10 @@ app.get('/api/driver/active-ride', async (req, res) => {
 
     const activeTrip = await Trip.findOne({
       'driverData.driverId': driverId,
-      status: { $in: ['ACCEPTED', 'ARRIVED', 'ONGOING'] }
+      $or: [
+        { status: { $in: ['ACCEPTED', 'ARRIVED', 'ONGOING'] } },
+        { status: 'COMPLETED', isDriverDismissed: false }
+      ]
     }).sort({ updatedAt: -1 });
 
     if (activeTrip) {
@@ -412,13 +417,32 @@ app.get('/api/rider/active-ride', async (req, res) => {
         { 'riderData.phone': clean },
         { 'riderData.phone': phone.trim() }
       ],
-      status: { $in: ['ACCEPTED', 'ARRIVED', 'ONGOING'] }
+      $or: [
+        { status: { $in: ['ACCEPTED', 'ARRIVED', 'ONGOING'] } },
+        { status: 'COMPLETED', isRiderDismissed: false }
+      ]
     }).sort({ updatedAt: -1 });
 
     if (activeTrip) {
       return res.json({ success: true, hasActiveRide: true, trip: activeTrip });
     }
     return res.json({ success: true, hasActiveRide: false });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+app.post('/api/trip/dismiss-settlement', async (req, res) => {
+  try {
+    const { rideId, role } = req.body;
+    if (!rideId) return res.status(400).json({ success: false, message: 'Ride ID required' });
+
+    const updateObj = {};
+    if (role === 'rider') updateObj.isRiderDismissed = true;
+    if (role === 'driver') updateObj.isDriverDismissed = true;
+
+    await Trip.updateOne({ rideId }, { $set: updateObj });
+    return res.json({ success: true });
   } catch (e) {
     return res.status(500).json({ success: false, error: e.message });
   }
@@ -927,7 +951,6 @@ io.on('connection', (socket) => {
     const normalizedCabType = (driverData.cabType || 'HATCHBACK').toUpperCase();
     const driverId = driverData.driverId || socket.id;
 
-    // Join permanent Driver Room for guaranteed direct dispatch
     socket.join(`driver:${driverId}`);
 
     const existingEntry = activeDrivers.get(socket.id);
@@ -1037,7 +1060,6 @@ io.on('connection', (socket) => {
     }
 
     if (isOnline) {
-      // 100% Reliable Dispatch directly to Driver's Permanent Room
       io.to(`driver:${targetDriverId}`).emit('ride:new_offer', ridePayload);
       activeDrivers.forEach((driver, sId) => {
         if (driver.driverId === targetDriverId) {
@@ -1345,6 +1367,8 @@ io.on('connection', (socket) => {
           finalFare: finalAmount, 
           isEarlyDrop, 
           earlyDropReason: settlementReason,
+          isRiderDismissed: false,
+          isDriverDismissed: false,
           endTime: new Date() 
         },
         { new: true }

@@ -605,7 +605,7 @@
           gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
           osc.connect(gain);
           gain.connect(audioCtx.destination);
-          osc.start(start);
+          osc.start();
           osc.stop(start + duration);
         }
         note(523.25, audioCtx.currentTime, 0.3);
@@ -633,6 +633,30 @@
       checkSavedUser();
     });
 
+    function showSettlementUI(fare, upiVpa) {
+      if (isRecordingAudio) stopSafetyAudioRecording();
+
+      document.getElementById('rider-confirmed-card').classList.add('hidden');
+      document.getElementById('step-1-route-builder').classList.add('hidden');
+      document.getElementById('step-2-cab-selection').classList.add('hidden');
+
+      const vpa = upiVpa || '67cabs@upi';
+      document.getElementById('settlement-fare-amount').innerText = `₹${fare}`;
+
+      const gpayUrl = `gpay://upi/pay?pa=${encodeURIComponent(vpa)}&pn=67Driver&am=${encodeURIComponent(fare)}&cu=INR&tn=67CabTrip`;
+      const phonepeUrl = `phonepe://pay?pa=${encodeURIComponent(vpa)}&pn=67Driver&am=${encodeURIComponent(fare)}&cu=INR&tn=67CabTrip`;
+      const paytmUrl = `paytmmp://pay?pa=${encodeURIComponent(vpa)}&pn=67Driver&am=${encodeURIComponent(fare)}&cu=INR&tn=67CabTrip`;
+      const universalUpiUrl = `upi://pay?pa=${encodeURIComponent(vpa)}&pn=67Driver&am=${encodeURIComponent(fare)}&cu=INR&tn=67CabTrip`;
+
+      document.getElementById('btn-pay-gpay').href = gpayUrl;
+      document.getElementById('btn-pay-phonepe').href = phonepeUrl;
+      document.getElementById('btn-pay-paytm').href = paytmUrl;
+      document.getElementById('btn-pay-any-upi').href = universalUpiUrl;
+
+      setDriverRating(5);
+      document.getElementById('rider-settlement-modal').classList.remove('hidden');
+    }
+
     async function checkAndRestoreRiderActiveRide() {
       if (!currentUser?.phone) return;
       try {
@@ -641,6 +665,12 @@
         if (data.success && data.hasActiveRide && data.trip) {
           const trip = data.trip;
           activeRideId = trip.rideId;
+
+          if (trip.status === 'COMPLETED' && !trip.isRiderDismissed) {
+            showSettlementUI(trip.finalFare || trip.totalFare, trip.driverData?.upiId);
+            return;
+          }
+
           tripPhase = trip.status === 'ARRIVED' ? 'ARRIVED' : (trip.status === 'ONGOING' ? 'TO_DROP' : 'TO_PICKUP');
 
           document.getElementById('step-1-route-builder').classList.add('hidden');
@@ -987,7 +1017,6 @@
       return Math.round(tripCost + pickupCost);
     }
 
-    // STRICT REAL MONGODB RADAR (NO FAKE MOCK FALLBACKS)
     async function fetchAndRenderNearbyDrivers() {
       const listEl = document.getElementById('proximity-drivers-list');
       listEl.innerHTML = '<div class="text-center p-3 text-xs text-slate-400">Scanning Jaipur radar for online drivers...</div>';
@@ -1062,9 +1091,6 @@
       });
     }
 
-    // ==============================================================
-    // TARGETED 1-CLICK DISPATCH ENGINE (WITH 15-SEC SINGLE LOCK)
-    // ==============================================================
     function dispatchTargetedRide(targetDriverId, calculatedFare) {
       if (activeTargetDriverId) return;
 
@@ -1130,9 +1156,6 @@
       }
     }
 
-    // ==========================================
-    // SOCKET LISTENERS & REAL-TIME FLOW
-    // ==========================================
     socket.on('ride:declined_targeted', () => {
       cancelRideSearchSilent();
       alert("⚠️ Driver was unavailable or busy. Button is active again to re-offer or pick another cab.");
@@ -1168,7 +1191,6 @@
       document.getElementById('verify-otp-display').innerText = otp;
     });
 
-    // Direct Arrival Notification & Safety Verification Popup
     function handleDriverArrivalUI() {
       tripPhase = 'ARRIVED';
       playArrivedChime();
@@ -1219,7 +1241,6 @@
       }
     });
 
-    // ON OTP VERIFY (TRIP START): Cancel button permanently removed
     socket.on('ride:started', () => {
       tripPhase = 'TO_DROP';
       closeArrivalModal();
@@ -1227,11 +1248,9 @@
       document.getElementById('ride-status-badge').innerText = 'Trip Ongoing to Destination';
       document.getElementById('ride-status-badge').className = 'text-[10px] text-green-400 font-bold uppercase tracking-wider animate-pulse';
 
-      // PERMANENT REMOVAL OF CANCEL BUTTON DURING ONGOING TRIP
       const cancelBtn = document.getElementById('btn-cancel-ride');
       if (cancelBtn) cancelBtn.classList.add('hidden');
 
-      // Expand End Trip Early button to full width
       const earlyBtn = document.getElementById('btn-early-drop');
       if (earlyBtn) {
         earlyBtn.className = 'w-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 font-black py-3 rounded-xl text-xs transition shadow flex items-center justify-center gap-1.5';
@@ -1242,29 +1261,11 @@
       statusEl.innerHTML = "🟢 <b class='text-green-400'>Trip Ongoing</b> (Navigating to Drop Location)";
     });
 
+    // GUARANTEED INSTANT SETTLEMENT SCREEN OPENER
     socket.on('ride:completed', ({ finalFare, driverUpiId }) => {
-      if (isRecordingAudio) stopSafetyAudioRecording();
-      
-      document.getElementById('rider-confirmed-card').classList.add('hidden');
-
-      const upiVpa = driverUpiId || '67cabs@upi';
-      document.getElementById('settlement-fare-amount').innerText = `₹${finalFare}`;
-
-      const gpayUrl = `gpay://upi/pay?pa=${encodeURIComponent(upiVpa)}&pn=67Driver&am=${encodeURIComponent(finalFare)}&cu=INR&tn=67CabTrip`;
-      const phonepeUrl = `phonepe://pay?pa=${encodeURIComponent(upiVpa)}&pn=67Driver&am=${encodeURIComponent(finalFare)}&cu=INR&tn=67CabTrip`;
-      const paytmUrl = `paytmmp://pay?pa=${encodeURIComponent(upiVpa)}&pn=67Driver&am=${encodeURIComponent(finalFare)}&cu=INR&tn=67CabTrip`;
-      const universalUpiUrl = `upi://pay?pa=${encodeURIComponent(upiVpa)}&pn=67Driver&am=${encodeURIComponent(finalFare)}&cu=INR&tn=67CabTrip`;
-
-      document.getElementById('btn-pay-gpay').href = gpayUrl;
-      document.getElementById('btn-pay-phonepe').href = phonepeUrl;
-      document.getElementById('btn-pay-paytm').href = paytmUrl;
-      document.getElementById('btn-pay-any-upi').href = universalUpiUrl;
-
-      setDriverRating(5);
-      document.getElementById('rider-settlement-modal').classList.remove('hidden');
+      showSettlementUI(finalFare, driverUpiId);
     });
 
-    // Dynamic Star Rating Handler
     function setDriverRating(rating) {
       currentSelectedRating = rating;
       const scoreDisplay = document.getElementById('rating-score-display');
@@ -1289,7 +1290,17 @@
       }
     }
 
-    function dismissRiderSettlement() {
+    async function dismissRiderSettlement() {
+      if (activeRideId) {
+        try {
+          await fetch('/api/trip/dismiss-settlement', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rideId: activeRideId, role: 'rider' })
+          });
+        } catch (e) {}
+      }
+
       document.getElementById('rider-settlement-modal').classList.add('hidden');
       document.getElementById('rider-confirmed-card').classList.add('hidden');
       document.getElementById('otp-container-box').classList.remove('hidden');
@@ -1387,7 +1398,6 @@
     }
     function closeEarlyDropModal() { document.getElementById('early-drop-modal').classList.add('hidden'); }
 
-    // 1. Rider Signup Handler with Password
     async function handleRiderSignup(e) {
       e.preventDefault();
       const name = document.getElementById('auth-name').value.trim();
@@ -1431,7 +1441,6 @@
       }
     }
 
-    // 2. Rider Login Handler with Password
     async function handleRiderLogin(e) {
       e.preventDefault();
       const phone = document.getElementById('login-rider-phone').value.trim();
@@ -1506,7 +1515,6 @@
       });
     }
 
-    // 3. Rider KYC Upload
     async function uploadCompressedKYC() {
       const govIdNumber = document.getElementById('kyc-id-number').value.trim();
       const frontFile = document.getElementById('kyc-doc-front').files[0];
@@ -1560,9 +1568,6 @@
       }
     }
 
-    // ==========================================
-    // IN-TRIP SAFETY AUDIO RECORDER (LOCAL)
-    // ==========================================
     async function toggleSafetyAudioRecording() {
       if (!isRecordingAudio) {
         try {
