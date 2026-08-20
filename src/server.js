@@ -207,6 +207,70 @@ const driverLocationSchema = new mongoose.Schema({
 });
 const DriverLocation = mongoose.model('DriverLocation', driverLocationSchema);
 
+// 6. Dedicated & Public Recharge Coupon Schema
+const couponSchema = new mongoose.Schema({
+  code: { 
+    type: String, 
+    required: true, 
+    unique: true, 
+    uppercase: true, 
+    trim: true 
+  },
+  description: { 
+    type: String, 
+    default: '' 
+  },
+  discountType: { 
+    type: String, 
+    enum: ['PERCENTAGE', 'FLAT'], 
+    required: true 
+  },
+  discountValue: { 
+    type: Number, 
+    required: true, 
+    min: 0 
+  },
+  maxDiscountAmount: { 
+    type: Number, 
+    default: null 
+  },
+  minRechargeAmount: { 
+    type: Number, 
+    default: 0 
+  },
+  targetType: { 
+    type: String, 
+    enum: ['ALL', 'SPECIFIC'], 
+    default: 'ALL' 
+  },
+  allowedDrivers: [{ 
+    type: String, 
+    trim: true 
+  }],
+  usageLimitPerDriver: { 
+    type: Number, 
+    default: 1 
+  },
+  usedBy: [{
+    driverId: { type: String, required: true },
+    usedAt: { type: Date, default: Date.now }
+  }],
+  startDate: { 
+    type: Date, 
+    default: Date.now 
+  },
+  expiryDate: { 
+    type: Date, 
+    required: true 
+  },
+  isActive: { 
+    type: Boolean, 
+    default: true 
+  }
+}, { timestamps: true });
+
+const Coupon = mongoose.model('Coupon', couponSchema);
+
 // Jaipur Geofencing Boundary Coordinates
 const JAIPUR_BBOX = {
   minLat: 26.6500,
@@ -862,6 +926,201 @@ app.post('/api/admin/driver/suspend', async (req, res) => {
   }
 });
 
+// ---------------- COUPON SYSTEM ROUTES (ADMIN & DRIVER RECHARGE) ----------------
+
+// 1. [ADMIN] Create New Coupon
+app.post('/api/admin/coupons', async (req, res) => {
+  try {
+    const {
+      code,
+      description,
+      discountType,
+      discountValue,
+      maxDiscountAmount,
+      minRechargeAmount,
+      targetType,
+      allowedDrivers,
+      usageLimitPerDriver,
+      expiryDate
+    } = req.body;
+
+    if (!code || !discountType || !discountValue || !expiryDate) {
+      return res.status(400).json({ success: false, message: 'Code, Discount Type, Discount Value aur Expiry Date zaroori hain.' });
+    }
+
+    const cleanCode = code.toUpperCase().trim();
+    const existing = await Coupon.findOne({ code: cleanCode });
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'Yeh coupon code pehle se maujood hai.' });
+    }
+
+    let driverList = [];
+    if (targetType === 'SPECIFIC') {
+      if (Array.isArray(allowedDrivers)) {
+        driverList = allowedDrivers.map(d => d.trim()).filter(Boolean);
+      } else if (typeof allowedDrivers === 'string') {
+        driverList = allowedDrivers.split(',').map(d => d.trim()).filter(Boolean);
+      }
+    }
+
+    const newCoupon = await Coupon.create({
+      code: cleanCode,
+      description: description ? description.trim() : '',
+      discountType,
+      discountValue: Number(discountValue),
+      maxDiscountAmount: maxDiscountAmount ? Number(maxDiscountAmount) : null,
+      minRechargeAmount: Number(minRechargeAmount) || 0,
+      targetType: targetType || 'ALL',
+      allowedDrivers: driverList,
+      usageLimitPerDriver: Number(usageLimitPerDriver) || 1,
+      expiryDate: new Date(expiryDate),
+      isActive: true
+    });
+
+    return res.status(201).json({ 
+      success: true, 
+      message: 'Coupon successfully create ho gaya!', 
+      coupon: newCoupon 
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 2. [ADMIN] Get All Coupons List
+app.get('/api/admin/coupons', async (req, res) => {
+  try {
+    const coupons = await Coupon.find().sort({ createdAt: -1 });
+    return res.json({ success: true, coupons });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 3. [ADMIN] Toggle Coupon Active/Inactive Status
+app.patch('/api/admin/coupons/:id/toggle', async (req, res) => {
+  try {
+    const coupon = await Coupon.findById(req.params.id);
+    if (!coupon) return res.status(404).json({ success: false, message: 'Coupon nahi mila.' });
+
+    coupon.isActive = !coupon.isActive;
+    await coupon.save();
+    return res.json({ success: true, message: `Coupon ${coupon.isActive ? 'Active' : 'Inactive'} kar diya gaya hai.`, isActive: coupon.isActive });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 4. [ADMIN] Delete Coupon
+app.delete('/api/admin/coupons/:id', async (req, res) => {
+  try {
+    const coupon = await Coupon.findByIdAndDelete(req.params.id);
+    if (!coupon) return res.status(404).json({ success: false, message: 'Coupon nahi mila.' });
+    return res.json({ success: true, message: 'Coupon permanently delete ho gaya.' });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 5. [DRIVER] Fetch Applicable Coupons for Logged-in Driver
+app.get('/api/coupons/driver/:driverId', async (req, res) => {
+  try {
+    const { driverId } = req.params;
+    const now = new Date();
+
+    const coupons = await Coupon.find({
+      isActive: true,
+      startDate: { $lte: now },
+      expiryDate: { $gte: now },
+      $or: [
+        { targetType: 'ALL' },
+        { targetType: 'SPECIFIC', allowedDrivers: driverId }
+      ]
+    }).select('-usedBy');
+
+    return res.json({ success: true, coupons });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 6. [DRIVER] Apply Coupon on Recharge
+app.post('/api/coupons/apply', async (req, res) => {
+  try {
+    const { couponCode, driverId, rechargeAmount } = req.body;
+    const numAmount = Number(rechargeAmount);
+
+    if (!couponCode || !driverId || !numAmount) {
+      return res.status(400).json({ success: false, message: 'Coupon Code, Driver ID aur Recharge Amount zaroori hain.' });
+    }
+
+    const coupon = await Coupon.findOne({ 
+      code: couponCode.toUpperCase().trim(), 
+      isActive: true 
+    });
+
+    if (!coupon) {
+      return res.status(404).json({ success: false, message: 'Invalid ya Expired coupon code.' });
+    }
+
+    const now = new Date();
+    if (now < coupon.startDate || now > coupon.expiryDate) {
+      return res.status(400).json({ success: false, message: 'Yeh coupon expire ho chuka hai.' });
+    }
+
+    if (numAmount < coupon.minRechargeAmount) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Is coupon ke liye minimum ₹${coupon.minRechargeAmount} ka recharge zaroori hai.` 
+      });
+    }
+
+    // Check Dedicated Driver Allotment
+    if (coupon.targetType === 'SPECIFIC' && !coupon.allowedDrivers.includes(driverId)) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Yeh coupon aapke account ke liye valid nahi hai.' 
+      });
+    }
+
+    // Check Per Driver Usage Limit
+    const driverUsageCount = coupon.usedBy.filter(item => item.driverId === driverId).length;
+    if (driverUsageCount >= coupon.usageLimitPerDriver) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Aap is coupon ka maximum limit pehle hi use kar chuke hain.' 
+      });
+    }
+
+    // Calculate Discount Amount
+    let discountAmount = 0;
+    if (coupon.discountType === 'FLAT') {
+      discountAmount = coupon.discountValue;
+    } else if (coupon.discountType === 'PERCENTAGE') {
+      discountAmount = (numAmount * coupon.discountValue) / 100;
+      if (coupon.maxDiscountAmount && discountAmount > coupon.maxDiscountAmount) {
+        discountAmount = coupon.maxDiscountAmount;
+      }
+    }
+
+    const finalPayableAmount = Math.max(0, numAmount - discountAmount);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Coupon successfully apply ho gaya!',
+      data: {
+        couponCode: coupon.code,
+        originalAmount: numAmount,
+        discountAmount: Math.round(discountAmount),
+        finalAmount: Math.round(finalPayableAmount)
+      }
+    });
+
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ---------------- FARE & PROXIMITY RADAR ROUTES ----------------
 
 app.post('/api/fare/estimate', (req, res) => {
@@ -1364,7 +1623,7 @@ io.on('connection', (socket) => {
       const numRating = Math.min(5, Math.max(1, Number(rating) || 5));
       const trip = await Trip.findOneAndUpdate(
         { rideId }, 
-        { rating: numRating },
+        { rating: numRating }, 
         { new: true }
       );
 

@@ -442,19 +442,43 @@
             <button onclick="setRechargeAmount(250)" class="bg-slate-950 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400">₹250</button>
             <button onclick="setRechargeAmount(500)" class="bg-slate-950 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400">₹500</button>
           </div>
-          <input type="number" id="custom-recharge-amt" placeholder="Enter custom amount" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 outline-none focus:border-amber-400 font-mono mt-1" />
+          <input type="number" id="custom-recharge-amt" oninput="handleRechargeAmountChange()" placeholder="Enter custom amount" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 outline-none focus:border-amber-400 font-mono mt-1 text-white" />
         </div>
 
+        <!-- Coupon Promo Code Section with Live DB Matching -->
         <div class="space-y-1.5 text-xs">
           <label class="font-bold text-slate-400 uppercase text-[10px]">Apply Promo Coupon</label>
           <div class="flex gap-2">
-            <input type="text" id="coupon-code-input" placeholder="e.g. WELCOME100" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 outline-none focus:border-amber-400 font-mono uppercase" />
-            <button onclick="applyCouponCode()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 px-4 rounded-xl font-bold transition">Apply</button>
+            <input type="text" id="coupon-code-input" placeholder="e.g. WELCOME100" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 outline-none focus:border-amber-400 font-mono uppercase text-white" />
+            <button id="btn-apply-coupon" onclick="applyCouponCode()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 rounded-xl font-bold transition">Apply</button>
+          </div>
+
+          <!-- Live Applied Coupon Discount Indicator -->
+          <div id="coupon-applied-status" class="hidden bg-green-950/40 border border-green-700/60 p-2.5 rounded-xl flex items-center justify-between text-xs mt-2">
+            <div>
+              <div class="font-black text-green-400 flex items-center gap-1">
+                <span>🎉</span> <span id="applied-coupon-tag">CODE APPLIED</span>
+              </div>
+              <div class="text-[10px] text-slate-300">Discount: <b class="text-green-300" id="applied-discount-text">-₹0</b> | Payable: <b class="text-white font-mono" id="applied-payable-text">₹0</b></div>
+            </div>
+            <button onclick="removeAppliedCoupon()" class="text-slate-400 hover:text-red-400 text-xs font-bold ml-2">✕ Remove</button>
+          </div>
+
+          <!-- Driver Eligible Coupons List Section -->
+          <div id="driver-eligible-coupons-box" class="pt-2">
+            <div class="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center justify-between">
+              <span>Available Coupons For You</span>
+              <span id="coupons-loading-indicator" class="text-amber-400 font-normal hidden animate-pulse text-[9px]">Fetching...</span>
+            </div>
+            <div id="driver-eligible-coupons-list" class="space-y-1.5 max-h-32 overflow-y-auto custom-scrollbar">
+              <div class="text-[10px] text-slate-500 italic p-1">No coupons available.</div>
+            </div>
           </div>
         </div>
 
-        <button onclick="executeWalletRecharge()" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3 rounded-xl text-xs transition shadow-lg">
-          ⚡ Pay & Recharge via UPI
+        <button id="btn-execute-recharge" onclick="executeWalletRecharge()" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3 rounded-xl text-xs transition shadow-lg flex items-center justify-center gap-1.5">
+          <span>⚡ Pay & Recharge via UPI</span>
+          <span id="recharge-btn-amount" class="text-amber-300 font-mono"></span>
         </button>
 
         <div class="pt-4 border-t border-slate-800 space-y-2">
@@ -575,6 +599,9 @@
     let driverMediaRecorder = null;
     let driverAudioChunks = [];
     let isDriverRecording = false;
+
+    // Active Applied Coupon State
+    let appliedCouponData = null;
 
     function compressImageFile(file) {
       return new Promise((resolve) => {
@@ -1168,7 +1195,7 @@
           gain.gain.setValueAtTime(0.35, audioCtx.currentTime);
           gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
           osc.connect(gain);
-          gain.connect(audioCtx.destination);
+          osc.connect(audioCtx.destination);
           osc.start();
           osc.stop(audioCtx.currentTime + duration);
         }
@@ -1506,6 +1533,8 @@
         btnProfile.className = "w-1/2 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition";
         paneAccount.classList.remove('hidden');
         paneProfile.classList.add('hidden');
+        fetchDriverEligibleCoupons();
+        updatePayableButtonDisplay();
       }
     }
 
@@ -1557,27 +1586,151 @@
     }
 
     function closeWalletModal() { document.getElementById('wallet-modal').classList.add('hidden'); }
-    function setRechargeAmount(amt) { document.getElementById('custom-recharge-amt').value = amt; }
+    
+    function setRechargeAmount(amt) { 
+      document.getElementById('custom-recharge-amt').value = amt;
+      handleRechargeAmountChange();
+    }
 
-    function applyCouponCode() {
-      const code = document.getElementById('coupon-code-input').value.trim().toUpperCase();
-      if (code === 'WELCOME100') {
-        alert("🎉 Coupon Applied! ₹100 Free Recharge Credit added.");
-        if (currentDriver) currentDriver.walletBalance = (currentDriver.walletBalance || 0) + 100;
-        document.getElementById('modal-wallet-balance').innerText = `₹${currentDriver.walletBalance}.00`;
-        document.getElementById('dash-wallet-bal').innerText = `₹${currentDriver.walletBalance}.00`;
+    function handleRechargeAmountChange() {
+      if (appliedCouponData) {
+        removeAppliedCoupon(false);
+      }
+      updatePayableButtonDisplay();
+    }
+
+    function updatePayableButtonDisplay() {
+      const rawAmt = Number(document.getElementById('custom-recharge-amt').value) || 0;
+      const btnSpan = document.getElementById('recharge-btn-amount');
+      if (appliedCouponData) {
+        btnSpan.innerText = `(Pay ₹${appliedCouponData.finalAmount} | Save ₹${appliedCouponData.discountAmount})`;
+      } else if (rawAmt > 0) {
+        btnSpan.innerText = `(Pay ₹${rawAmt})`;
       } else {
-        alert("⚠️ Invalid or expired coupon code.");
+        btnSpan.innerText = '';
       }
     }
 
+    // Fetch Eligible coupons from MongoDB for logged in Driver
+    async function fetchDriverEligibleCoupons() {
+      if (!currentDriver?.driverId) return;
+      const listContainer = document.getElementById('driver-eligible-coupons-list');
+      const loader = document.getElementById('coupons-loading-indicator');
+      loader?.classList.remove('hidden');
+
+      try {
+        const res = await fetch(`/api/coupons/driver/${currentDriver.driverId}`);
+        const data = await res.json();
+        loader?.classList.add('hidden');
+
+        if (data.success && data.coupons && data.coupons.length > 0) {
+          listContainer.innerHTML = data.coupons.map(c => `
+            <div onclick="selectAvailableCoupon('${c.code}', ${c.minRechargeAmount || 0})" class="bg-slate-950/80 hover:bg-slate-900 border border-amber-500/30 hover:border-amber-400 p-2 rounded-xl flex items-center justify-between cursor-pointer transition">
+              <div>
+                <div class="font-black text-amber-400 font-mono text-[11px] flex items-center gap-1.5">
+                  <span>🎟️ ${c.code}</span>
+                  ${c.targetType === 'SPECIFIC' ? '<span class="bg-indigo-950 border border-indigo-700 text-[8px] text-indigo-300 px-1.5 py-0.5 rounded font-sans">VIP Dedicated</span>' : ''}
+                </div>
+                <div class="text-[9px] text-slate-400">${c.description || (c.discountType === 'FLAT' ? `Flat ₹${c.discountValue} Off` : `${c.discountValue}% Off on recharge`)} ${c.minRechargeAmount ? `(Min ₹${c.minRechargeAmount})` : ''}</div>
+              </div>
+              <button type="button" class="text-[10px] bg-amber-500/20 text-amber-300 font-bold px-2 py-1 rounded-lg hover:bg-amber-500 hover:text-slate-950 transition">USE</button>
+            </div>
+          `).join('');
+        } else {
+          listContainer.innerHTML = `<div class="text-[10px] text-slate-500 italic p-1">Currently koi coupon offer active nahi hai.</div>`;
+        }
+      } catch (err) {
+        loader?.classList.add('hidden');
+        listContainer.innerHTML = `<div class="text-[10px] text-slate-500 italic p-1">Coupons load nahi ho sake.</div>`;
+      }
+    }
+
+    function selectAvailableCoupon(code, minAmt) {
+      document.getElementById('coupon-code-input').value = code;
+      const currentAmt = Number(document.getElementById('custom-recharge-amt').value) || 0;
+      if (minAmt && currentAmt < minAmt) {
+        document.getElementById('custom-recharge-amt').value = minAmt;
+      }
+      applyCouponCode();
+    }
+
+    async function applyCouponCode() {
+      const code = document.getElementById('coupon-code-input').value.trim().toUpperCase();
+      const rawAmt = Number(document.getElementById('custom-recharge-amt').value);
+
+      if (!rawAmt || rawAmt <= 0) {
+        return alert("⚠️ Pehle Recharge Amount select ya enter karein.");
+      }
+
+      if (!code) {
+        return alert("⚠️ Kripya coupon code enter karein.");
+      }
+
+      const applyBtn = document.getElementById('btn-apply-coupon');
+      applyBtn.disabled = true;
+      applyBtn.innerText = "...";
+
+      try {
+        const res = await fetch('/api/coupons/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            couponCode: code,
+            driverId: currentDriver.driverId,
+            rechargeAmount: rawAmt
+          })
+        });
+
+        const data = await res.json();
+        applyBtn.disabled = false;
+        applyBtn.innerText = "Apply";
+
+        if (data.success && data.data) {
+          appliedCouponData = data.data;
+          
+          document.getElementById('coupon-applied-status').classList.remove('hidden');
+          document.getElementById('applied-coupon-tag').innerText = `COUPON '${data.data.couponCode}' APPLIED`;
+          document.getElementById('applied-discount-text').innerText = `-₹${data.data.discountAmount}`;
+          document.getElementById('applied-payable-text').innerText = `₹${data.data.finalAmount}`;
+          
+          updatePayableButtonDisplay();
+          alert(`🎉 Coupon Applied! Aapko ₹${data.data.discountAmount} ki chhoot mili hai. Payable: ₹${data.data.finalAmount}`);
+        } else {
+          removeAppliedCoupon(false);
+          alert(`⚠️ ${data.message || 'Coupon apply nahi ho saka.'}`);
+        }
+      } catch (err) {
+        applyBtn.disabled = false;
+        applyBtn.innerText = "Apply";
+        alert("Coupon verification server error.");
+      }
+    }
+
+    function removeAppliedCoupon(clearInput = true) {
+      appliedCouponData = null;
+      document.getElementById('coupon-applied-status').classList.add('hidden');
+      if (clearInput) document.getElementById('coupon-code-input').value = '';
+      updatePayableButtonDisplay();
+    }
+
     function executeWalletRecharge() {
-      const amt = document.getElementById('custom-recharge-amt').value;
+      const amt = Number(document.getElementById('custom-recharge-amt').value);
       if (!amt || amt < 50) return alert("Minimum recharge amount is ₹50.");
-      alert(`⚡ Redirecting to UPI payment for ₹${amt}...`);
-      if (currentDriver) currentDriver.walletBalance = (currentDriver.walletBalance || 0) + parseInt(amt);
+
+      const payableAmt = appliedCouponData ? appliedCouponData.finalAmount : amt;
+      const creditAmt = amt; // Driver ko wallet me pura recharge amount milega
+
+      alert(`⚡ Redirecting to UPI payment for ₹${payableAmt} (Wallet Credit: ₹${creditAmt})...`);
+      
+      if (currentDriver) {
+        currentDriver.walletBalance = (currentDriver.walletBalance || 0) + creditAmt;
+        localStorage.setItem('67_driver_session', JSON.stringify(currentDriver));
+      }
+
       document.getElementById('modal-wallet-balance').innerText = `₹${currentDriver.walletBalance}.00`;
       document.getElementById('dash-wallet-bal').innerText = `₹${currentDriver.walletBalance}.00`;
+
+      removeAppliedCoupon(true);
       closeSettingsModal();
       if (document.getElementById('wallet-modal')) closeWalletModal();
     }
