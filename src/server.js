@@ -757,6 +757,7 @@ io.on('connection', (socket) => {
     if (ride && ride.riderSocketId) {
       io.to(ride.riderSocketId).emit('ride:declined_targeted', { rideId });
     }
+    io.emit('ride:declined_targeted', { rideId });
     activeRides.delete(rideId);
   });
 
@@ -894,12 +895,15 @@ io.on('connection', (socket) => {
       activeRides.set(rideId, ride);
       if (ride.riderSocketId) {
         io.to(ride.riderSocketId).emit('ride:driver_arrived', { 
-          message: '🚖 Aapki 67 Cab Pickup Location par pahunch chuki hai!' 
+          rideId,
+          message: '🚖 Driver has arrived at your pickup location!' 
         });
       }
     }
+    await Trip.updateOne({ rideId }, { status: 'ARRIVED' }).catch(() => {});
     io.emit(`ride:driver_arrived:${rideId}`, {
-      message: '🚖 Aapki 67 Cab Pickup Location par pahunch chuki hai!'
+      rideId,
+      message: '🚖 Driver has arrived at your pickup location!'
     });
   });
 
@@ -914,7 +918,7 @@ io.on('connection', (socket) => {
     const telemetryPayload = {
       lat,
       lng,
-      phase: phase || 'TO_PICKUP',
+      phase: phase || (ride ? ride.status : 'TO_PICKUP'),
       heading: heading || 0
     };
     if (ride && ride.riderSocketId) {
@@ -956,23 +960,31 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 4.1 Rider Initiates Early Drop & Generates OTP
-  socket.on('ride:early_drop_request', ({ rideId, earlyOtp }) => {
+  // 4.1 Rider Initiates Early Drop & Generates OTP (Synced to MongoDB + Memory)
+  socket.on('ride:early_drop_request', async ({ rideId, earlyOtp }) => {
+    const strOtp = earlyOtp ? earlyOtp.toString().trim() : '';
     const ride = activeRides.get(rideId);
     if (ride) {
-      ride.earlyDropOtp = earlyOtp.toString();
+      ride.earlyDropOtp = strOtp;
       activeRides.set(rideId, ride);
     }
+    try {
+      await Trip.updateOne({ rideId }, { earlyDropOtp: strOtp });
+    } catch (e) {}
   });
 
-  // 4.2 Driver Ends Trip Early with Rider OTP (Full Fare)
+  // 4.2 Driver Ends Trip Early with Rider OTP (Full Fare Verified)
   socket.on('ride:early_complete_otp', async ({ rideId, enteredOtp }) => {
+    const trip = await Trip.findOne({ rideId });
     const ride = activeRides.get(rideId);
-    if (!ride || ride.earlyDropOtp !== enteredOtp.trim()) {
+    const validEarlyOtp = trip?.earlyDropOtp || ride?.earlyDropOtp;
+
+    if (!validEarlyOtp || validEarlyOtp !== enteredOtp.trim()) {
       return socket.emit('ride:otp_invalid', { message: 'Invalid Early Drop OTP from Rider.' });
     }
 
-    completeTripFinal(rideId, ride.totalFare, false, 'RIDER_REQUESTED_EARLY_DROP');
+    const fare = trip ? trip.totalFare : (ride ? ride.totalFare : 0);
+    completeTripFinal(rideId, fare, false, 'RIDER_REQUESTED_EARLY_DROP');
   });
 
   // 4.3 Driver Ends Trip Early Due to Emergency/Breakdown (Dynamic Reduced Fare)
@@ -986,8 +998,10 @@ io.on('connection', (socket) => {
 
   // 5. Standard Trip Completion
   socket.on('ride:complete', async ({ rideId }) => {
+    const trip = await Trip.findOne({ rideId });
     const ride = activeRides.get(rideId);
-    completeTripFinal(rideId, ride ? ride.totalFare : 0, false, 'STANDARD_DROP');
+    const totalFare = trip ? trip.totalFare : (ride ? ride.totalFare : 0);
+    completeTripFinal(rideId, totalFare, false, 'STANDARD_DROP');
   });
 
   // 5.1 Rider Rates Driver Post-Trip (Recorded in MongoDB)
@@ -1016,8 +1030,8 @@ io.on('connection', (socket) => {
         },
         { new: true }
       );
-      if (completedTrip) {
-        upiId = completedTrip.driverData?.upiId || upiId;
+      if (completedTrip && completedTrip.driverData?.upiId) {
+        upiId = completedTrip.driverData.upiId;
       }
     } catch (dbErr) {
       console.error(`MongoDB Log Error for ${rideId}:`, dbErr.message);
@@ -1034,6 +1048,7 @@ io.on('connection', (socket) => {
       io.to(ride.riderSocketId).emit('ride:completed', completionPayload);
     }
     io.emit(`ride:completed:${rideId}`, completionPayload);
+    io.emit('ride:completed', completionPayload);
     socket.emit('ride:completed', completionPayload);
 
     activeRides.delete(rideId);

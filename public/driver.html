@@ -231,7 +231,7 @@
 
   <!-- ================= 4. MAIN DRIVER DASHBOARD (APPROVED ONLY) ================= -->
   <div id="main-driver-dashboard" class="hidden w-full max-w-md pb-12">
-    <!-- Header with Setting Button (Delete button securely moved to Settings) -->
+    <!-- Header with Settings Button -->
     <div class="flex justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow mb-3">
       <div>
         <h1 class="text-base font-bold text-amber-400 flex items-center gap-1.5">
@@ -459,7 +459,7 @@
   </div>
 
   <!-- ================= MODAL: EARLY TRIP TERMINATION ================= -->
-  <div id="early-end-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm">
+  <div id="early-end-modal" class="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4 hidden backdrop-blur-sm">
     <div class="bg-slate-900 rounded-3xl p-5 max-w-sm w-full shadow-2xl border border-slate-800 space-y-4">
       <div class="flex justify-between items-center border-b border-slate-800 pb-2">
         <h3 class="text-sm font-black text-amber-400">Early Trip Termination</h3>
@@ -492,7 +492,7 @@
   </div>
 
   <!-- PAYMENT MODAL -->
-  <div id="payment-modal" class="fixed inset-0 bg-black/90 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+  <div id="payment-modal" class="fixed inset-0 bg-black/90 backdrop-blur-sm hidden items-center justify-center p-4 z-[9999]">
     <div class="bg-slate-900 border-2 border-green-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl text-center space-y-4">
       <div class="border-b border-slate-800 pb-2">
         <span class="text-xs font-bold uppercase tracking-wider text-green-400">Trip Completed</span>
@@ -617,6 +617,7 @@
       }
     }
 
+    // Auto-detect referral code from QR scan URL parameter (?ref=DRV_123)
     window.addEventListener('DOMContentLoaded', () => {
       const urlParams = new URLSearchParams(window.location.search);
       const refCode = urlParams.get('ref');
@@ -866,6 +867,10 @@
       if (driver.status === 'APPROVED') {
         document.getElementById('main-driver-dashboard').classList.remove('hidden');
         document.getElementById('driver-header-name').innerText = `${driver.name} (${driver.vehicleNo})`;
+        const rates = { HATCHBACK: '₹16/km', SEDAN: '₹20/km', SUV: '₹25/km' };
+        document.getElementById('driver-header-rate').innerText = rates[driver.cabType] || '₹16/km';
+        document.getElementById('dash-wallet-bal').innerText = `₹${driver.walletBalance || 150}.00`;
+        document.getElementById('dash-bonus-rides').innerText = `${driver.bonusFreeRides || 3} Rides`;
 
         // Pre-fill profile settings modal
         document.getElementById('set-profile-name').innerText = driver.name;
@@ -874,8 +879,6 @@
         document.getElementById('set-profile-upi').innerText = driver.upiId || '67cabs@upi';
         document.getElementById('modal-wallet-balance').innerText = `₹${driver.walletBalance || 150}.00`;
         document.getElementById('modal-bonus-rides').innerText = `${driver.bonusFreeRides || 3} Free Rides`;
-        document.getElementById('dash-wallet-bal').innerText = `₹${driver.walletBalance || 150}.00`;
-        document.getElementById('dash-bonus-rides').innerText = `${driver.bonusFreeRides || 3} Rides`;
 
         registerDriver();
         initDriverGPS();
@@ -1139,6 +1142,7 @@
     }
 
     function notifyArrived() {
+      currentTripPhase = 'ARRIVED';
       socket.emit('driver:arrived', { rideId: currentActiveRideId });
       const btn = document.getElementById('btn-arrived');
       btn.innerText = "✅ Arrived Notified";
@@ -1176,7 +1180,7 @@
     }
 
     function submitOtp() {
-      const enteredOtp = document.getElementById('driverOtpInput').value;
+      const enteredOtp = document.getElementById('driverOtpInput').value.trim();
       if (enteredOtp.length !== 4) return alert("Kripya 4-digit OTP enter karein.");
 
       socket.emit('ride:verify_otp', {
@@ -1221,7 +1225,7 @@
     function closeEarlyEndModal() { document.getElementById('early-end-modal').classList.add('hidden'); }
 
     function submitEarlyEndWithOtp() {
-      const otp = document.getElementById('early-drop-otp-input').value;
+      const otp = document.getElementById('early-drop-otp-input').value.trim();
       if (otp.length !== 4) return alert("Please enter 4-digit OTP from rider.");
       socket.emit('ride:early_complete_otp', { rideId: currentActiveRideId, enteredOtp: otp });
       closeEarlyEndModal();
@@ -1264,6 +1268,17 @@
     function dismissPaymentModal() {
       window.location.reload();
     }
+
+    // ==========================================
+    // DUAL REFERRAL QR ENGINE (DRIVER & RIDER)
+    // ==========================================
+    function openReferralModal() {
+      document.getElementById('referral-modal').classList.remove('hidden');
+      document.getElementById('display-ref-code').innerText = currentDriver?.driverId || 'DRV_67';
+      renderReferralQR();
+    }
+
+    function closeReferralModal() { document.getElementById('referral-modal').classList.add('hidden'); }
 
     // ==========================================
     // SETTINGS MODAL LOGIC (PROFILE & ACCOUNT)
@@ -1322,6 +1337,7 @@
 
     function renderReferralQR() {
       const qrTarget = document.getElementById('referral-qrcode-target');
+      if (!qrTarget) return;
       qrTarget.innerHTML = '';
       const driverId = currentDriver?.driverId || 'DRV_67';
       const host = window.location.origin;
@@ -1339,6 +1355,16 @@
       });
     }
 
+    // ==========================================
+    // DRIVER WALLET & COUPONS ENGINE
+    // ==========================================
+    function openWalletModal() {
+      document.getElementById('wallet-modal').classList.remove('hidden');
+      document.getElementById('modal-wallet-balance').innerText = `₹${currentDriver?.walletBalance || 150}.00`;
+      document.getElementById('modal-bonus-rides').innerText = `${currentDriver?.bonusFreeRides || 3} Free Rides`;
+    }
+
+    function closeWalletModal() { document.getElementById('wallet-modal').classList.add('hidden'); }
     function setRechargeAmount(amt) { document.getElementById('custom-recharge-amt').value = amt; }
 
     function applyCouponCode() {
@@ -1361,8 +1387,12 @@
       document.getElementById('modal-wallet-balance').innerText = `₹${currentDriver.walletBalance}.00`;
       document.getElementById('dash-wallet-bal').innerText = `₹${currentDriver.walletBalance}.00`;
       closeSettingsModal();
+      if (document.getElementById('wallet-modal')) closeWalletModal();
     }
 
+    // ==========================================
+    // DRIVER SAFETY AUDIO RECORDER (LOCAL)
+    // ==========================================
     async function toggleDriverSafetyAudio() {
       if (!isDriverRecording) {
         try {

@@ -77,7 +77,7 @@
       </div>
 
       <!-- ========================================== -->
-      <!-- STEP 1: ROUTE BUILDER (NO MAP / CLEAN FORM) -->
+      <!-- STEP 1: ROUTE BUILDER                      -->
       <!-- ========================================== -->
       <div id="step-1-route-builder" class="space-y-3">
         <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200">
@@ -176,7 +176,7 @@
           </div>
         </div>
 
-        <!-- Proximity Drivers List (Max 5 Dynamic Cards) -->
+        <!-- Proximity Drivers List -->
         <div>
           <div class="flex justify-between items-center mb-1.5">
             <span class="text-[10px] font-bold text-slate-500 uppercase">Available Nearby Drivers</span>
@@ -209,7 +209,7 @@
           🚗 Driver is arriving at pickup location...
         </div>
 
-        <!-- In-Trip Safety Controls: SOS + Local Audio Recorder + Early Drop -->
+        <!-- In-Trip Safety Controls -->
         <div class="grid grid-cols-2 gap-2 pt-1">
           <a href="tel:100" class="bg-red-600 hover:bg-red-700 text-white font-black py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md text-center transition">
             🚨 <span>Police SOS (100)</span>
@@ -258,20 +258,17 @@
 
       <!-- Multi-App Direct UPI Intent Triggers -->
       <div class="space-y-2 text-left">
-        <label class="text-[10px] font-bold text-slate-400 uppercase">Pay Direct via UPI App</label>
+        <label class="text-[10px] font-bold text-slate-400 uppercase">Pay Direct via UPI App / Cash</label>
         <div class="grid grid-cols-3 gap-2">
-          <!-- Google Pay Intent -->
-          <a id="btn-pay-gpay" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 p-2.5 rounded-xl flex flex-col items-center justify-center text-center transition shadow">
+          <a id="btn-pay-gpay" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 p-2.5 rounded-xl flex flex-col items-center justify-center text-center transition shadow cursor-pointer">
             <span class="text-xl">🔵</span>
             <span class="text-[10px] font-bold mt-1 text-slate-200">GPay</span>
           </a>
-          <!-- PhonePe Intent -->
-          <a id="btn-pay-phonepe" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 p-2.5 rounded-xl flex flex-col items-center justify-center text-center transition shadow">
+          <a id="btn-pay-phonepe" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 p-2.5 rounded-xl flex flex-col items-center justify-center text-center transition shadow cursor-pointer">
             <span class="text-xl">🟣</span>
             <span class="text-[10px] font-bold mt-1 text-slate-200">PhonePe</span>
           </a>
-          <!-- Paytm Intent -->
-          <a id="btn-pay-paytm" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 p-2.5 rounded-xl flex flex-col items-center justify-center text-center transition shadow">
+          <a id="btn-pay-paytm" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 p-2.5 rounded-xl flex flex-col items-center justify-center text-center transition shadow cursor-pointer">
             <span class="text-xl">🔷</span>
             <span class="text-[10px] font-bold mt-1 text-slate-200">Paytm</span>
           </a>
@@ -280,12 +277,12 @@
 
       <!-- Interactive 5-Star Rating Box -->
       <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800 space-y-2">
-        <div class="text-[11px] font-bold text-amber-400">Rate your 67 Driver Experience</div>
+        <div class="text-[11px] font-bold text-amber-400">Rate Driver Experience</div>
         <div class="flex justify-center gap-2 text-2xl" id="star-rating-container">
-          <button onclick="setDriverRating(1)" class="star-btn transition transform hover:scale-125 text-slate-600">⭐</button>
-          <button onclick="setDriverRating(2)" class="star-btn transition transform hover:scale-125 text-slate-600">⭐</button>
-          <button onclick="setDriverRating(3)" class="star-btn transition transform hover:scale-125 text-slate-600">⭐</button>
-          <button onclick="setDriverRating(4)" class="star-btn transition transform hover:scale-125 text-slate-600">⭐</button>
+          <button onclick="setDriverRating(1)" class="star-btn transition transform hover:scale-125 text-amber-400">⭐</button>
+          <button onclick="setDriverRating(2)" class="star-btn transition transform hover:scale-125 text-amber-400">⭐</button>
+          <button onclick="setDriverRating(3)" class="star-btn transition transform hover:scale-125 text-amber-400">⭐</button>
+          <button onclick="setDriverRating(4)" class="star-btn transition transform hover:scale-125 text-amber-400">⭐</button>
           <button onclick="setDriverRating(5)" class="star-btn transition transform hover:scale-125 text-amber-400">⭐</button>
         </div>
       </div>
@@ -694,9 +691,6 @@
     setupAutocomplete('pickup-search-input', 'pickup-results', true);
     setupAutocomplete('drop-search-input-0', 'drop-results-0', false, 0);
 
-    // ==========================================
-    // STEP TRANSITION & PROXIMITY CALCULATIONS
-    // ==========================================
     async function confirmRouteAndProceed() {
       if (!pickupCoords) {
         alert("Please select a Jaipur pickup point.");
@@ -845,6 +839,7 @@
     // ==========================================
     function dispatchTargetedRide(targetDriverId, calculatedFare) {
       activeRideId = `RIDE_${Date.now()}`;
+      tripPhase = 'TO_PICKUP';
       
       socket.emit('ride:request_targeted', {
         rideId: activeRideId,
@@ -887,12 +882,18 @@
 
     socket.on('ride:accepted', ({ rideId, driver, otp, fare }) => {
       activeRideId = rideId || activeRideId;
+      tripPhase = 'TO_PICKUP';
+
       document.getElementById('step-1-route-builder').classList.add('hidden');
       document.getElementById('step-2-cab-selection').classList.add('hidden');
 
       document.getElementById('assigned-driver-name').innerText = driver.name;
       document.getElementById('assigned-vehicle-no').innerText = driver.vehicleNo || driver.cabNumber || 'RJ 14 TA 6767';
       document.getElementById('display-otp').innerText = otp;
+      document.getElementById('otp-container-box').classList.remove('hidden');
+      document.getElementById('ride-status-badge').innerText = 'Driver Assigned & En Route';
+      document.getElementById('ride-status-badge').className = 'text-[10px] text-green-400 font-bold uppercase tracking-wider';
+
       document.getElementById('rider-confirmed-card').classList.remove('hidden');
 
       document.getElementById('verify-driver-name').innerText = driver.name;
@@ -900,38 +901,44 @@
       document.getElementById('verify-otp-display').innerText = otp;
     });
 
-    // 1. Arrival Trigger: Shows Alert + Notification
+    // 1. Arrival Trigger: Status lock
     socket.on('ride:driver_arrived', () => {
+      tripPhase = 'ARRIVED';
       playArrivedChime();
       document.getElementById('arrival-safety-modal').classList.remove('hidden');
       const statusEl = document.getElementById('trip-live-status');
-      statusEl.innerHTML = `🔔 <b class="text-amber-400">Driver Arrived at Pickup!</b> Share OTP & board.`;
+      statusEl.innerHTML = `🔔 <b class="text-amber-400">Driver Arrived at Pickup!</b> Share OTP & board cab.`;
       statusEl.className = "text-center text-xs text-amber-300 bg-amber-950/60 p-3 rounded-xl border border-amber-500 animate-pulse";
     });
 
     socket.on('driver:location_broadcast', ({ lat, lng, phase }) => {
-      tripPhase = phase || tripPhase;
+      if (phase) tripPhase = phase;
       if (liveDriverMarker) {
         liveDriverMarker.setLatLng([lat, lng]);
       } else {
         liveDriverMarker = L.marker([lat, lng], { icon: cabCarIcon }).addTo(map);
       }
 
+      const statusEl = document.getElementById('trip-live-status');
+      if (tripPhase === 'ARRIVED') {
+        statusEl.innerHTML = `🔔 <b class="text-amber-400">Driver Arrived at Pickup!</b> Share OTP & board cab.`;
+        return;
+      }
+
       const targetCoords = (tripPhase === 'TO_DROP' && dropStops[0].lat) ? [dropStops[0].lat, dropStops[0].lng] : pickupCoords;
       if (targetCoords) {
         const distKm = (map.distance([lat, lng], targetCoords) / 1000).toFixed(1);
         const etaMins = Math.max(1, Math.round(distKm * 3));
-        const statusEl = document.getElementById('trip-live-status');
 
         if (tripPhase === 'TO_DROP') {
           statusEl.innerHTML = `🟢 <b>Trip Ongoing</b>: Drop in ~${etaMins} mins (${distKm} km)`;
-        } else if (!statusEl.innerText.includes('Driver Arrived')) {
+        } else if (tripPhase === 'TO_PICKUP') {
           statusEl.innerHTML = `🚖 <b>Driver arriving in ~${etaMins} mins</b> (${distKm} km away)`;
         }
       }
     });
 
-    // 2. Ongoing Trip State: Hides OTP Box & Changes Status
+    // 2. Ongoing Trip State
     socket.on('ride:started', () => {
       tripPhase = 'TO_DROP';
       closeArrivalModal();
@@ -944,17 +951,20 @@
       statusEl.innerHTML = "🟢 <b class='text-green-400'>Trip Ongoing</b> (Navigating to Drop Location)";
     });
 
-    // 3. Trip Completed State: Shows Settlement Screen & Payment App Links
-    socket.on('ride:completed', ({ finalFare, driverUpiId, isEarlyDrop }) => {
+    // 3. Trip Completed State: Shows Settlement Screen & Payment Links
+    socket.on('ride:completed', ({ finalFare, driverUpiId }) => {
       if (isRecordingAudio) stopSafetyAudioRecording();
       
+      // Hide active ride card from sidebar
+      document.getElementById('rider-confirmed-card').classList.add('hidden');
+
       const upiVpa = driverUpiId || '67cabs@upi';
       document.getElementById('settlement-fare-amount').innerText = `₹${finalFare}`;
 
       // Build Deep Links for Specific Apps
-      const gpayUrl = `gpay://upi/pay?pa=${encodeURIComponent(upiVpa)}&pn=Driver&am=${encodeURIComponent(finalFare)}&cu=INR&tn=67CabTrip`;
-      const phonepeUrl = `phonepe://pay?pa=${encodeURIComponent(upiVpa)}&pn=Driver&am=${encodeURIComponent(finalFare)}&cu=INR&tn=67CabTrip`;
-      const paytmUrl = `paytmmp://pay?pa=${encodeURIComponent(upiVpa)}&pn=Driver&am=${encodeURIComponent(finalFare)}&cu=INR&tn=67CabTrip`;
+      const gpayUrl = `gpay://upi/pay?pa=${encodeURIComponent(upiVpa)}&pn=67Driver&am=${encodeURIComponent(finalFare)}&cu=INR&tn=67CabTrip`;
+      const phonepeUrl = `phonepe://pay?pa=${encodeURIComponent(upiVpa)}&pn=67Driver&am=${encodeURIComponent(finalFare)}&cu=INR&tn=67CabTrip`;
+      const paytmUrl = `paytmmp://pay?pa=${encodeURIComponent(upiVpa)}&pn=67Driver&am=${encodeURIComponent(finalFare)}&cu=INR&tn=67CabTrip`;
 
       document.getElementById('btn-pay-gpay').href = gpayUrl;
       document.getElementById('btn-pay-phonepe').href = phonepeUrl;
@@ -963,7 +973,6 @@
       document.getElementById('rider-settlement-modal').classList.remove('hidden');
     });
 
-    // Rating Selection Logic
     function setDriverRating(rating) {
       currentSelectedRating = rating;
       const stars = document.querySelectorAll('.star-btn');
@@ -977,7 +986,6 @@
       }
     }
 
-    // Dismiss & Reset to Book Next Ride
     function dismissRiderSettlement() {
       document.getElementById('rider-settlement-modal').classList.add('hidden');
       document.getElementById('rider-confirmed-card').classList.add('hidden');
@@ -1051,7 +1059,7 @@
     function closeArrivalModal() { document.getElementById('arrival-safety-modal').classList.add('hidden'); }
 
     function openEarlyDropModal() {
-      const generatedEarlyOtp = Math.floor(1000 + Math.random() * 9000);
+      const generatedEarlyOtp = Math.floor(1000 + Math.random() * 9000).toString();
       document.getElementById('early-drop-otp').innerText = generatedEarlyOtp;
       socket.emit('ride:early_drop_request', { rideId: activeRideId, earlyOtp: generatedEarlyOtp });
       document.getElementById('early-drop-modal').classList.remove('hidden');
