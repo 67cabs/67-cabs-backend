@@ -150,12 +150,12 @@
       </div>
 
       <div class="pt-1 border-t border-slate-900">
-        <label class="text-[11px] font-bold text-slate-300 block mb-1">📋 Vehicle Permit (Optional)</label>
+        <label class="text-[11px] font-bold text-slate-400 block mb-1">📋 Vehicle Permit (Optional)</label>
         <input type="file" id="doc-permit" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-300" />
       </div>
 
       <div class="pt-1 border-t border-slate-900">
-        <label class="text-[11px] font-bold text-slate-300 block mb-1">📑 Permit Authorization (Optional)</label>
+        <label class="text-[11px] font-bold text-slate-400 block mb-1">📑 Permit Authorization (Optional)</label>
         <input type="file" id="doc-permit-auth" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-300" />
       </div>
 
@@ -228,7 +228,7 @@
     </div>
   </div>
 
-  <!-- ================= 4. MAIN DRIVER DASHBOARD ================= -->
+  <!-- ================= 4. MAIN DRIVER DASHBOARD (APPROVED ONLY) ================= -->
   <div id="main-driver-dashboard" class="hidden w-full max-w-md pb-12">
     <!-- Header with Settings Button -->
     <div class="flex justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow mb-3">
@@ -237,7 +237,7 @@
           <span>🚖</span> 67 Partner
         </h1>
         <p id="driver-header-name" class="text-sm font-semibold">Driver Name (WagonR)</p>
-        <p id="gps-status-indicator" class="text-[11px] text-green-400 font-bold">● ONLINE • Acquiring Coordinates...</p>
+        <p id="gps-status-indicator" class="text-[11px] text-amber-400 font-bold">● Requesting GPS Location...</p>
       </div>
       <div class="flex items-center gap-2">
         <button onclick="openSettingsModal()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-2 rounded-xl font-bold hover:text-amber-400 text-xs transition flex items-center gap-1 shadow">
@@ -969,12 +969,18 @@
         return;
       }
 
-      // 1. Instant fallback location update to immediately register as active
-      const fallbackLat = (currentDriver?.location?.lat) || 26.9124;
-      const fallbackLng = (currentDriver?.location?.lng) || 75.7873;
-      updatePosition({ coords: { latitude: fallbackLat, longitude: fallbackLng, heading: 0 } });
+      // 1. Check if driver has previously verified real coordinates in session
+      if (currentDriver?.location?.lat && currentDriver?.location?.lng) {
+        updatePosition({ 
+          coords: { 
+            latitude: currentDriver.location.lat, 
+            longitude: currentDriver.location.lng, 
+            heading: 0 
+          } 
+        });
+      }
 
-      // 2. High-Accuracy Hardware Position Lock
+      // 2. High-Accuracy Hardware Position Lock (Pure GPS without fake defaults)
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           updatePosition(pos);
@@ -987,16 +993,16 @@
           }
         },
         (err) => {
-          console.warn("High accuracy GPS failed, falling back to network positioning:", err.message);
+          console.warn("GPS acquisition retry with network provider:", err.message);
           if (!geoWatchId) {
             geoWatchId = navigator.geolocation.watchPosition(
               updatePosition,
-              (e) => console.warn("Network watchPosition err:", e.message),
+              (e) => console.warn("Watch position err:", e.message),
               { enableHighAccuracy: false, maximumAge: 5000, timeout: 15000 }
             );
           }
         },
-        { enableHighAccuracy: true, timeout: 8000 }
+        { enableHighAccuracy: true, timeout: 10000 }
       );
     }
 
