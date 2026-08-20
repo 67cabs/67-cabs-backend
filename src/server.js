@@ -65,7 +65,7 @@ function sanitizePhone(phone) {
   return cleaned;
 }
 
-// 1. Driver Account Schema (Auth, Wallet, Referral Engine & KYC Documents)
+// 1. Driver Account Schema
 const driverSchema = new mongoose.Schema({
   driverId: { type: String, required: true, unique: true, index: true },
   phone: { type: String, required: true, index: true },
@@ -103,7 +103,30 @@ const driverSchema = new mongoose.Schema({
 
 const Driver = mongoose.model('Driver', driverSchema);
 
-// 2. Audit Trail Schema (Tracks Suspended & Blacklisted Drivers)
+// 2. Rider Account Schema (MongoDB Persistence)
+const riderSchema = new mongoose.Schema({
+  riderId: { type: String, required: true, unique: true, index: true },
+  phone: { type: String, required: true, index: true },
+  name: { type: String, required: true },
+  referralCode: { type: String, default: '' },
+  govIdNumber: { type: String, default: '' },
+  documents: {
+    govIdFront: { type: String, default: '' },
+    govIdBack: { type: String, default: '' }
+  },
+  walletBalance: { type: Number, default: 50 },
+  bonusFreeRides: { type: Number, default: 1 },
+  isKycDone: { type: Boolean, default: false },
+  status: { 
+    type: String, 
+    enum: ['ACTIVE', 'PENDING_KYC', 'BLOCKED'], 
+    default: 'ACTIVE' 
+  }
+}, { timestamps: true });
+
+const Rider = mongoose.model('Rider', riderSchema);
+
+// 3. Audit Trail Schema
 const driverAuditSchema = new mongoose.Schema({
   phone: { type: String, required: true, index: true },
   vehicleNo: { type: String, required: true, index: true },
@@ -114,7 +137,7 @@ const driverAuditSchema = new mongoose.Schema({
 
 const DriverAudit = mongoose.model('DriverAudit', driverAuditSchema);
 
-// 3. Trip History Schema (Multi-Stop, Rating & Early Termination Support)
+// 4. Trip History Schema
 const tripSchema = new mongoose.Schema({
   rideId: { type: String, required: true, unique: true, index: true },
   cabType: { type: String, required: true },
@@ -143,7 +166,8 @@ const tripSchema = new mongoose.Schema({
   },
   riderData: {
     name: String,
-    phone: String
+    phone: String,
+    govIdNumber: String
   },
   otp: String,
   earlyDropOtp: String,
@@ -161,7 +185,7 @@ const tripSchema = new mongoose.Schema({
 
 const Trip = mongoose.model('Trip', tripSchema);
 
-// 4. Driver Live GPS Telemetry Schema
+// 5. Driver Live GPS Telemetry Schema
 const driverLocationSchema = new mongoose.Schema({
   driverId: { type: String, required: true, unique: true },
   name: String,
@@ -193,13 +217,118 @@ function isWithinJaipur(lat, lng) {
   );
 }
 
-// ---------------- AUTH & ONBOARDING ROUTES ----------------
+// ---------------- RIDER AUTH & KYC ROUTES (MONGODB SYNC) ----------------
 
-// Fast 5-Sec Driver Signup (Deferred KYC)
+// Fast 5-Sec Rider Signup API
+app.post('/api/rider/signup', async (req, res) => {
+  try {
+    const { name, phone, referralCode } = req.body;
+    if (!name || !phone) {
+      return res.status(400).json({ success: false, message: 'Name aur Phone number zaroori hain.' });
+    }
+
+    const cleanPhone = sanitizePhone(phone);
+    const existing = await Rider.findOne({
+      $or: [
+        { phone: cleanPhone },
+        { phone: phone.trim() },
+        { phone: { $regex: cleanPhone + '$' } }
+      ]
+    });
+
+    if (existing) {
+      return res.json({
+        success: true,
+        message: 'Welcome back! Logged in successfully.',
+        rider: existing
+      });
+    }
+
+    const riderId = `RDR_${Date.now()}`;
+    const newRider = await Rider.create({
+      riderId,
+      name: name.trim(),
+      phone: cleanPhone,
+      referralCode: referralCode ? referralCode.trim() : '',
+      walletBalance: 50,
+      bonusFreeRides: 1,
+      isKycDone: false,
+      status: 'ACTIVE'
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Rider account successfully created!',
+      rider: newRider
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Rider KYC Upload API (ID Verification)
+app.post('/api/rider/upload-kyc', async (req, res) => {
+  try {
+    const { phone, govIdNumber, govIdFront, govIdBack } = req.body;
+    if (!phone) {
+      return res.status(400).json({ success: false, message: 'Rider phone number required.' });
+    }
+
+    const cleanPhone = sanitizePhone(phone);
+    const updated = await Rider.findOneAndUpdate(
+      {
+        $or: [
+          { phone: cleanPhone },
+          { phone: phone.trim() },
+          { phone: { $regex: cleanPhone + '$' } }
+        ]
+      },
+      {
+        govIdNumber: govIdNumber ? govIdNumber.trim() : '',
+        documents: {
+          govIdFront: govIdFront || '',
+          govIdBack: govIdBack || ''
+        },
+        isKycDone: true
+      },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ success: false, message: 'Rider record nahi mila.' });
+    }
+
+    return res.json({ success: true, message: 'KYC verified and stored successfully!', rider: updated });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Rider Self-Delete Account API
+app.post('/api/rider/delete-account', async (req, res) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ success: false, message: 'Phone number required' });
+
+    const cleanPhone = sanitizePhone(phone);
+    await Rider.deleteOne({
+      $or: [
+        { phone: cleanPhone },
+        { phone: phone.trim() }
+      ]
+    });
+
+    return res.json({ success: true, message: 'Rider account permanently deleted.' });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ---------------- DRIVER AUTH & ONBOARDING ROUTES ----------------
+
 app.post('/api/driver/signup-fast', async (req, res) => {
   try {
     const { name, phone, password, vehicleNo, cabType, referralCode } = req.body;
-
     if (!name || !phone || !password || !vehicleNo) {
       return res.status(400).json({ success: false, message: 'Name, Phone, Password, aur Vehicle Number zaroori hain.' });
     }
@@ -257,7 +386,6 @@ app.post('/api/driver/signup-fast', async (req, res) => {
   }
 });
 
-// Upload KYC Documents Post-Signup
 app.post('/api/driver/upload-kyc-docs', async (req, res) => {
   try {
     const { driverId, documents } = req.body;
@@ -282,11 +410,9 @@ app.post('/api/driver/upload-kyc-docs', async (req, res) => {
   }
 });
 
-// Complete Driver Registration (Legacy Single Step Signup Support)
 app.post('/api/driver/signup', async (req, res) => {
   try {
     const { name, phone, password, email, vehicleNo, cabType, upiId, referralCode, documents } = req.body;
-
     if (!name || !phone || !password || !vehicleNo) {
       return res.status(400).json({ success: false, message: 'Name, Phone, Password, aur Vehicle Number zaroori hain.' });
     }
@@ -345,7 +471,6 @@ app.post('/api/driver/signup', async (req, res) => {
   }
 });
 
-// Driver Login
 app.post('/api/driver/login', async (req, res) => {
   try {
     const { phone, password } = req.body;
@@ -396,7 +521,6 @@ app.post('/api/driver/login', async (req, res) => {
   }
 });
 
-// Driver Self-Delete Account
 app.post('/api/driver/delete-account', async (req, res) => {
   try {
     const { driverId } = req.body;
@@ -411,7 +535,6 @@ app.post('/api/driver/delete-account', async (req, res) => {
   }
 });
 
-// Driver Uploads Requested Additional Document
 app.post('/api/driver/upload-additional-doc', async (req, res) => {
   try {
     const { driverId, additionalDocImage } = req.body;
@@ -444,7 +567,6 @@ app.post('/api/driver/upload-additional-doc', async (req, res) => {
 
 // ---------------- ADMIN DASHBOARD ROUTES ----------------
 
-// Get All Registered Drivers + Match Audit History
 app.get('/api/admin/drivers', async (req, res) => {
   try {
     const drivers = await Driver.find().sort({ createdAt: -1 }).lean();
@@ -466,7 +588,15 @@ app.get('/api/admin/drivers', async (req, res) => {
   }
 });
 
-// Approve or Block Driver
+app.get('/api/admin/riders', async (req, res) => {
+  try {
+    const riders = await Rider.find().sort({ createdAt: -1 }).lean();
+    return res.json({ success: true, riders });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.post('/api/admin/driver/status', async (req, res) => {
   try {
     const { driverId, status } = req.body;
@@ -495,7 +625,6 @@ app.post('/api/admin/driver/status', async (req, res) => {
   }
 });
 
-// Admin Requests Additional Document from Driver
 app.post('/api/admin/driver/request-doc', async (req, res) => {
   try {
     const { driverId, docName } = req.body;
@@ -525,7 +654,6 @@ app.post('/api/admin/driver/request-doc', async (req, res) => {
   }
 });
 
-// Admin Permanently Suspends Driver
 app.post('/api/admin/driver/suspend', async (req, res) => {
   try {
     const { driverId, reason } = req.body;
@@ -552,11 +680,9 @@ app.post('/api/admin/driver/suspend', async (req, res) => {
 
 // ---------------- FARE & PROXIMITY RADAR ROUTES ----------------
 
-// Fare Estimation
 app.post('/api/fare/estimate', (req, res) => {
   try {
     const { tripDistanceKm, tripTrafficMins, pickupDistanceKm, pickupTrafficMins, cabType } = req.body;
-
     if (!tripDistanceKm || !tripTrafficMins) {
       return res.status(400).json({ success: false, message: 'Trip metrics required' });
     }
@@ -582,7 +708,6 @@ app.post('/api/fare/estimate', (req, res) => {
   }
 });
 
-// Proximity Driver Radar Endpoint (Returns all online approved drivers with GPS)
 app.get('/api/cabs/nearby-all', async (req, res) => {
   try {
     const driversList = [];
@@ -621,11 +746,9 @@ app.get('/api/cabs/nearby-all', async (req, res) => {
   }
 });
 
-// Single Driver Quick Lookup API
 app.get('/api/cabs/nearby', async (req, res) => {
   try {
     const cabType = (req.query.cabType || 'HATCHBACK').toUpperCase();
-    
     let liveDriver = null;
     activeDrivers.forEach((d) => {
       if (d.cabType === cabType && d.location && d.location.lat) {
@@ -653,25 +776,7 @@ app.get('/api/cabs/nearby', async (req, res) => {
   }
 });
 
-// Multi-Offer MongoDB Polling Endpoint
-app.get('/api/driver/active-offers', async (req, res) => {
-  try {
-    const cabType = (req.query.cabType || 'HATCHBACK').toUpperCase();
-    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
-    
-    const activeOffers = await Trip.find({
-      cabType,
-      status: 'SEARCHING',
-      createdAt: { $gte: twoMinutesAgo }
-    }).sort({ createdAt: -1 });
-
-    res.json({ success: true, offers: activeOffers });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Real-Time In-Memory Maps (Zero DB Latency)
+// Real-Time In-Memory Maps
 let activeDrivers = new Map();
 let activeRides = new Map();
 
@@ -711,7 +816,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 2. Targeted 1-Click Ride Request (Specific Driver Dispatch)
+  // 2. Targeted 1-Click Ride Request
   socket.on('ride:request_targeted', async (rideData) => {
     const { rideId, targetDriverId, pickup, stops, cabCategory, totalDistanceKm, totalFare, rider } = rideData;
 
@@ -751,7 +856,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 2.1 Targeted Driver Declines Offer
   socket.on('ride:decline_targeted', ({ rideId }) => {
     const ride = activeRides.get(rideId);
     if (ride && ride.riderSocketId) {
@@ -761,7 +865,6 @@ io.on('connection', (socket) => {
     activeRides.delete(rideId);
   });
 
-  // 2.2 Standard Broadcast Ride Request (Fallback)
   socket.on('ride:request', async (rideData) => {
     const { pickup, drop, cabType, totalFare } = rideData;
     const requestedCabType = (cabType || 'HATCHBACK').toUpperCase();
@@ -803,14 +906,12 @@ io.on('connection', (socket) => {
     io.emit('ride:new_offer', ridePayload);
   });
 
-  // 2.3 Rider Cancels Ride
   socket.on('ride:cancel', async ({ rideId }) => {
     try {
       await Trip.updateOne({ rideId }, { status: 'CANCELLED' });
       activeRides.delete(rideId);
       io.emit('ride:cancelled', { rideId });
       io.emit('ride:taken', { rideId });
-      console.log(`❌ Ride ${rideId} cancelled by Rider.`);
     } catch (e) {
       console.error('Cancel Error:', e.message);
     }
@@ -842,9 +943,7 @@ io.on('connection', (socket) => {
         },
         { new: true }
       );
-      if (updatedTrip) {
-        finalTotalFare = updatedTrip.totalFare;
-      }
+      if (updatedTrip) finalTotalFare = updatedTrip.totalFare;
     } catch (e) {
       console.error('DB Update Error (ACCEPTED):', e.message);
     }
@@ -887,7 +986,7 @@ io.on('connection', (socket) => {
     io.emit('ride:taken', { rideId });
   });
 
-  // 3.1 Driver Arrived at Pickup Point Notification Trigger
+  // 3.1 Driver Arrived
   socket.on('driver:arrived', async ({ rideId }) => {
     const ride = activeRides.get(rideId);
     if (ride) {
@@ -907,12 +1006,10 @@ io.on('connection', (socket) => {
     });
   });
 
-  // 3.2 Live Driver GPS Telemetry Stream
+  // 3.2 GPS Telemetry Update
   socket.on('driver:location_update', async ({ rideId, lat, lng, phase, heading }) => {
     const d = activeDrivers.get(socket.id);
-    if (d) {
-      d.location = { lat, lng };
-    }
+    if (d) d.location = { lat, lng };
 
     const ride = activeRides.get(rideId);
     const telemetryPayload = {
@@ -927,16 +1024,13 @@ io.on('connection', (socket) => {
     io.emit(`driver:location_broadcast:${rideId}`, telemetryPayload);
   });
 
-  // 4. Driver Verifies OTP to Start Trip
+  // 4. Start Trip OTP Verification
   socket.on('ride:verify_otp', async ({ rideId, enteredOtp }) => {
     const trip = await Trip.findOne({ rideId });
     const ride = activeRides.get(rideId);
-
     const validOtp = trip ? trip.otp : (ride ? ride.otp : null);
 
-    if (!validOtp) {
-      return socket.emit('ride:error', { message: 'Trip session not found' });
-    }
+    if (!validOtp) return socket.emit('ride:error', { message: 'Trip session not found' });
 
     if (validOtp === enteredOtp.trim()) {
       const now = new Date();
@@ -949,10 +1043,7 @@ io.on('connection', (socket) => {
         }
       }
 
-      try {
-        await Trip.updateOne({ rideId }, { status: 'ONGOING', startTime: now });
-      } catch (e) {}
-
+      await Trip.updateOne({ rideId }, { status: 'ONGOING', startTime: now }).catch(() => {});
       io.emit(`ride:started:${rideId}`, { rideId });
       socket.emit('ride:started_driver_view', { rideId });
     } else {
@@ -960,7 +1051,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 4.1 Rider Initiates Early Drop & Generates OTP (Synced to MongoDB + Memory)
+  // 4.1 Rider Generates Early Drop OTP
   socket.on('ride:early_drop_request', async ({ rideId, earlyOtp }) => {
     const strOtp = earlyOtp ? earlyOtp.toString().trim() : '';
     const ride = activeRides.get(rideId);
@@ -968,12 +1059,10 @@ io.on('connection', (socket) => {
       ride.earlyDropOtp = strOtp;
       activeRides.set(rideId, ride);
     }
-    try {
-      await Trip.updateOne({ rideId }, { earlyDropOtp: strOtp });
-    } catch (e) {}
+    await Trip.updateOne({ rideId }, { earlyDropOtp: strOtp }).catch(() => {});
   });
 
-  // 4.2 Driver Ends Trip Early with Rider OTP (Full Fare Verified)
+  // 4.2 Driver Ends Trip Early with Rider OTP
   socket.on('ride:early_complete_otp', async ({ rideId, enteredOtp }) => {
     const trip = await Trip.findOne({ rideId });
     const ride = activeRides.get(rideId);
@@ -987,12 +1076,11 @@ io.on('connection', (socket) => {
     completeTripFinal(rideId, fare, false, 'RIDER_REQUESTED_EARLY_DROP');
   });
 
-  // 4.3 Driver Ends Trip Early Due to Emergency/Breakdown (Dynamic Reduced Fare)
+  // 4.3 Driver Ends Trip Early Due to Emergency/Breakdown
   socket.on('ride:early_complete_emergency', async ({ rideId, reason }) => {
     const ride = activeRides.get(rideId);
     const baseMinFare = 60;
     const reducedFare = ride ? Math.max(baseMinFare, Math.round(ride.totalFare * 0.55)) : baseMinFare;
-
     completeTripFinal(rideId, reducedFare, true, reason || 'DRIVER_EMERGENCY');
   });
 
@@ -1004,14 +1092,11 @@ io.on('connection', (socket) => {
     completeTripFinal(rideId, totalFare, false, 'STANDARD_DROP');
   });
 
-  // 5.1 Rider Rates Driver Post-Trip (Recorded in MongoDB)
+  // 5.1 Rider Rates Driver Post-Trip
   socket.on('ride:rate_driver', async ({ rideId, rating }) => {
     try {
       await Trip.updateOne({ rideId }, { rating: Number(rating) || 5 });
-      console.log(`⭐ Trip ${rideId} rated ${rating} Stars by Rider.`);
-    } catch (err) {
-      console.error('Rating DB Error:', err.message);
-    }
+    } catch (err) {}
   });
 
   async function completeTripFinal(rideId, finalAmount, isEarlyDrop, settlementReason) {
@@ -1030,12 +1115,10 @@ io.on('connection', (socket) => {
         },
         { new: true }
       );
-      if (completedTrip && completedTrip.driverData?.upiId) {
+      if (completedTrip?.driverData?.upiId) {
         upiId = completedTrip.driverData.upiId;
       }
-    } catch (dbErr) {
-      console.error(`MongoDB Log Error for ${rideId}:`, dbErr.message);
-    }
+    } catch (dbErr) {}
 
     const completionPayload = {
       rideId,
@@ -1044,7 +1127,7 @@ io.on('connection', (socket) => {
       isEarlyDrop
     };
 
-    if (ride && ride.riderSocketId) {
+    if (ride?.riderSocketId) {
       io.to(ride.riderSocketId).emit('ride:completed', completionPayload);
     }
     io.emit(`ride:completed:${rideId}`, completionPayload);
@@ -1052,10 +1135,8 @@ io.on('connection', (socket) => {
     socket.emit('ride:completed', completionPayload);
 
     activeRides.delete(rideId);
-    console.log(`🏁 Trip ${rideId} Finalized. Total Fare: ₹${finalAmount}`);
   }
 
-  // Handle Disconnect
   socket.on('disconnect', () => {
     activeDrivers.delete(socket.id);
   });

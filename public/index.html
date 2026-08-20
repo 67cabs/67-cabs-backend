@@ -37,7 +37,7 @@
   <!-- Left Sidebar / Main Flow Panel -->
   <div class="w-full md:w-[420px] bg-white p-5 shadow-2xl flex flex-col justify-between overflow-y-auto z-20 custom-scrollbar border-r border-slate-200">
     <div>
-      <!-- Top Branding & Auth Bar -->
+      <!-- Top Branding & Dynamic Auth / Settings Header -->
       <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
         <div>
           <h1 class="text-2xl font-black text-amber-500 flex items-center gap-1.5 tracking-tight">
@@ -45,9 +45,9 @@
           </h1>
           <p class="text-[11px] font-medium text-slate-400">Jaipur Intra-City Smart Cab Network</p>
         </div>
-        <div id="user-auth-badge">
-          <button onclick="openAuthModal()" id="auth-btn" class="bg-slate-900 hover:bg-slate-800 text-amber-400 text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm transition">
-            👤 Login / Signup
+        <div id="user-auth-badge" class="flex items-center gap-1.5">
+          <button onclick="handleAuthOrSettingsClick()" id="auth-btn" class="bg-slate-900 hover:bg-slate-800 text-amber-400 text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm transition flex items-center gap-1">
+            👤 <span>Login / Signup</span>
           </button>
         </div>
       </div>
@@ -69,7 +69,7 @@
       <!-- Deferred KYC Banner -->
       <div id="kyc-prompt-banner" class="hidden mb-3 bg-amber-50 border border-amber-300 p-2.5 rounded-xl flex items-center justify-between">
         <div class="text-[11px] text-amber-900">
-          <span class="font-bold">Identity Verification:</span> Complete KYC to unlock priority rides.
+          <span class="font-bold">Identity Verification:</span> Upload Govt ID to activate verified status.
         </div>
         <button onclick="openKYCModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-[10px] font-black px-2.5 py-1 rounded-lg">
           Upload
@@ -241,6 +241,144 @@
   <div id="map" class="flex-1 h-full w-full"></div>
 
   <!-- ========================================== -->
+  <!-- MODAL: RIDER SETTINGS DRAWER               -->
+  <!-- ========================================== -->
+  <div id="rider-settings-modal" class="fixed inset-0 bg-black/80 z-[99999] flex items-center justify-center p-4 hidden backdrop-blur-sm">
+    <div class="bg-slate-900 text-white rounded-3xl p-5 max-w-sm w-full shadow-2xl border border-slate-800 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+        <h3 class="text-base font-black text-amber-400 flex items-center gap-1.5">⚙️ Rider Settings</h3>
+        <button onclick="closeRiderSettingsModal()" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
+      </div>
+
+      <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+        <button onclick="switchRiderSettingsTab('profile')" id="tab-rider-setting-profile" class="w-1/2 py-2 text-xs font-bold rounded-lg bg-amber-500 text-slate-950 transition">
+          Profile Settings
+        </button>
+        <button onclick="switchRiderSettingsTab('account')" id="tab-rider-setting-account" class="w-1/2 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition">
+          Account Settings
+        </button>
+      </div>
+
+      <!-- Profile Settings Tab -->
+      <div id="rider-setting-pane-profile" class="space-y-3">
+        <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-2 text-xs">
+          <div class="flex justify-between">
+            <span class="text-slate-400">Rider Name:</span>
+            <span id="set-rider-name" class="font-bold text-white">-</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">Mobile Number:</span>
+            <span id="set-rider-phone" class="font-bold text-amber-400 font-mono">-</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">Invited By / Referral:</span>
+            <span id="set-rider-referral" class="font-bold text-slate-300 font-mono">-</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">Govt ID Number:</span>
+            <span id="set-rider-govid" class="font-bold text-green-400 font-mono">-</span>
+          </div>
+          <div class="flex justify-between items-center border-t border-slate-800 pt-1.5">
+            <span class="text-slate-400">KYC Status:</span>
+            <span id="set-rider-kyc-status" class="font-bold text-amber-400">UNVERIFIED</span>
+          </div>
+        </div>
+
+        <button onclick="openKYCModal()" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-400 font-bold py-2.5 rounded-xl text-xs transition">
+          📄 Update / View Govt ID KYC Document
+        </button>
+      </div>
+
+      <!-- Account Settings Tab & Secure Delete Zone -->
+      <div id="rider-setting-pane-account" class="hidden space-y-4">
+        <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 flex justify-between items-center">
+          <div>
+            <div class="text-[10px] text-slate-400 uppercase font-bold">Wallet Credit</div>
+            <div id="rider-modal-wallet-balance" class="text-2xl font-black text-green-400">₹50.00</div>
+          </div>
+          <div class="text-right">
+            <div class="text-[10px] text-slate-400 uppercase font-bold">Reward Rides</div>
+            <div id="rider-modal-bonus-rides" class="text-xs font-black text-amber-400">1 Free Ride</div>
+          </div>
+        </div>
+
+        <div class="pt-4 border-t border-slate-800 space-y-2">
+          <div class="text-[10px] font-bold text-red-400 uppercase">Danger Zone</div>
+          <button onclick="deleteAccountRider()" class="w-full bg-red-950/60 border border-red-800 hover:bg-red-900 text-red-300 font-bold py-2.5 rounded-xl text-xs transition shadow flex items-center justify-center gap-1.5">
+            🗑️ Permanently Delete Account
+          </button>
+          <p class="text-[9px] text-slate-500 text-center">Deleting account permanently erases your profile and ride history.</p>
+        </div>
+
+        <button onclick="logoutRider()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2 rounded-xl text-xs transition">
+          Logout
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: FAST SIGNUP (MONGODB INTEGRATED)    -->
+  <!-- ========================================== -->
+  <div id="auth-modal" class="fixed inset-0 bg-black/75 z-[99999] flex items-center justify-center p-4 hidden backdrop-blur-sm">
+    <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="text-base font-black text-slate-900">Rider Registration</h3>
+        <button onclick="closeAuthModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="font-bold text-slate-600">Full Name *</label>
+          <input id="auth-name" type="text" placeholder="Enter your full name" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:border-amber-500 mt-1" />
+        </div>
+        <div>
+          <label class="font-bold text-slate-600">Mobile Number (OTP Auth) *</label>
+          <input id="auth-phone" type="tel" placeholder="10-digit mobile number" maxlength="10" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:border-amber-500 mt-1 font-mono" />
+        </div>
+        <div>
+          <label class="font-bold text-slate-600">Referral Code (Optional)</label>
+          <input id="auth-referral" type="text" placeholder="Auto-filled from Driver QR" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:border-amber-500 mt-1 font-mono uppercase" />
+        </div>
+        <button id="btn-submit-signup" onclick="submitRiderSignup()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-black py-3 rounded-xl text-sm shadow-md transition">
+          🚀 Instant 5-Second Signup
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: DEFERRED GOVT ID KYC (FRONT/BACK)  -->
+  <!-- ========================================== -->
+  <div id="kyc-modal" class="fixed inset-0 bg-black/75 z-[99999] flex items-center justify-center p-4 hidden backdrop-blur-sm">
+    <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="text-base font-black text-slate-900">Govt ID Verification</h3>
+        <button onclick="closeKYCModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
+      </div>
+      <p class="text-xs text-slate-500">Apna Govt ID number dalein aur dono taraf ki photo upload karein taaki MongoDB verified record ban sake.</p>
+      
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="font-bold text-slate-600">Govt ID Card Number *</label>
+          <input id="kyc-id-number" type="text" placeholder="Enter Govt ID Number" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 mt-1 font-mono font-bold" />
+        </div>
+        <div>
+          <label class="font-bold text-slate-600">ID Photo (Front Side) *</label>
+          <input id="kyc-doc-front" type="file" accept="image/*" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 mt-1" />
+        </div>
+        <div>
+          <label class="font-bold text-slate-600">ID Photo (Back Side) *</label>
+          <input id="kyc-doc-back" type="file" accept="image/*" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 mt-1" />
+        </div>
+        <button id="btn-upload-kyc" onclick="uploadCompressedKYC()" class="w-full bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold py-2.5 rounded-xl transition">
+          📤 Upload & Save to Database
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
   <!-- MODAL: TRIP SETTLEMENT, MULTI-APP UPI & RATING -->
   <!-- ========================================== -->
   <div id="rider-settlement-modal" class="fixed inset-0 bg-black/85 z-[99999] flex items-center justify-center p-4 hidden backdrop-blur-md">
@@ -250,13 +388,11 @@
         <button onclick="dismissRiderSettlement()" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
       </div>
 
-      <!-- Fare Card -->
       <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800">
         <p class="text-xs text-slate-400">Total Payable Fare</p>
         <p id="settlement-fare-amount" class="text-3xl font-black text-green-400 mt-0.5">₹0</p>
       </div>
 
-      <!-- Multi-App Direct UPI Intent Triggers -->
       <div class="space-y-2 text-left">
         <label class="text-[10px] font-bold text-slate-400 uppercase">Pay Direct via UPI App / Cash</label>
         <div class="grid grid-cols-3 gap-2">
@@ -275,7 +411,6 @@
         </div>
       </div>
 
-      <!-- Interactive 5-Star Rating Box -->
       <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800 space-y-2">
         <div class="text-[11px] font-bold text-amber-400">Rate Driver Experience</div>
         <div class="flex justify-center gap-2 text-2xl" id="star-rating-container">
@@ -290,55 +425,6 @@
       <button onclick="dismissRiderSettlement()" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3.5 rounded-xl text-xs transition shadow-lg">
         ✅ Payment Done & Book New Ride
       </button>
-    </div>
-  </div>
-
-  <!-- ================= MODAL: FAST SIGNUP & REFERRAL ================= -->
-  <div id="auth-modal" class="fixed inset-0 bg-black/75 z-[99999] flex items-center justify-center p-4 hidden backdrop-blur-sm">
-    <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
-      <div class="flex justify-between items-center border-b pb-2">
-        <h3 class="text-base font-black text-slate-900">Rider Registration</h3>
-        <button onclick="closeAuthModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
-      </div>
-
-      <div class="space-y-3 text-xs">
-        <div>
-          <label class="font-bold text-slate-600">Full Name</label>
-          <input id="auth-name" type="text" placeholder="Enter your full name" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:border-amber-500 mt-1" />
-        </div>
-        <div>
-          <label class="font-bold text-slate-600">Mobile Number (OTP Auth)</label>
-          <input id="auth-phone" type="tel" placeholder="10-digit mobile number" maxlength="10" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:border-amber-500 mt-1 font-mono" />
-        </div>
-        <div>
-          <label class="font-bold text-slate-600">Referral Code (Optional)</label>
-          <input id="auth-referral" type="text" placeholder="Auto-filled from Driver QR" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:border-amber-500 mt-1 font-mono uppercase" />
-        </div>
-        <button onclick="submitRiderSignup()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-black py-3 rounded-xl text-sm shadow-md transition">
-          🚀 Instant 5-Second Signup
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ================= MODAL: DEFERRED KYC IDENTITY UPLOAD ================= -->
-  <div id="kyc-modal" class="fixed inset-0 bg-black/75 z-[99999] flex items-center justify-center p-4 hidden backdrop-blur-sm">
-    <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
-      <div class="flex justify-between items-center border-b pb-2">
-        <h3 class="text-base font-black text-slate-900">Identity Verification</h3>
-        <button onclick="closeKYCModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
-      </div>
-      <p class="text-xs text-slate-500">Upload physical identity card photo or connect DigiLocker for full safety compliance.</p>
-      
-      <div class="space-y-3 text-xs">
-        <div>
-          <label class="font-bold text-slate-600">Identity Card Photo (Front)</label>
-          <input id="kyc-doc-file" type="file" accept="image/*" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 mt-1" />
-        </div>
-        <button onclick="uploadCompressedKYC()" class="w-full bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold py-2.5 rounded-xl transition">
-          📤 Upload & Complete KYC
-        </button>
-      </div>
     </div>
   </div>
 
@@ -503,10 +589,18 @@
       const stored = localStorage.getItem('67_rider_user');
       if (stored) {
         currentUser = JSON.parse(stored);
-        document.getElementById('auth-btn').innerText = `👤 ${currentUser.name || 'Rider'}`;
+        document.getElementById('auth-btn').innerHTML = `⚙️ <span>${currentUser.name || 'Rider'}</span>`;
         if (!currentUser.isKycDone) {
           document.getElementById('kyc-prompt-banner').classList.remove('hidden');
         }
+      }
+    }
+
+    function handleAuthOrSettingsClick() {
+      if (currentUser) {
+        openRiderSettingsModal();
+      } else {
+        openAuthModal();
       }
     }
 
@@ -691,6 +785,9 @@
     setupAutocomplete('pickup-search-input', 'pickup-results', true);
     setupAutocomplete('drop-search-input-0', 'drop-results-0', false, 0);
 
+    // ==========================================
+    // STEP TRANSITION & PROXIMITY CALCULATIONS
+    // ==========================================
     async function confirmRouteAndProceed() {
       if (!pickupCoords) {
         alert("Please select a Jaipur pickup point.");
@@ -901,7 +998,7 @@
       document.getElementById('verify-otp-display').innerText = otp;
     });
 
-    // 1. Arrival Trigger: Status lock
+    // 1. Arrival Trigger
     socket.on('ride:driver_arrived', () => {
       tripPhase = 'ARRIVED';
       playArrivedChime();
@@ -951,17 +1048,15 @@
       statusEl.innerHTML = "🟢 <b class='text-green-400'>Trip Ongoing</b> (Navigating to Drop Location)";
     });
 
-    // 3. Trip Completed State: Shows Settlement Screen & Payment Links
+    // 3. Trip Completed State
     socket.on('ride:completed', ({ finalFare, driverUpiId }) => {
       if (isRecordingAudio) stopSafetyAudioRecording();
       
-      // Hide active ride card from sidebar
       document.getElementById('rider-confirmed-card').classList.add('hidden');
 
       const upiVpa = driverUpiId || '67cabs@upi';
       document.getElementById('settlement-fare-amount').innerText = `₹${finalFare}`;
 
-      // Build Deep Links for Specific Apps
       const gpayUrl = `gpay://upi/pay?pa=${encodeURIComponent(upiVpa)}&pn=67Driver&am=${encodeURIComponent(finalFare)}&cu=INR&tn=67CabTrip`;
       const phonepeUrl = `phonepe://pay?pa=${encodeURIComponent(upiVpa)}&pn=67Driver&am=${encodeURIComponent(finalFare)}&cu=INR&tn=67CabTrip`;
       const paytmUrl = `paytmmp://pay?pa=${encodeURIComponent(upiVpa)}&pn=67Driver&am=${encodeURIComponent(finalFare)}&cu=INR&tn=67CabTrip`;
@@ -996,6 +1091,220 @@
       if (liveDriverMarker) map.removeLayer(liveDriverMarker);
       activeRideId = null;
       window.location.reload();
+    }
+
+    // ==========================================
+    // RIDER SETTINGS DRAWER FUNCTIONS
+    // ==========================================
+    function openRiderSettingsModal() {
+      document.getElementById('rider-settings-modal').classList.remove('hidden');
+      if (currentUser) {
+        document.getElementById('set-rider-name').innerText = currentUser.name || '-';
+        document.getElementById('set-rider-phone').innerText = currentUser.phone || '-';
+        document.getElementById('set-rider-referral').innerText = currentUser.referralCode || 'Direct Signup';
+        document.getElementById('set-rider-govid').innerText = currentUser.govIdNumber ? '[Govt ID Provided]' : 'Not Uploaded';
+        document.getElementById('set-rider-kyc-status').innerText = currentUser.isKycDone ? '✅ VERIFIED' : '⚠️ PENDING KYC';
+        document.getElementById('set-rider-kyc-status').className = currentUser.isKycDone ? 'font-bold text-green-400' : 'font-bold text-amber-400';
+        document.getElementById('rider-modal-wallet-balance').innerText = `₹${currentUser.walletBalance || 50}.00`;
+        document.getElementById('rider-modal-bonus-rides').innerText = `${currentUser.bonusFreeRides || 1} Free Ride`;
+      }
+    }
+
+    function closeRiderSettingsModal() {
+      document.getElementById('rider-settings-modal').classList.add('hidden');
+    }
+
+    function switchRiderSettingsTab(tab) {
+      const btnProfile = document.getElementById('tab-rider-setting-profile');
+      const btnAccount = document.getElementById('tab-rider-setting-account');
+      const paneProfile = document.getElementById('rider-setting-pane-profile');
+      const paneAccount = document.getElementById('rider-setting-pane-account');
+
+      if (tab === 'profile') {
+        btnProfile.className = "w-1/2 py-2 text-xs font-bold rounded-lg bg-amber-500 text-slate-950 transition";
+        btnAccount.className = "w-1/2 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition";
+        paneProfile.classList.remove('hidden');
+        paneAccount.classList.add('hidden');
+      } else {
+        btnAccount.className = "w-1/2 py-2 text-xs font-bold rounded-lg bg-amber-500 text-slate-950 transition";
+        btnProfile.className = "w-1/2 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition";
+        paneAccount.classList.remove('hidden');
+        paneProfile.classList.add('hidden');
+      }
+    }
+
+    function logoutRider() {
+      localStorage.removeItem('67_rider_user');
+      window.location.reload();
+    }
+
+    async function deleteAccountRider() {
+      if (!currentUser) return;
+      if (confirm("⚠️ Kya aap apna rider account permanently delete karna chahte hain? Aapka sara record MongoDB se remove ho jayega.")) {
+        try {
+          const res = await fetch('/api/rider/delete-account', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: currentUser.phone })
+          });
+          const data = await res.json();
+          if (data.success) {
+            alert("✅ Aapka account permanently delete ho chuka hai.");
+            localStorage.removeItem('67_rider_user');
+            window.location.reload();
+          }
+        } catch (e) {
+          alert("Delete failed.");
+        }
+      }
+    }
+
+    // ==========================================
+    // AUTH & KYC SUBMISSION (MONGODB INTEGRATED)
+    // ==========================================
+    function openAuthModal() { document.getElementById('auth-modal').classList.remove('hidden'); }
+    function closeAuthModal() { document.getElementById('auth-modal').classList.add('hidden'); }
+    function openKYCModal() { 
+      if (document.getElementById('rider-settings-modal')) closeRiderSettingsModal();
+      document.getElementById('kyc-modal').classList.remove('hidden'); 
+    }
+    function closeKYCModal() { document.getElementById('kyc-modal').classList.add('hidden'); }
+    function closeArrivalModal() { document.getElementById('arrival-safety-modal').classList.add('hidden'); }
+
+    function openEarlyDropModal() {
+      const generatedEarlyOtp = Math.floor(1000 + Math.random() * 9000).toString();
+      document.getElementById('early-drop-otp').innerText = generatedEarlyOtp;
+      socket.emit('ride:early_drop_request', { rideId: activeRideId, earlyOtp: generatedEarlyOtp });
+      document.getElementById('early-drop-modal').classList.remove('hidden');
+    }
+    function closeEarlyDropModal() { document.getElementById('early-drop-modal').classList.add('hidden'); }
+
+    // 1. Rider Signup (Saved directly to MongoDB Atlas)
+    async function submitRiderSignup() {
+      const name = document.getElementById('auth-name').value.trim();
+      const phone = document.getElementById('auth-phone').value.trim();
+      const referral = document.getElementById('auth-referral').value.trim();
+
+      if (!name || phone.length < 10) {
+        alert("Please enter a valid Name and 10-digit Mobile number.");
+        return;
+      }
+
+      const submitBtn = document.getElementById('btn-submit-signup');
+      submitBtn.disabled = true;
+      submitBtn.innerText = '⏳ Creating Account in Database...';
+
+      try {
+        const res = await fetch('/api/rider/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, phone, referralCode: referral })
+        });
+        const data = await res.json();
+        if (data.success) {
+          currentUser = data.rider;
+          localStorage.setItem('67_rider_user', JSON.stringify(currentUser));
+          document.getElementById('auth-btn').innerHTML = `⚙️ <span>${currentUser.name}</span>`;
+          closeAuthModal();
+          if (!currentUser.isKycDone) {
+            document.getElementById('kyc-prompt-banner').classList.remove('hidden');
+          }
+          alert("✅ Registered successfully & saved in MongoDB!");
+        } else {
+          alert(`⚠️ ${data.message}`);
+        }
+      } catch (err) {
+        alert("Signup failed. Check connection.");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerText = '🚀 Instant 5-Second Signup';
+      }
+    }
+
+    function compressImageFile(file) {
+      return new Promise((resolve) => {
+        if (!file) return resolve('');
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+          const img = new Image();
+          img.src = event.target.result;
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const maxDim = 1000;
+            let width = img.width;
+            let height = img.height;
+            if (width > height && width > maxDim) {
+              height *= maxDim / width;
+              width = maxDim;
+            } else if (height > maxDim) {
+              width *= maxDim / height;
+              height = maxDim;
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.7));
+          };
+          img.onerror = () => resolve('');
+        };
+        reader.onerror = () => resolve('');
+      });
+    }
+
+    // 2. Rider KYC Upload (ID & Front/Back photos to MongoDB)
+    async function uploadCompressedKYC() {
+      const govIdNumber = document.getElementById('kyc-id-number').value.trim();
+      const frontFile = document.getElementById('kyc-doc-front').files[0];
+      const backFile = document.getElementById('kyc-doc-back').files[0];
+
+      if (!govIdNumber) {
+        alert("Please enter your Govt ID Card Number.");
+        return;
+      }
+      if (!frontFile) {
+        alert("Please select Front Side photo.");
+        return;
+      }
+
+      const btn = document.getElementById('btn-upload-kyc');
+      btn.disabled = true;
+      btn.innerText = '⏳ Compressing & Uploading to MongoDB...';
+
+      try {
+        const frontBase64 = await compressImageFile(frontFile);
+        const backBase64 = await compressImageFile(backFile);
+
+        const res = await fetch('/api/rider/upload-kyc', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: currentUser ? currentUser.phone : '',
+            govIdNumber,
+            govIdFront: frontBase64,
+            govIdBack: backBase64
+          })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          if (currentUser) {
+            currentUser = data.rider;
+            localStorage.setItem('67_rider_user', JSON.stringify(currentUser));
+          }
+          document.getElementById('kyc-prompt-banner').classList.add('hidden');
+          closeKYCModal();
+          alert("✅ Govt ID KYC verified and updated in MongoDB database!");
+        } else {
+          alert(`⚠️ ${data.message}`);
+        }
+      } catch (e) {
+        alert("KYC upload failed.");
+      } finally {
+        btn.disabled = false;
+        btn.innerText = '📤 Upload & Save to Database';
+      }
     }
 
     // ==========================================
@@ -1047,74 +1356,6 @@
         document.getElementById('record-btn-text').innerText = "Record Audio";
         document.getElementById('btn-audio-record').className = "bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-400 font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition";
       }
-    }
-
-    // ==========================================
-    // MODALS & AUTH LOGIC
-    // ==========================================
-    function openAuthModal() { document.getElementById('auth-modal').classList.remove('hidden'); }
-    function closeAuthModal() { document.getElementById('auth-modal').classList.add('hidden'); }
-    function openKYCModal() { document.getElementById('kyc-modal').classList.remove('hidden'); }
-    function closeKYCModal() { document.getElementById('kyc-modal').classList.add('hidden'); }
-    function closeArrivalModal() { document.getElementById('arrival-safety-modal').classList.add('hidden'); }
-
-    function openEarlyDropModal() {
-      const generatedEarlyOtp = Math.floor(1000 + Math.random() * 9000).toString();
-      document.getElementById('early-drop-otp').innerText = generatedEarlyOtp;
-      socket.emit('ride:early_drop_request', { rideId: activeRideId, earlyOtp: generatedEarlyOtp });
-      document.getElementById('early-drop-modal').classList.remove('hidden');
-    }
-    function closeEarlyDropModal() { document.getElementById('early-drop-modal').classList.add('hidden'); }
-
-    function submitRiderSignup() {
-      const name = document.getElementById('auth-name').value.trim();
-      const phone = document.getElementById('auth-phone').value.trim();
-      const referral = document.getElementById('auth-referral').value.trim();
-
-      if (!name || phone.length < 10) {
-        alert("Please enter a valid Name and 10-digit Mobile number.");
-        return;
-      }
-
-      currentUser = { name, phone, referralCode: referral, isKycDone: false };
-      localStorage.setItem('67_rider_user', JSON.stringify(currentUser));
-      document.getElementById('auth-btn').innerText = `👤 ${name}`;
-      closeAuthModal();
-      document.getElementById('kyc-prompt-banner').classList.remove('hidden');
-      alert("✅ Registered successfully! You can book cabs instantly.");
-    }
-
-    function uploadCompressedKYC() {
-      const fileInput = document.getElementById('kyc-doc-file');
-      if (!fileInput.files[0]) {
-        alert("Please select an ID card image file.");
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.src = e.target.result;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const maxW = 1000;
-          const scale = maxW / img.width;
-          canvas.width = maxW;
-          canvas.height = img.height * scale;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
-          if (currentUser) {
-            currentUser.isKycDone = true;
-            localStorage.setItem('67_rider_user', JSON.stringify(currentUser));
-          }
-          document.getElementById('kyc-prompt-banner').classList.add('hidden');
-          closeKYCModal();
-          alert("✅ KYC submitted for verification!");
-        };
-      };
-      reader.readAsDataURL(fileInput.files[0]);
     }
   </script>
 </body>
