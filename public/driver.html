@@ -151,12 +151,12 @@
       </div>
 
       <div class="pt-1 border-t border-slate-900">
-        <label class="text-[11px] font-bold text-slate-400 block mb-1">📋 Vehicle Permit (Optional)</label>
+        <label class="text-[11px] font-bold text-slate-300 block mb-1">📋 Vehicle Permit (Optional)</label>
         <input type="file" id="doc-permit" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-300" />
       </div>
 
       <div class="pt-1 border-t border-slate-900">
-        <label class="text-[11px] font-bold text-slate-400 block mb-1">📑 Permit Authorization (Optional)</label>
+        <label class="text-[11px] font-bold text-slate-300 block mb-1">📑 Permit Authorization (Optional)</label>
         <input type="file" id="doc-permit-auth" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-300" />
       </div>
 
@@ -255,7 +255,7 @@
       <button onclick="openSettingsModalTab('account')" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 p-2.5 rounded-2xl flex items-center justify-between text-left transition">
         <div>
           <div class="text-[10px] text-slate-400 font-bold uppercase">Wallet Balance</div>
-          <div id="dash-wallet-bal" class="text-base font-black text-green-400">₹150.00</div>
+          <div id="dash-wallet-bal" class="text-base font-black text-green-400">₹0.00</div>
         </div>
         <span class="text-xl">💳</span>
       </button>
@@ -263,7 +263,7 @@
       <button onclick="openSettingsModalTab('profile')" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 p-2.5 rounded-2xl flex items-center justify-between text-left transition">
         <div>
           <div class="text-[10px] text-slate-400 font-bold uppercase">Bonus Free Rides</div>
-          <div id="dash-bonus-rides" class="text-base font-black text-amber-400">3 Rides</div>
+          <div id="dash-bonus-rides" class="text-base font-black text-amber-400">0 Rides</div>
         </div>
         <span class="text-xl">🎁</span>
       </button>
@@ -406,7 +406,7 @@
             <div id="referral-qrcode-target" class="flex justify-center"></div>
           </div>
 
-          <p id="qr-desc-text" class="text-[11px] font-medium text-amber-300">Scan to register Rider with bonus</p>
+          <p id="qr-desc-text" class="text-[11px] font-medium text-amber-300">Scan to register Rider (Earn 1 Free Ride upon 1st trip)</p>
           <p class="text-[10px] text-slate-500">Your Code: <b id="display-ref-code" class="text-white font-mono">-</b></p>
         </div>
       </div>
@@ -416,11 +416,11 @@
         <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 flex justify-between items-center">
           <div>
             <div class="text-[10px] text-slate-400 uppercase font-bold">Wallet Balance</div>
-            <div id="modal-wallet-balance" class="text-2xl font-black text-green-400">₹150.00</div>
+            <div id="modal-wallet-balance" class="text-2xl font-black text-green-400">₹0.00</div>
           </div>
           <div class="text-right">
             <div class="text-[10px] text-slate-400 uppercase font-bold">Bonus Pool</div>
-            <div id="modal-bonus-rides" class="text-xs font-black text-amber-400">3 Free Rides</div>
+            <div id="modal-bonus-rides" class="text-xs font-black text-amber-400">0 Free Rides</div>
           </div>
         </div>
 
@@ -869,16 +869,16 @@
         document.getElementById('driver-header-name').innerText = `${driver.name} (${driver.vehicleNo})`;
         const rates = { HATCHBACK: '₹16/km', SEDAN: '₹20/km', SUV: '₹25/km' };
         document.getElementById('driver-header-rate').innerText = rates[driver.cabType] || '₹16/km';
-        document.getElementById('dash-wallet-bal').innerText = `₹${driver.walletBalance || 150}.00`;
-        document.getElementById('dash-bonus-rides').innerText = `${driver.bonusFreeRides || 3} Rides`;
+        document.getElementById('dash-wallet-bal').innerText = `₹${driver.walletBalance || 0}.00`;
+        document.getElementById('dash-bonus-rides').innerText = `${driver.bonusFreeRides || 0} Rides`;
 
         // Pre-fill profile settings modal
         document.getElementById('set-profile-name').innerText = driver.name;
         document.getElementById('set-profile-vehicle').innerText = driver.vehicleNo;
         document.getElementById('set-profile-category').innerText = driver.cabType;
         document.getElementById('set-profile-upi').innerText = driver.upiId || '67cabs@upi';
-        document.getElementById('modal-wallet-balance').innerText = `₹${driver.walletBalance || 150}.00`;
-        document.getElementById('modal-bonus-rides').innerText = `${driver.bonusFreeRides || 3} Free Rides`;
+        document.getElementById('modal-wallet-balance').innerText = `₹${driver.walletBalance || 0}.00`;
+        document.getElementById('modal-bonus-rides').innerText = `${driver.bonusFreeRides || 0} Free Rides`;
 
         registerDriver();
         initDriverGPS();
@@ -1360,8 +1360,8 @@
     // ==========================================
     function openWalletModal() {
       document.getElementById('wallet-modal').classList.remove('hidden');
-      document.getElementById('modal-wallet-balance').innerText = `₹${currentDriver?.walletBalance || 150}.00`;
-      document.getElementById('modal-bonus-rides').innerText = `${currentDriver?.bonusFreeRides || 3} Free Rides`;
+      document.getElementById('modal-wallet-balance').innerText = `₹${currentDriver?.walletBalance || 0}.00`;
+      document.getElementById('modal-bonus-rides').innerText = `${currentDriver?.bonusFreeRides || 0} Free Rides`;
     }
 
     function closeWalletModal() { document.getElementById('wallet-modal').classList.add('hidden'); }
@@ -1371,7 +1371,7 @@
       const code = document.getElementById('coupon-code-input').value.trim().toUpperCase();
       if (code === 'WELCOME100') {
         alert("🎉 Coupon Applied! ₹100 Free Recharge Credit added.");
-        if (currentDriver) currentDriver.walletBalance = (currentDriver.walletBalance || 150) + 100;
+        if (currentDriver) currentDriver.walletBalance = (currentDriver.walletBalance || 0) + 100;
         document.getElementById('modal-wallet-balance').innerText = `₹${currentDriver.walletBalance}.00`;
         document.getElementById('dash-wallet-bal').innerText = `₹${currentDriver.walletBalance}.00`;
       } else {
@@ -1383,7 +1383,7 @@
       const amt = document.getElementById('custom-recharge-amt').value;
       if (!amt || amt < 50) return alert("Minimum recharge amount is ₹50.");
       alert(`⚡ Redirecting to UPI payment for ₹${amt}...`);
-      if (currentDriver) currentDriver.walletBalance = (currentDriver.walletBalance || 150) + parseInt(amt);
+      if (currentDriver) currentDriver.walletBalance = (currentDriver.walletBalance || 0) + parseInt(amt);
       document.getElementById('modal-wallet-balance').innerText = `₹${currentDriver.walletBalance}.00`;
       document.getElementById('dash-wallet-bal').innerText = `₹${currentDriver.walletBalance}.00`;
       closeSettingsModal();

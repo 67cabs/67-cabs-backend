@@ -76,8 +76,9 @@ const driverSchema = new mongoose.Schema({
   cabType: { type: String, required: true, default: 'HATCHBACK' },
   upiId: { type: String, default: '67cabs@upi' },
   referralCode: { type: String, default: '' },
-  walletBalance: { type: Number, default: 150 },
-  bonusFreeRides: { type: Number, default: 3 },
+  walletBalance: { type: Number, default: 0 },
+  bonusFreeRides: { type: Number, default: 0 },
+  isFirstTripRewardClaimed: { type: Boolean, default: false },
   documents: {
     selfiePhoto: { type: String, default: '' },
     drivingLicenseFront: { type: String, default: '' },
@@ -114,8 +115,9 @@ const riderSchema = new mongoose.Schema({
     govIdFront: { type: String, default: '' },
     govIdBack: { type: String, default: '' }
   },
-  walletBalance: { type: Number, default: 50 },
-  bonusFreeRides: { type: Number, default: 1 },
+  walletBalance: { type: Number, default: 0 },
+  bonusFreeRides: { type: Number, default: 0 },
+  isFirstTripRewardClaimed: { type: Boolean, default: false },
   isKycDone: { type: Boolean, default: false },
   status: { 
     type: String, 
@@ -250,8 +252,8 @@ app.post('/api/rider/signup', async (req, res) => {
       name: name.trim(),
       phone: cleanPhone,
       referralCode: referralCode ? referralCode.trim() : '',
-      walletBalance: 50,
-      bonusFreeRides: 1,
+      walletBalance: 0,
+      bonusFreeRides: 0,
       isKycDone: false,
       status: 'ACTIVE'
     });
@@ -358,8 +360,8 @@ app.post('/api/driver/signup-fast', async (req, res) => {
       cabType: (cabType || 'HATCHBACK').toUpperCase(),
       upiId: '67cabs@upi',
       referralCode: referralCode ? referralCode.trim() : '',
-      walletBalance: 150,
-      bonusFreeRides: 3,
+      walletBalance: 0,
+      bonusFreeRides: 0,
       documents: {},
       status: 'NEEDS_KYC',
       isOnline: false
@@ -443,8 +445,8 @@ app.post('/api/driver/signup', async (req, res) => {
       cabType: (cabType || 'HATCHBACK').toUpperCase(),
       upiId: upiId ? upiId.trim() : '67cabs@upi',
       referralCode: referralCode ? referralCode.trim() : '',
-      walletBalance: 150,
-      bonusFreeRides: 3,
+      walletBalance: 0,
+      bonusFreeRides: 0,
       documents: documents || {},
       status: 'PENDING_APPROVAL',
       isOnline: false
@@ -510,8 +512,8 @@ app.post('/api/driver/login', async (req, res) => {
         cabType: driver.cabType,
         vehicleNo: driver.vehicleNo,
         upiId: driver.upiId,
-        walletBalance: driver.walletBalance || 150,
-        bonusFreeRides: driver.bonusFreeRides || 3,
+        walletBalance: driver.walletBalance || 0,
+        bonusFreeRides: driver.bonusFreeRides || 0,
         status: driver.status,
         documents: driver.documents || {}
       }
@@ -592,6 +594,33 @@ app.get('/api/admin/riders', async (req, res) => {
   try {
     const riders = await Rider.find().sort({ createdAt: -1 }).lean();
     return res.json({ success: true, riders });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/admin/rider/status', async (req, res) => {
+  try {
+    const { phone, status } = req.body;
+    if (!phone || !['ACTIVE', 'PENDING_KYC', 'BLOCKED'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid rider status payload' });
+    }
+
+    const cleanPhone = sanitizePhone(phone);
+    const updated = await Rider.findOneAndUpdate(
+      {
+        $or: [
+          { phone: cleanPhone },
+          { phone: phone.trim() }
+        ]
+      },
+      { status },
+      { new: true }
+    );
+
+    if (!updated) return res.status(404).json({ success: false, message: 'Rider nahi mila' });
+
+    return res.json({ success: true, message: `Rider status updated to ${status}`, rider: updated });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
@@ -912,6 +941,7 @@ io.on('connection', (socket) => {
       activeRides.delete(rideId);
       io.emit('ride:cancelled', { rideId });
       io.emit('ride:taken', { rideId });
+      console.log(`❌ Ride ${rideId} cancelled by Rider.`);
     } catch (e) {
       console.error('Cancel Error:', e.message);
     }
@@ -1006,10 +1036,12 @@ io.on('connection', (socket) => {
     });
   });
 
-  // 3.2 GPS Telemetry Update
+  // 3.2 Live Driver GPS Telemetry Stream
   socket.on('driver:location_update', async ({ rideId, lat, lng, phase, heading }) => {
     const d = activeDrivers.get(socket.id);
-    if (d) d.location = { lat, lng };
+    if (d) {
+      d.location = { lat, lng };
+    }
 
     const ride = activeRides.get(rideId);
     const telemetryPayload = {
@@ -1024,13 +1056,16 @@ io.on('connection', (socket) => {
     io.emit(`driver:location_broadcast:${rideId}`, telemetryPayload);
   });
 
-  // 4. Start Trip OTP Verification
+  // 4. Driver Verifies OTP to Start Trip
   socket.on('ride:verify_otp', async ({ rideId, enteredOtp }) => {
     const trip = await Trip.findOne({ rideId });
     const ride = activeRides.get(rideId);
+
     const validOtp = trip ? trip.otp : (ride ? ride.otp : null);
 
-    if (!validOtp) return socket.emit('ride:error', { message: 'Trip session not found' });
+    if (!validOtp) {
+      return socket.emit('ride:error', { message: 'Trip session not found' });
+    }
 
     if (validOtp === enteredOtp.trim()) {
       const now = new Date();
@@ -1043,7 +1078,10 @@ io.on('connection', (socket) => {
         }
       }
 
-      await Trip.updateOne({ rideId }, { status: 'ONGOING', startTime: now }).catch(() => {});
+      try {
+        await Trip.updateOne({ rideId }, { status: 'ONGOING', startTime: now });
+      } catch (e) {}
+
       io.emit(`ride:started:${rideId}`, { rideId });
       socket.emit('ride:started_driver_view', { rideId });
     } else {
@@ -1051,7 +1089,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 4.1 Rider Generates Early Drop OTP
+  // 4.1 Rider Initiates Early Drop & Generates OTP
   socket.on('ride:early_drop_request', async ({ rideId, earlyOtp }) => {
     const strOtp = earlyOtp ? earlyOtp.toString().trim() : '';
     const ride = activeRides.get(rideId);
@@ -1081,6 +1119,7 @@ io.on('connection', (socket) => {
     const ride = activeRides.get(rideId);
     const baseMinFare = 60;
     const reducedFare = ride ? Math.max(baseMinFare, Math.round(ride.totalFare * 0.55)) : baseMinFare;
+
     completeTripFinal(rideId, reducedFare, true, reason || 'DRIVER_EMERGENCY');
   });
 
@@ -1096,7 +1135,10 @@ io.on('connection', (socket) => {
   socket.on('ride:rate_driver', async ({ rideId, rating }) => {
     try {
       await Trip.updateOne({ rideId }, { rating: Number(rating) || 5 });
-    } catch (err) {}
+      console.log(`⭐ Trip ${rideId} rated ${rating} Stars by Rider.`);
+    } catch (err) {
+      console.error('Rating DB Error:', err.message);
+    }
   });
 
   async function completeTripFinal(rideId, finalAmount, isEarlyDrop, settlementReason) {
@@ -1118,7 +1160,45 @@ io.on('connection', (socket) => {
       if (completedTrip?.driverData?.upiId) {
         upiId = completedTrip.driverData.upiId;
       }
-    } catch (dbErr) {}
+
+      // ==============================================================
+      // ONE-TIME 1 FREE RIDE REWARD ENGINE (REFERRER DRIVER ONLY)
+      // ==============================================================
+      // 1. Check if Rider was referred & reward Referrer Driver once
+      if (completedTrip?.riderData?.phone) {
+        const riderPhone = sanitizePhone(completedTrip.riderData.phone);
+        const riderDoc = await Rider.findOne({ phone: riderPhone });
+        if (riderDoc && riderDoc.referralCode && !riderDoc.isFirstTripRewardClaimed) {
+          const referrerDriver = await Driver.findOne({ driverId: riderDoc.referralCode.trim() });
+          if (referrerDriver) {
+            await Driver.updateOne(
+              { driverId: referrerDriver.driverId },
+              { $inc: { bonusFreeRides: 1 } }
+            );
+            await Rider.updateOne({ _id: riderDoc._id }, { isFirstTripRewardClaimed: true });
+            console.log(`🎁 1-Time Referral Bonus: 1 Free Ride awarded to Driver ${referrerDriver.driverId} for Rider's 1st trip.`);
+          }
+        }
+      }
+
+      // 2. Check if Driver was referred & reward Referrer Driver once
+      if (completedTrip?.driverData?.driverId) {
+        const currentDriverDoc = await Driver.findOne({ driverId: completedTrip.driverData.driverId });
+        if (currentDriverDoc && currentDriverDoc.referralCode && !currentDriverDoc.isFirstTripRewardClaimed) {
+          const referrerDriver = await Driver.findOne({ driverId: currentDriverDoc.referralCode.trim() });
+          if (referrerDriver) {
+            await Driver.updateOne(
+              { driverId: referrerDriver.driverId },
+              { $inc: { bonusFreeRides: 1 } }
+            );
+            await Driver.updateOne({ _id: currentDriverDoc._id }, { isFirstTripRewardClaimed: true });
+            console.log(`🎁 1-Time Referral Bonus: 1 Free Ride awarded to Driver ${referrerDriver.driverId} for Driver's 1st trip.`);
+          }
+        }
+      }
+    } catch (dbErr) {
+      console.error(`MongoDB Log Error for ${rideId}:`, dbErr.message);
+    }
 
     const completionPayload = {
       rideId,
@@ -1135,8 +1215,10 @@ io.on('connection', (socket) => {
     socket.emit('ride:completed', completionPayload);
 
     activeRides.delete(rideId);
+    console.log(`🏁 Trip ${rideId} Finalized. Total Fare: ₹${finalAmount}`);
   }
 
+  // Handle Disconnect
   socket.on('disconnect', () => {
     activeDrivers.delete(socket.id);
   });
