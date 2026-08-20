@@ -141,11 +141,11 @@
       <!-- ========================================== -->
       <div id="step-2-cab-selection" class="hidden space-y-3">
         
-        <!-- Live Dispatch Waiting Banner -->
+        <!-- Live Dispatch Waiting Banner (With Countdown) -->
         <div id="dispatch-waiting-banner" class="hidden bg-amber-50 border border-amber-300 p-4 rounded-2xl text-center space-y-2">
           <div class="text-2xl animate-spin">⏳</div>
           <div class="text-xs font-black text-amber-950">Offering Ride to Selected Driver...</div>
-          <p class="text-[10px] text-amber-800">Awaiting driver response. If declined, other cabs remain available below.</p>
+          <p class="text-[10px] text-amber-800" id="dispatch-timer-text">Awaiting driver response (Auto-timeout in 15s)</p>
           <button onclick="cancelRideSearch()" class="text-xs text-red-600 font-bold underline mt-1">Cancel Offer & Pick Another</button>
         </div>
 
@@ -560,6 +560,11 @@
     let currentUser = null;
     let currentSelectedRating = 5;
 
+    // 15-Sec Single-Offer Dispatch Timer & State
+    let activeTargetDriverId = null;
+    let dispatchTimer = null;
+    let dispatchCountdown = 15;
+
     let mediaRecorder = null;
     let audioChunks = [];
     let isRecordingAudio = false;
@@ -592,7 +597,7 @@
           gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
           osc.connect(gain);
           gain.connect(audioCtx.destination);
-          osc.start();
+          osc.start(start);
           osc.stop(start + duration);
         }
         note(523.25, audioCtx.currentTime, 0.3);
@@ -961,6 +966,14 @@
       filtered.forEach((drv) => {
         const card = document.createElement('div');
         card.className = "bg-slate-50 hover:bg-amber-50/60 p-3 rounded-xl border border-slate-200 flex items-center justify-between transition shadow-sm";
+        
+        const isCurrentlyBeingOffered = (activeTargetDriverId === drv.id);
+        const btnClass = isCurrentlyBeingOffered
+          ? "mt-1 bg-slate-800 text-amber-300 text-[11px] font-black px-3 py-1.5 rounded-lg shadow cursor-not-allowed opacity-80"
+          : "mt-1 bg-amber-500 hover:bg-amber-600 text-slate-950 text-[11px] font-black px-3 py-1.5 rounded-lg shadow transition cursor-pointer";
+        const btnText = isCurrentlyBeingOffered ? "⏳ Offering..." : "Book Cab ➔";
+        const btnDisabled = isCurrentlyBeingOffered ? "disabled" : "";
+
         card.innerHTML = `
           <div>
             <div class="flex items-center gap-1.5">
@@ -974,8 +987,8 @@
           </div>
           <div class="text-right">
             <div class="text-sm font-black text-green-700">₹${drv.fare}</div>
-            <button onclick="dispatchTargetedRide('${drv.id}', ${drv.fare})" class="mt-1 bg-amber-500 hover:bg-amber-600 text-slate-950 text-[11px] font-black px-3 py-1.5 rounded-lg shadow transition">
-              Book Cab ➔
+            <button id="btn-book-${drv.id}" ${btnDisabled} onclick="dispatchTargetedRide('${drv.id}', ${drv.fare})" class="${btnClass}">
+              ${btnText}
             </button>
           </div>
         `;
@@ -983,13 +996,19 @@
       });
     }
 
-    // ==========================================
-    // TARGETED 1-CLICK DISPATCH ENGINE
-    // ==========================================
+    // ==============================================================
+    // TARGETED 1-CLICK DISPATCH ENGINE (WITH 15-SEC SINGLE LOCK)
+    // ==============================================================
     function dispatchTargetedRide(targetDriverId, calculatedFare) {
+      if (activeTargetDriverId) return; // Prevent duplicate multi-clicks
+
       activeRideId = `RIDE_${Date.now()}`;
+      activeTargetDriverId = targetDriverId;
       tripPhase = 'TO_PICKUP';
       
+      // Update Button State to Dark & Unclickable
+      renderProximityCards();
+
       socket.emit('ride:request_targeted', {
         rideId: activeRideId,
         targetDriverId: targetDriverId,
@@ -1002,13 +1021,41 @@
       });
 
       document.getElementById('dispatch-waiting-banner').classList.remove('hidden');
+
+      // Start 15-Second Auto-Timeout Countdown
+      dispatchCountdown = 15;
+      document.getElementById('dispatch-timer-text').innerText = `Awaiting driver response (Auto-timeout in ${dispatchCountdown}s)`;
+
+      if (dispatchTimer) clearInterval(dispatchTimer);
+      dispatchTimer = setInterval(() => {
+        dispatchCountdown--;
+        if (dispatchCountdown > 0) {
+          document.getElementById('dispatch-timer-text').innerText = `Awaiting driver response (Auto-timeout in ${dispatchCountdown}s)`;
+        } else {
+          // 15s Completed -> Sleep & Restore Button to Light Yellow
+          clearInterval(dispatchTimer);
+          dispatchTimer = null;
+          cancelRideSearchSilent();
+        }
+      }, 1000);
     }
 
-    function cancelRideSearch() {
+    function cancelRideSearchSilent() {
       if (activeRideId) {
         socket.emit('ride:cancel', { rideId: activeRideId });
       }
+      activeRideId = null;
+      activeTargetDriverId = null;
+      if (dispatchTimer) {
+        clearInterval(dispatchTimer);
+        dispatchTimer = null;
+      }
       document.getElementById('dispatch-waiting-banner').classList.add('hidden');
+      renderProximityCards(); // Restores button to Light Yellow (Clickable again)
+    }
+
+    function cancelRideSearch() {
+      cancelRideSearchSilent();
     }
 
     function cancelRide() {
@@ -1024,15 +1071,20 @@
     // SOCKET LISTENERS & REAL-TIME FLOW
     // ==========================================
     socket.on('ride:declined_targeted', () => {
-      document.getElementById('dispatch-waiting-banner').classList.add('hidden');
-      alert("⚠️ Selected driver was unavailable. Showing all other nearby cabs to book instantly.");
-      fetchAndRenderNearbyDrivers();
+      cancelRideSearchSilent();
+      alert("⚠️ Driver was unavailable or busy. Button is active again to re-offer or pick another cab.");
     });
 
     socket.on('ride:accepted', ({ rideId, driver, otp, fare }) => {
+      if (dispatchTimer) {
+        clearInterval(dispatchTimer);
+        dispatchTimer = null;
+      }
+      activeTargetDriverId = null;
       activeRideId = rideId || activeRideId;
       tripPhase = 'TO_PICKUP';
 
+      document.getElementById('dispatch-waiting-banner').classList.add('hidden');
       document.getElementById('step-1-route-builder').classList.add('hidden');
       document.getElementById('step-2-cab-selection').classList.add('hidden');
 
@@ -1346,7 +1398,7 @@
       });
     }
 
-    // 3. Rider KYC Upload (Govt ID Number & Front/Back photos to MongoDB)
+    // 3. Rider KYC Upload
     async function uploadCompressedKYC() {
       const govIdNumber = document.getElementById('kyc-id-number').value.trim();
       const frontFile = document.getElementById('kyc-doc-front').files[0];
