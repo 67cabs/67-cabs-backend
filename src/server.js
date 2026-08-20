@@ -29,7 +29,7 @@ const io = new Server(server, {
   transports: ['websocket', 'polling']
 });
 
-// Middlewares (Increased payload limits for document & photo uploads)
+// Middlewares
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -104,7 +104,7 @@ const driverSchema = new mongoose.Schema({
 
 const Driver = mongoose.model('Driver', driverSchema);
 
-// 2. Rider Account Schema (MongoDB Persistence with Password & KYC)
+// 2. Rider Account Schema
 const riderSchema = new mongoose.Schema({
   riderId: { type: String, required: true, unique: true, index: true },
   phone: { type: String, required: true, index: true },
@@ -788,7 +788,7 @@ app.post('/api/fare/estimate', (req, res) => {
   }
 });
 
-// STRICT REAL DRIVER RADAR (FILTERED ONLY BY APPROVED MONGODB DRIVERS)
+// Real-Time Driver Proximity Radar
 app.get('/api/cabs/nearby-all', async (req, res) => {
   try {
     const approvedDrivers = await Driver.find({ status: 'APPROVED' }).lean();
@@ -872,10 +872,13 @@ let activeRides = new Map();
 io.on('connection', (socket) => {
   console.log(`⚡ Device Connected: ${socket.id}`);
 
-  // 1. Driver Online Registration & Location Upsert
+  // 1. Driver Online Registration & Permanent Room Join
   socket.on('driver:register', async (driverData) => {
     const normalizedCabType = (driverData.cabType || 'HATCHBACK').toUpperCase();
     const driverId = driverData.driverId || socket.id;
+
+    // Join permanent Driver Room for guaranteed direct dispatch
+    socket.join(`driver:${driverId}`);
 
     const existingEntry = activeDrivers.get(socket.id);
     const loc = driverData.location || (existingEntry ? existingEntry.location : null);
@@ -908,7 +911,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 2. Targeted 1-Click Ride Request (Dispatches to Matching Driver)
+  // 2. Targeted 1-Click Ride Request (Dual Dispatch: Direct Room + Socket Map)
   socket.on('ride:request_targeted', async (rideData) => {
     const { rideId, targetDriverId, pickup, stops, cabCategory, totalDistanceKm, totalFare, rider } = rideData;
 
@@ -933,16 +936,25 @@ io.on('connection', (socket) => {
       console.warn(`Initial DB Save Warning for ${rideId}:`, dbErr.message);
     }
 
-    let targetedSocketId = null;
-    activeDrivers.forEach((driver, sId) => {
-      if (driver.driverId === targetDriverId) {
-        targetedSocketId = sId;
-      }
-    });
+    // Check if target driver has active socket connections
+    let driverSockets = io.sockets.adapter.rooms.get(`driver:${targetDriverId}`);
+    let isOnline = driverSockets && driverSockets.size > 0;
 
-    if (targetedSocketId) {
-      io.to(targetedSocketId).emit('ride:new_offer', ridePayload);
-      console.log(`🎯 Targeted Ride ${rideId} dispatched to Driver: ${targetDriverId}`);
+    if (!isOnline) {
+      activeDrivers.forEach((driver) => {
+        if (driver.driverId === targetDriverId) isOnline = true;
+      });
+    }
+
+    if (isOnline) {
+      // 100% Reliable Dispatch directly to Driver's Permanent Room
+      io.to(`driver:${targetDriverId}`).emit('ride:new_offer', ridePayload);
+      activeDrivers.forEach((driver, sId) => {
+        if (driver.driverId === targetDriverId) {
+          io.to(sId).emit('ride:new_offer', ridePayload);
+        }
+      });
+      console.log(`🎯 Targeted Ride ${rideId} dispatched to Driver Room: driver:${targetDriverId}`);
     } else {
       socket.emit('ride:declined_targeted', { rideId });
     }
