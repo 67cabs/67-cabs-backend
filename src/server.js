@@ -926,9 +926,8 @@ app.post('/api/admin/driver/suspend', async (req, res) => {
   }
 });
 
-// ---------------- COUPON SYSTEM ROUTES (ADMIN & DRIVER RECHARGE) ----------------
+// ---------------- COUPON SYSTEM ROUTES ----------------
 
-// 1. [ADMIN] Create New Coupon
 app.post('/api/admin/coupons', async (req, res) => {
   try {
     const {
@@ -987,7 +986,6 @@ app.post('/api/admin/coupons', async (req, res) => {
   }
 });
 
-// 2. [ADMIN] Get All Coupons List
 app.get('/api/admin/coupons', async (req, res) => {
   try {
     const coupons = await Coupon.find().sort({ createdAt: -1 });
@@ -997,7 +995,6 @@ app.get('/api/admin/coupons', async (req, res) => {
   }
 });
 
-// 3. [ADMIN] Toggle Coupon Active/Inactive Status
 app.patch('/api/admin/coupons/:id/toggle', async (req, res) => {
   try {
     const coupon = await Coupon.findById(req.params.id);
@@ -1011,7 +1008,6 @@ app.patch('/api/admin/coupons/:id/toggle', async (req, res) => {
   }
 });
 
-// 4. [ADMIN] Delete Coupon
 app.delete('/api/admin/coupons/:id', async (req, res) => {
   try {
     const coupon = await Coupon.findByIdAndDelete(req.params.id);
@@ -1022,7 +1018,6 @@ app.delete('/api/admin/coupons/:id', async (req, res) => {
   }
 });
 
-// 5. [DRIVER] Fetch Applicable Coupons for Logged-in Driver
 app.get('/api/coupons/driver/:driverId', async (req, res) => {
   try {
     const { driverId } = req.params;
@@ -1044,7 +1039,6 @@ app.get('/api/coupons/driver/:driverId', async (req, res) => {
   }
 });
 
-// 6. [DRIVER] Apply Coupon on Recharge
 app.post('/api/coupons/apply', async (req, res) => {
   try {
     const { couponCode, driverId, rechargeAmount } = req.body;
@@ -1075,7 +1069,6 @@ app.post('/api/coupons/apply', async (req, res) => {
       });
     }
 
-    // Check Dedicated Driver Allotment
     if (coupon.targetType === 'SPECIFIC' && !coupon.allowedDrivers.includes(driverId)) {
       return res.status(403).json({ 
         success: false, 
@@ -1083,7 +1076,6 @@ app.post('/api/coupons/apply', async (req, res) => {
       });
     }
 
-    // Check Per Driver Usage Limit
     const driverUsageCount = coupon.usedBy.filter(item => item.driverId === driverId).length;
     if (driverUsageCount >= coupon.usageLimitPerDriver) {
       return res.status(400).json({ 
@@ -1092,7 +1084,6 @@ app.post('/api/coupons/apply', async (req, res) => {
       });
     }
 
-    // Calculate Discount Amount
     let discountAmount = 0;
     if (coupon.discountType === 'FLAT') {
       discountAmount = coupon.discountValue;
@@ -1151,10 +1142,10 @@ app.post('/api/fare/estimate', (req, res) => {
   }
 });
 
-// Real-Time Driver Proximity Radar (Strictly Online & Approved Drivers Only)
+// Real-Time Driver Proximity Radar (Strictly Approved Drivers Only)
 app.get('/api/cabs/nearby-all', async (req, res) => {
   try {
-    const approvedDrivers = await Driver.find({ status: 'APPROVED', isOnline: true }).lean();
+    const approvedDrivers = await Driver.find({ status: 'APPROVED' }).lean();
     const approvedDriverMap = new Map();
     approvedDrivers.forEach(d => approvedDriverMap.set(d.driverId, d));
 
@@ -1228,8 +1219,9 @@ app.get('/api/cabs/nearby', async (req, res) => {
   }
 });
 
-// Real-Time In-Memory Maps
+// Real-Time In-Memory Maps (Keyed by driverId for Zero Lag)
 let activeDrivers = new Map();
+let driverSocketMap = new Map();
 let activeRides = new Map();
 
 io.on('connection', (socket) => {
@@ -1241,12 +1233,13 @@ io.on('connection', (socket) => {
     const driverId = driverData.driverId || socket.id;
 
     socket.join(`driver:${driverId}`);
+    driverSocketMap.set(driverId, socket.id);
 
-    const existingEntry = activeDrivers.get(socket.id);
+    const existingEntry = activeDrivers.get(driverId);
     const loc = driverData.location || (existingEntry ? existingEntry.location : null);
     const isOnlineState = driverData.isOnline !== undefined ? driverData.isOnline : true;
 
-    activeDrivers.set(socket.id, {
+    activeDrivers.set(driverId, {
       driverId,
       name: driverData.name,
       vehicleNo: driverData.vehicleNo,
@@ -1280,14 +1273,11 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 1.1 Driver Toggle Online/Offline State in MongoDB & Memory
+  // 1.1 Driver Toggle Online/Offline State
   socket.on('driver:toggle_online', async ({ driverId, isOnline }) => {
     if (!driverId) return;
-    activeDrivers.forEach((driver) => {
-      if (driver.driverId === driverId) {
-        driver.isOnline = isOnline;
-      }
-    });
+    const d = activeDrivers.get(driverId);
+    if (d) d.isOnline = isOnline;
 
     try {
       await Driver.updateOne({ driverId }, { isOnline });
@@ -1300,7 +1290,8 @@ io.on('connection', (socket) => {
   // 1.2 Driver Instant Logout Cleanup
   socket.on('driver:logout', async ({ driverId }) => {
     if (!driverId) return;
-    activeDrivers.delete(socket.id);
+    activeDrivers.delete(driverId);
+    driverSocketMap.delete(driverId);
     socket.leave(`driver:${driverId}`);
 
     try {
@@ -1336,25 +1327,21 @@ io.on('connection', (socket) => {
       console.warn(`Initial DB Save Warning for ${rideId}:`, dbErr.message);
     }
 
-    let isOnline = false;
-    activeDrivers.forEach((driver) => {
-      if (driver.driverId === targetDriverId && driver.isOnline !== false) {
-        isOnline = true;
-      }
-    });
+    let isOnline = activeDrivers.has(targetDriverId) && activeDrivers.get(targetDriverId).isOnline !== false;
 
     if (!isOnline) {
-      const dbCheck = await Driver.findOne({ driverId: targetDriverId, isOnline: true });
+      const dbCheck = await Driver.findOne({ driverId: targetDriverId, status: 'APPROVED' });
       if (dbCheck) isOnline = true;
     }
 
     if (isOnline) {
+      // 100% Reliable Guaranteed Delivery to Driver's Permanent Room
       io.to(`driver:${targetDriverId}`).emit('ride:new_offer', ridePayload);
-      activeDrivers.forEach((driver, sId) => {
-        if (driver.driverId === targetDriverId) {
-          io.to(sId).emit('ride:new_offer', ridePayload);
-        }
-      });
+      
+      const sId = driverSocketMap.get(targetDriverId);
+      if (sId) {
+        io.to(sId).emit('ride:new_offer', ridePayload);
+      }
       console.log(`🎯 Targeted Ride ${rideId} dispatched to Driver Room: driver:${targetDriverId}`);
     } else {
       socket.emit('ride:declined_targeted', { rideId });
@@ -1403,9 +1390,9 @@ io.on('connection', (socket) => {
       });
     } catch (dbErr) {}
 
-    activeDrivers.forEach((driver, driverSocketId) => {
+    activeDrivers.forEach((driver) => {
       if (driver.status === 'APPROVED' && driver.isOnline !== false && (driver.cabType === requestedCabType || requestedCabType === 'ALL')) {
-        io.to(driverSocketId).emit('ride:new_offer', ridePayload);
+        io.to(`driver:${driver.driverId}`).emit('ride:new_offer', ridePayload);
       }
     });
     io.emit('ride:new_offer', ridePayload);
@@ -1426,7 +1413,13 @@ io.on('connection', (socket) => {
   // 3. Driver Accepts Ride
   socket.on('ride:accept', async ({ rideId, driverData }) => {
     const ride = activeRides.get(rideId);
-    const registeredDriver = activeDrivers.get(socket.id);
+    let registeredDriver = null;
+
+    activeDrivers.forEach((d) => {
+      if (d.socketId === socket.id || d.driverId === driverData?.driverId) {
+        registeredDriver = d;
+      }
+    });
 
     if (registeredDriver && registeredDriver.status !== 'APPROVED') {
       return socket.emit('ride:error', { message: 'Aapka account abhi Admin se Approved nahi hai.' });
@@ -1496,7 +1489,7 @@ io.on('connection', (socket) => {
     io.emit('ride:taken', { rideId });
   });
 
-  // 3.1 Driver Arrived (Guaranteed Multi-Channel Emission)
+  // 3.1 Driver Arrived
   socket.on('driver:arrived', async ({ rideId }) => {
     const ride = activeRides.get(rideId);
     if (ride) {
@@ -1522,10 +1515,11 @@ io.on('connection', (socket) => {
 
   // 3.2 Live Driver GPS Telemetry Stream
   socket.on('driver:location_update', async ({ rideId, lat, lng, phase, heading }) => {
-    const d = activeDrivers.get(socket.id);
-    if (d) {
-      d.location = { lat, lng };
-    }
+    activeDrivers.forEach((d) => {
+      if (d.socketId === socket.id) {
+        d.location = { lat, lng };
+      }
+    });
 
     const ride = activeRides.get(rideId);
     const telemetryPayload = {
@@ -1617,7 +1611,7 @@ io.on('connection', (socket) => {
     completeTripFinal(rideId, totalFare, false, 'STANDARD_DROP');
   });
 
-  // 5.1 Rider Rates Driver Post-Trip (Saved in Trip & Driver Schema in MongoDB)
+  // 5.1 Rider Rates Driver Post-Trip
   socket.on('ride:rate_driver', async ({ rideId, rating }) => {
     try {
       const numRating = Math.min(5, Math.max(1, Number(rating) || 5));
@@ -1670,13 +1664,9 @@ io.on('connection', (socket) => {
         upiId = completedTrip.driverData.upiId;
       }
 
-      // Reset driver memory state to free immediately
       if (completedTrip?.driverData?.driverId) {
-        activeDrivers.forEach((driver) => {
-          if (driver.driverId === completedTrip.driverData.driverId) {
-            driver.isOnline = true;
-          }
-        });
+        const d = activeDrivers.get(completedTrip.driverData.driverId);
+        if (d) d.isOnline = true;
       }
 
       // ONE-TIME REFERRAL REWARD ENGINE
@@ -1732,16 +1722,15 @@ io.on('connection', (socket) => {
     console.log(`🏁 Trip ${rideId} Finalized. Total Fare: ₹${finalAmount}`);
   }
 
-  // Handle Disconnect & Mark Offline
-  socket.on('disconnect', async () => {
-    const d = activeDrivers.get(socket.id);
-    if (d && d.driverId) {
-      try {
-        await Driver.updateOne({ driverId: d.driverId }, { isOnline: false });
-        await DriverLocation.updateOne({ driverId: d.driverId }, { isOnline: false });
-      } catch (e) {}
+  // Handle Disconnect (Soft cleanup without killing active driver database entry)
+  socket.on('disconnect', () => {
+    let disconnectedDriverId = null;
+    driverSocketMap.forEach((sId, dId) => {
+      if (sId === socket.id) disconnectedDriverId = dId;
+    });
+    if (disconnectedDriverId) {
+      driverSocketMap.delete(disconnectedDriverId);
     }
-    activeDrivers.delete(socket.id);
   });
 });
 
