@@ -142,6 +142,15 @@
       <!-- STEP 2: CAB SELECTION & PROXIMITY CARDS   -->
       <!-- ========================================== -->
       <div id="step-2-cab-selection" class="hidden space-y-3">
+        
+        <!-- Live Dispatch Waiting Banner (Shown only while connecting) -->
+        <div id="dispatch-waiting-banner" class="hidden bg-amber-50 border border-amber-300 p-4 rounded-2xl text-center space-y-2">
+          <div class="text-2xl animate-spin">⏳</div>
+          <div class="text-xs font-black text-amber-950">Offering Ride to Selected Driver...</div>
+          <p class="text-[10px] text-amber-800">Awaiting driver response. If declined, other cabs remain available below.</p>
+          <button onclick="cancelRideSearch()" class="text-xs text-red-600 font-bold underline mt-1">Cancel Offer & Pick Another</button>
+        </div>
+
         <!-- Route Summary Pill -->
         <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
           <div class="truncate mr-2">
@@ -172,7 +181,7 @@
         <!-- Proximity Drivers List (Max 5 Dynamic Cards) -->
         <div>
           <div class="flex justify-between items-center mb-1.5">
-            <span class="text-[10px] font-bold text-slate-500 uppercase">Nearby Drivers (Sorted by Distance)</span>
+            <span class="text-[10px] font-bold text-slate-500 uppercase">Available Nearby Drivers</span>
             <span id="cabs-count-tag" class="text-[9px] bg-green-100 text-green-800 font-bold px-2 py-0.5 rounded-full">0 Online</span>
           </div>
           
@@ -346,7 +355,6 @@
       navigator.serviceWorker.register('/sw.js', { scope: '/' });
     }
 
-    // PWA Install Banner Logic
     let deferredPrompt;
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -389,7 +397,6 @@
     let activeRideId = null;
     let currentUser = null;
 
-    // Safety Media Recording States
     let mediaRecorder = null;
     let audioChunks = [];
     let isRecordingAudio = false;
@@ -411,7 +418,6 @@
       );
     }
 
-    // Audio chime notification
     function playArrivedChime() {
       try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -440,7 +446,6 @@
       iconAnchor: [16, 16]
     });
 
-    // Auto-detect referral code from QR scan URL parameter (?ref=DRV_123)
     window.addEventListener('DOMContentLoaded', () => {
       const urlParams = new URLSearchParams(window.location.search);
       const refCode = urlParams.get('ref');
@@ -463,9 +468,6 @@
       }
     }
 
-    // ==========================================
-    // MULTI-STOP ROUTE BUILDER ENGINE
-    // ==========================================
     function addExtraStopRow() {
       const index = dropStops.length;
       if (index >= 4) {
@@ -531,7 +533,6 @@
       stopMarkers[index] = L.marker([lat, lng]).addTo(map).bindPopup(`🏁 Stop ${index + 1}`).openPopup();
     }
 
-    // High Precision Reverse Geocoding
     async function reverseGeocode(lat, lng) {
       try {
         const res = await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}`);
@@ -546,7 +547,6 @@
       return `📍 GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     }
 
-    // High Accuracy GPS Acquisition
     function fetchPreciseGPS() {
       const btn = document.getElementById('btn-gps');
       btn.innerText = '⏳';
@@ -579,7 +579,6 @@
     document.getElementById('btn-gps').addEventListener('click', fetchPreciseGPS);
     window.addEventListener('load', () => setTimeout(fetchPreciseGPS, 800));
 
-    // Autocomplete Setup Engine
     function setupAutocomplete(inputId, resultsId, isPickup, stopIdx = 0) {
       const input = document.getElementById(inputId);
       const resultsContainer = document.getElementById(resultsId);
@@ -668,7 +667,6 @@
         return;
       }
 
-      // OSRM Multi-Waypoint Routing Engine
       const coordsQuery = [
         `${pickupCoords[1]},${pickupCoords[0]}`,
         ...validStops.map(s => `${s.lng},${s.lat}`)
@@ -693,7 +691,6 @@
           routePolyline = L.geoJSON(route.geometry, { style: { color: '#f59e0b', weight: 6 } }).addTo(map);
           map.fitBounds(routePolyline.getBounds(), { padding: [40, 40] });
 
-          // Transition to Step 2
           document.getElementById('step-1-route-builder').classList.add('hidden');
           document.getElementById('step-2-cab-selection').classList.remove('hidden');
           document.getElementById('summary-distance-text').innerText = `${totalTripDistanceKm} km • ~${totalTripDurationMins} mins (${validStops.length} Stops)`;
@@ -720,7 +717,6 @@
       renderProximityCards();
     }
 
-    // Dynamic Distance Pricing Matrix Formula
     function calculateDynamicFare(category, tripKm, pickupKm) {
       const rates = {
         HATCHBACK: { tripPerKm: 16, pickupPerKm: 8, base: 50 },
@@ -780,7 +776,7 @@
       }
 
       listEl.innerHTML = '';
-      filtered.forEach((drv, idx) => {
+      filtered.forEach((drv) => {
         const card = document.createElement('div');
         card.className = "bg-slate-50 hover:bg-amber-50/60 p-3 rounded-xl border border-slate-200 flex items-center justify-between transition shadow-sm";
         card.innerHTML = `
@@ -806,7 +802,7 @@
     }
 
     // ==========================================
-    // TARGETED 1-CLICK DISPATCH
+    // TARGETED 1-CLICK DISPATCH ENGINE
     // ==========================================
     function dispatchTargetedRide(targetDriverId, calculatedFare) {
       activeRideId = `RIDE_${Date.now()}`;
@@ -822,14 +818,15 @@
         rider: currentUser || { name: 'Jaipur Rider', phone: 'Verified' }
       });
 
-      document.getElementById('step-2-cab-selection').innerHTML = `
-        <div class="bg-amber-50 border border-amber-300 p-4 rounded-2xl text-center space-y-2">
-          <div class="text-2xl animate-spin">⏳</div>
-          <div class="text-xs font-black text-amber-950">Offering Ride to Selected Driver...</div>
-          <p class="text-[10px] text-amber-800">Awaiting 15s driver confirmation. If declined, next cab will be offered automatically.</p>
-          <button onclick="cancelRide()" class="text-xs text-red-600 font-bold underline mt-2">Cancel Search</button>
-        </div>
-      `;
+      // Show Waiting Banner Without Destroying List & Tabs
+      document.getElementById('dispatch-waiting-banner').classList.remove('hidden');
+    }
+
+    function cancelRideSearch() {
+      if (activeRideId) {
+        socket.emit('ride:cancel', { rideId: activeRideId });
+      }
+      document.getElementById('dispatch-waiting-banner').classList.add('hidden');
     }
 
     function cancelRide() {
@@ -845,8 +842,9 @@
     // SOCKET LISTENERS & STATE HANDLERS
     // ==========================================
     socket.on('ride:declined_targeted', () => {
-      alert("Selected driver was unavailable. Showing nearby cabs to book next cab instantly.");
-      document.getElementById('step-2-cab-selection').classList.remove('hidden');
+      // Hide waiting banner and restore full category tabs & proximity driver options
+      document.getElementById('dispatch-waiting-banner').classList.add('hidden');
+      alert("⚠️ Selected driver was unavailable. Showing all other nearby cabs to book instantly.");
       fetchAndRenderNearbyDrivers();
     });
 
