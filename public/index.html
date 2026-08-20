@@ -24,9 +24,16 @@
       background: #cbd5e1;
       border-radius: 4px;
     }
+    /* Mobile Leaflet Z-Index Isolation */
+    .leaflet-pane {
+      z-index: 10 !important;
+    }
+    .leaflet-top, .leaflet-bottom {
+      z-index: 20 !important;
+    }
   </style>
 </head>
-<body class="bg-slate-100 flex flex-col md:flex-row h-screen overflow-hidden font-sans">
+<body class="bg-slate-100 flex flex-col md:flex-row h-screen overflow-hidden font-sans relative">
 
   <!-- Left Sidebar / Main Flow Panel -->
   <div class="w-full md:w-[420px] bg-white p-5 shadow-2xl flex flex-col justify-between overflow-y-auto z-20 custom-scrollbar border-r border-slate-200">
@@ -231,8 +238,8 @@
   <!-- ========================================== -->
   <!-- MODAL: FAST SIGNUP & REFERRAL              -->
   <!-- ========================================== -->
-  <div id="auth-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm">
-    <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 space-y-4">
+  <div id="auth-modal" class="fixed inset-0 bg-black/75 z-[99999] flex items-center justify-center p-4 hidden backdrop-blur-sm">
+    <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
       <div class="flex justify-between items-center border-b pb-2">
         <h3 class="text-base font-black text-slate-900">Rider Registration</h3>
         <button onclick="closeAuthModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
@@ -261,8 +268,8 @@
   <!-- ========================================== -->
   <!-- MODAL: DEFERRED KYC IDENTITY UPLOAD        -->
   <!-- ========================================== -->
-  <div id="kyc-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm">
-    <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 space-y-4">
+  <div id="kyc-modal" class="fixed inset-0 bg-black/75 z-[99999] flex items-center justify-center p-4 hidden backdrop-blur-sm">
+    <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
       <div class="flex justify-between items-center border-b pb-2">
         <h3 class="text-base font-black text-slate-900">Identity Verification</h3>
         <button onclick="closeKYCModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
@@ -284,8 +291,8 @@
   <!-- ========================================== -->
   <!-- MODAL: ARRIVAL SAFETY VERIFICATION POPUP   -->
   <!-- ========================================== -->
-  <div id="arrival-safety-modal" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm">
-    <div class="bg-slate-900 text-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-amber-500/50 space-y-4 text-center">
+  <div id="arrival-safety-modal" class="fixed inset-0 bg-black/75 z-[99999] flex items-center justify-center p-4 hidden backdrop-blur-sm">
+    <div class="bg-slate-900 text-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-amber-500/50 space-y-4 text-center max-h-[90vh] overflow-y-auto custom-scrollbar">
       <div class="text-3xl animate-bounce">🔔</div>
       <h3 class="text-base font-black text-amber-400">Driver Arrived at Pickup!</h3>
       <p class="text-xs text-slate-300">
@@ -316,8 +323,8 @@
   <!-- ========================================== -->
   <!-- MODAL: EARLY RIDE TERMINATION OTP          -->
   <!-- ========================================== -->
-  <div id="early-drop-modal" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm">
-    <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 space-y-3 text-center">
+  <div id="early-drop-modal" class="fixed inset-0 bg-black/75 z-[99999] flex items-center justify-center p-4 hidden backdrop-blur-sm">
+    <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 space-y-3 text-center max-h-[90vh] overflow-y-auto custom-scrollbar">
       <h3 class="text-base font-black text-slate-900">End Ride Before Drop?</h3>
       <p class="text-xs text-slate-500">
         Rider-initiated early drop par booked trip ka full fare apply rahega. Driver ko yeh OTP provide karein:
@@ -737,7 +744,6 @@
         renderProximityCards();
       } catch (e) {
         console.warn("Using fallback proximity radar", e);
-        // Mock fallback data for testing
         currentNearbyDrivers = [
           { id: 'DRV_101', name: 'Ramesh Sharma', category: 'HATCHBACK', vehicleNo: 'RJ 14 TA 1102', model: 'WagonR', lat: pickupCoords[0] + 0.008, lng: pickupCoords[1] + 0.005 },
           { id: 'DRV_102', name: 'Vikram Singh', category: 'HATCHBACK', vehicleNo: 'RJ 14 TA 5541', model: 'Tiago', lat: pickupCoords[0] - 0.012, lng: pickupCoords[1] + 0.009 },
@@ -760,7 +766,7 @@
           return { ...d, pickupKm, fare, etaMins };
         })
         .sort((a, b) => a.pickupKm - b.pickupKm)
-        .slice(0, 5); // Max 5 proximity drivers
+        .slice(0, 5);
 
       document.getElementById('cabs-count-tag').innerText = `${filtered.length} Nearby`;
 
@@ -854,7 +860,6 @@
       document.getElementById('display-otp').innerText = otp;
       document.getElementById('rider-confirmed-card').classList.remove('hidden');
 
-      // Pre-fill Arrival Verification Modal Data
       document.getElementById('verify-driver-name').innerText = driver.name;
       document.getElementById('verify-plate-no').innerText = driver.vehicleNo || 'RJ 14 TA 6767';
       document.getElementById('verify-otp-display').innerText = otp;
@@ -1010,7 +1015,6 @@
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-          // Compress to lightweight JPEG Base64
           const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
           if (currentUser) {
             currentUser.isKycDone = true;
