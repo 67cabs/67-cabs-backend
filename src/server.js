@@ -12,9 +12,20 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 const mongoose = require('mongoose');
+const webpush = require('web-push');
 require('dotenv').config();
 
 const { calculateMasterFare } = require('./utils/fareCalculator');
+
+// ---------------- WEB PUSH VAPID CONFIGURATION ----------------
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BEj6z8VwcEmB5cjLwMwFLyWMu7CBGP0LyuTyZK_8TihbQYnKxVs4yJZAz0kLUKPDEAcYbArHtfSf5_C1BKHT6b8';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '17eHNw7Rf8YGkYorXkWpre_vAVTAtsZ4oTjGXGmW2hE';
+
+webpush.setVapidDetails(
+  'mailto:support@67cabs.com',
+  VAPID_PUBLIC_KEY,
+  VAPID_PRIVATE_KEY
+);
 
 const app = express();
 const server = http.createServer(app);
@@ -271,6 +282,32 @@ const couponSchema = new mongoose.Schema({
 
 const Coupon = mongoose.model('Coupon', couponSchema);
 
+// 7. Driver Web Push Subscriptions Schema
+const driverPushSubscriptionSchema = new mongoose.Schema({
+  driverId: { type: String, required: true, index: true },
+  subscription: { type: Object, required: true }
+}, { timestamps: true });
+
+const DriverPushSubscription = mongoose.model('DriverPushSubscription', driverPushSubscriptionSchema);
+
+// Web Push Sender Helper Function
+async function sendDriverPushNotification(driverId, payload) {
+  try {
+    const subs = await DriverPushSubscription.find({ driverId });
+    for (const subDoc of subs) {
+      try {
+        await webpush.sendNotification(subDoc.subscription, JSON.stringify(payload));
+      } catch (err) {
+        if (err.statusCode === 404 || err.statusCode === 410) {
+          await DriverPushSubscription.deleteOne({ _id: subDoc._id });
+        }
+      }
+    }
+  } catch (err) {
+    console.error(`Push dispatch error for Driver ${driverId}:`, err.message);
+  }
+}
+
 // Jaipur Geofencing Boundary Coordinates
 const JAIPUR_BBOX = {
   minLat: 26.6500,
@@ -311,6 +348,26 @@ const handleResetStuckTrips = async (req, res) => {
 
 app.get('/api/admin/reset-stuck-trips', handleResetStuckTrips);
 app.post('/api/admin/reset-stuck-trips', handleResetStuckTrips);
+
+// ---------------- WEB PUSH SUBSCRIPTION APIS ----------------
+app.post('/api/driver/push-subscription', async (req, res) => {
+  try {
+    const { driverId, subscription } = req.body;
+    if (!driverId || !subscription || !subscription.endpoint) {
+      return res.status(400).json({ success: false, message: 'Driver ID and valid subscription payload required.' });
+    }
+
+    await DriverPushSubscription.findOneAndUpdate(
+      { driverId, 'subscription.endpoint': subscription.endpoint },
+      { driverId, subscription },
+      { upsert: true, new: true }
+    );
+
+    return res.json({ success: true, message: 'Push subscription stored successfully.' });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 // ---------------- RIDER AUTH & KYC ROUTES ----------------
 
@@ -829,7 +886,7 @@ app.post('/api/admin/rider/status', async (req, res) => {
     const updated = await Rider.findOneAndUpdate(
       {
         $or: [
-          { phone: cleanPhone },
+          { cleanPhone },
           { phone: phone.trim() }
         ]
       },
@@ -1302,7 +1359,7 @@ io.on('connection', (socket) => {
     console.log(`🚪 Driver ${driverId} logged out & purged from active radar.`);
   });
 
-  // 2. Targeted 1-Click Ride Request (Dual Dispatch: Direct Room + Socket Map)
+  // 2. Targeted 1-Click Ride Request (Dual Dispatch: Direct Room + Socket Map + Web Push)
   socket.on('ride:request_targeted', async (rideData) => {
     const { rideId, targetDriverId, pickup, stops, cabCategory, totalDistanceKm, totalFare, rider } = rideData;
 
@@ -1342,6 +1399,14 @@ io.on('connection', (socket) => {
       if (sId) {
         io.to(sId).emit('ride:new_offer', ridePayload);
       }
+
+      // Web Push Notification Trigger
+      sendDriverPushNotification(targetDriverId, {
+        title: '🚖 Nayi Direct Ride Request!',
+        body: `Kiraya: ₹${ridePayload.totalFare} | Pickup location check karein.`,
+        data: { rideId: ridePayload.rideId, url: '/driver.html' }
+      });
+
       console.log(`🎯 Targeted Ride ${rideId} dispatched to Driver Room: driver:${targetDriverId}`);
     } else {
       socket.emit('ride:declined_targeted', { rideId });
@@ -1393,6 +1458,13 @@ io.on('connection', (socket) => {
     activeDrivers.forEach((driver) => {
       if (driver.status === 'APPROVED' && driver.isOnline !== false && (driver.cabType === requestedCabType || requestedCabType === 'ALL')) {
         io.to(`driver:${driver.driverId}`).emit('ride:new_offer', ridePayload);
+
+        // Web Push Notification Trigger to all matching drivers
+        sendDriverPushNotification(driver.driverId, {
+          title: '🚖 Nayi Ride Request!',
+          body: `Category: ${requestedCabType} | Kiraya: ₹${totalFare}`,
+          data: { rideId, url: '/driver.html' }
+        });
       }
     });
     io.emit('ride:new_offer', ridePayload);
