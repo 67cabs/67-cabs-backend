@@ -225,6 +225,20 @@ function isWithinJaipur(lat, lng) {
   );
 }
 
+// ---------------- STUCK TRIPS RESET & PURGE ROUTE ----------------
+app.post('/api/admin/reset-stuck-trips', async (req, res) => {
+  try {
+    await Trip.updateMany(
+      { status: { $in: ['SEARCHING', 'ACCEPTED', 'ARRIVED', 'ONGOING'] } },
+      { $set: { status: 'CANCELLED' } }
+    );
+    activeRides.clear();
+    return res.json({ success: true, message: 'All stuck and ghost trips purged from database.' });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: e.message });
+  }
+});
+
 // ---------------- RIDER AUTH & KYC ROUTES ----------------
 
 app.post('/api/rider/signup', async (req, res) => {
@@ -424,6 +438,14 @@ app.get('/api/rider/active-ride', async (req, res) => {
     }).sort({ updatedAt: -1 });
 
     if (activeTrip) {
+      // Validate driver exists & is approved; if ghost trip, purge it automatically
+      if (activeTrip.driverData?.driverId) {
+        const validDriver = await Driver.findOne({ driverId: activeTrip.driverData.driverId, status: 'APPROVED' });
+        if (!validDriver) {
+          await Trip.updateOne({ _id: activeTrip._id }, { status: 'CANCELLED' });
+          return res.json({ success: true, hasActiveRide: false });
+        }
+      }
       return res.json({ success: true, hasActiveRide: true, trip: activeTrip });
     }
     return res.json({ success: true, hasActiveRide: false });
@@ -959,8 +981,8 @@ io.on('connection', (socket) => {
 
     activeDrivers.set(socket.id, {
       driverId,
-      name: driverData.name || 'Driver',
-      vehicleNo: driverData.vehicleNo || 'RJ 14 TA 6767',
+      name: driverData.name,
+      vehicleNo: driverData.vehicleNo,
       cabType: normalizedCabType,
       upiId: driverData.upiId || '67cabs@upi',
       status: driverData.status || 'APPROVED',
@@ -978,9 +1000,9 @@ io.on('connection', (socket) => {
         await DriverLocation.findOneAndUpdate(
           { driverId },
           {
-            name: driverData.name || 'Driver',
+            name: driverData.name,
             cabType: normalizedCabType,
-            vehicleNo: driverData.vehicleNo || 'RJ 14 TA 6767',
+            vehicleNo: driverData.vehicleNo,
             location: { lat: loc.lat, lng: loc.lng },
             isOnline: isOnlineState,
             lastActive: new Date()
@@ -1152,8 +1174,10 @@ io.on('connection', (socket) => {
         { 
           status: 'ACCEPTED', 
           driverData: {
-            ...driverData,
-            driverId: registeredDriver ? registeredDriver.driverId : '',
+            driverId: registeredDriver ? registeredDriver.driverId : driverData.driverId,
+            name: registeredDriver ? registeredDriver.name : driverData.name,
+            vehicleNo: registeredDriver ? registeredDriver.vehicleNo : driverData.vehicleNo,
+            phone: driverData?.phone || '',
             upiId: registeredDriver ? registeredDriver.upiId : (driverData?.upiId || '67cabs@upi')
           }, 
           otp: startOtp 
@@ -1169,7 +1193,9 @@ io.on('connection', (socket) => {
       ride.status = 'ACCEPTED';
       ride.driverSocketId = socket.id;
       ride.driverData = {
-        ...driverData,
+        driverId: registeredDriver ? registeredDriver.driverId : driverData.driverId,
+        name: registeredDriver ? registeredDriver.name : driverData.name,
+        vehicleNo: registeredDriver ? registeredDriver.vehicleNo : driverData.vehicleNo,
         upiId: registeredDriver ? registeredDriver.upiId : '67cabs@upi'
       };
       ride.otp = startOtp;
