@@ -150,12 +150,12 @@
       </div>
 
       <div class="pt-1 border-t border-slate-900">
-        <label class="text-[11px] font-bold text-slate-400 block mb-1">📋 Vehicle Permit (Optional)</label>
+        <label class="text-[11px] font-bold text-slate-300 block mb-1">📋 Vehicle Permit (Optional)</label>
         <input type="file" id="doc-permit" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-300" />
       </div>
 
       <div class="pt-1 border-t border-slate-900">
-        <label class="text-[11px] font-bold text-slate-400 block mb-1">📑 Permit Authorization (Optional)</label>
+        <label class="text-[11px] font-bold text-slate-300 block mb-1">📑 Permit Authorization (Optional)</label>
         <input type="file" id="doc-permit-auth" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-300" />
       </div>
 
@@ -230,22 +230,36 @@
 
   <!-- ================= 4. MAIN DRIVER DASHBOARD (APPROVED ONLY) ================= -->
   <div id="main-driver-dashboard" class="hidden w-full max-w-md pb-12">
-    <!-- Header with Settings Button -->
-    <div class="flex justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow mb-3">
-      <div>
-        <h1 class="text-base font-bold text-amber-400 flex items-center gap-1.5">
-          <span>🚖</span> 67 Partner
-        </h1>
-        <p id="driver-header-name" class="text-sm font-semibold">Driver Name (WagonR)</p>
-        <p id="gps-status-indicator" class="text-[11px] text-amber-400 font-bold">● Requesting GPS Location...</p>
+    <!-- Header with Settings, Logout & Dedicated Online/Offline Toggle Switch -->
+    <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow mb-3 space-y-3">
+      <div class="flex justify-between items-center">
+        <div>
+          <h1 class="text-base font-bold text-amber-400 flex items-center gap-1.5">
+            <span>🚖</span> 67 Partner
+          </h1>
+          <p id="driver-header-name" class="text-sm font-semibold">Driver Name (WagonR)</p>
+          <p id="gps-status-indicator" class="text-[11px] text-green-400 font-bold">● ONLINE • Acquiring Coordinates...</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="openSettingsModal()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-2 rounded-xl font-bold hover:text-amber-400 text-xs transition flex items-center gap-1 shadow">
+            ⚙️ <span>Settings</span>
+          </button>
+          <button onclick="logoutDriver()" class="text-[10px] bg-slate-800 border border-slate-700 text-slate-300 px-2 py-2 rounded-xl font-bold hover:bg-slate-700 transition">
+            Logout
+          </button>
+        </div>
       </div>
-      <div class="flex items-center gap-2">
-        <button onclick="openSettingsModal()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-2 rounded-xl font-bold hover:text-amber-400 text-xs transition flex items-center gap-1 shadow">
-          ⚙️ <span>Settings</span>
-        </button>
-        <button onclick="logoutDriver()" class="text-[10px] bg-slate-800 border border-slate-700 text-slate-300 px-2 py-2 rounded-xl font-bold hover:bg-slate-700 transition">
-          Logout
-        </button>
+
+      <!-- Online / Offline Duty Switch -->
+      <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+        <div class="flex items-center gap-2">
+          <span id="duty-status-dot" class="h-3 w-3 rounded-full bg-green-500 animate-pulse"></span>
+          <span id="duty-status-text" class="text-xs font-black text-green-400 tracking-wider uppercase">ON DUTY (ONLINE)</span>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="driver-duty-toggle" checked onchange="toggleDriverDutyState(this.checked)" class="sr-only peer">
+          <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+        </label>
       </div>
     </div>
 
@@ -556,6 +570,7 @@
     let geoWatchId = null;
     let wakeLock = null;
     let currentQRTab = 'rider';
+    let isDriverOnline = true;
 
     // 15-Sec Auto-Expire Timers for Incoming Offers
     let offerExpireTimers = new Map();
@@ -772,8 +787,35 @@
     }
 
     function logoutDriver() {
+      if (currentDriver?.driverId) {
+        socket.emit('driver:logout', { driverId: currentDriver.driverId });
+      }
       localStorage.removeItem('67_driver_session');
       window.location.reload();
+    }
+
+    // Toggle Online / Offline Duty Switch
+    function toggleDriverDutyState(checked) {
+      isDriverOnline = checked;
+      const dot = document.getElementById('duty-status-dot');
+      const text = document.getElementById('duty-status-text');
+      const gpsIndicator = document.getElementById('gps-status-indicator');
+
+      if (isDriverOnline) {
+        dot.className = "h-3 w-3 rounded-full bg-green-500 animate-pulse";
+        text.className = "text-xs font-black text-green-400 tracking-wider uppercase";
+        text.innerText = "ON DUTY (ONLINE)";
+        registerDriver();
+      } else {
+        dot.className = "h-3 w-3 rounded-full bg-red-500";
+        text.className = "text-xs font-black text-slate-400 tracking-wider uppercase";
+        text.innerText = "OFF DUTY (OFFLINE)";
+        gpsIndicator.innerHTML = `● <span class="text-slate-400">OFFLINE</span>`;
+      }
+
+      if (currentDriver?.driverId) {
+        socket.emit('driver:toggle_online', { driverId: currentDriver.driverId, isOnline: isDriverOnline });
+      }
     }
 
     async function deleteAccountDriver() {
@@ -940,16 +982,17 @@
         cabType: currentDriver.cabType,
         upiId: currentDriver.upiId,
         status: currentDriver.status,
+        isOnline: isDriverOnline,
         location: currentDriver.location || null
       });
     }
     socket.on('connect', registerDriver);
 
     setInterval(() => {
-      if (socket.connected && currentDriver?.status === 'APPROVED') {
+      if (socket.connected && currentDriver?.status === 'APPROVED' && isDriverOnline) {
         registerDriver();
       }
-    }, 4000);
+    }, 3000);
 
     async function reverseGeocode(lat, lng) {
       try {
@@ -1010,7 +1053,10 @@
       if (!currentDriver || currentDriver.status !== 'APPROVED') return;
       const { latitude, longitude, heading } = pos.coords;
       currentDriver.location = { lat: latitude, lng: longitude };
-      document.getElementById('gps-status-indicator').innerHTML = `● ONLINE • ${currentDriver.cabType} <span class="text-green-400">(${latitude.toFixed(4)}, ${longitude.toFixed(4)})</span>`;
+      
+      if (isDriverOnline) {
+        document.getElementById('gps-status-indicator').innerHTML = `● ONLINE • ${currentDriver.cabType} <span class="text-green-400">(${latitude.toFixed(4)}, ${longitude.toFixed(4)})</span>`;
+      }
       
       registerDriver();
 
@@ -1108,7 +1154,7 @@
     }
 
     function addOrUpdateOffer(offer) {
-      if (currentActiveRideId || currentDriver?.status !== 'APPROVED') return;
+      if (currentActiveRideId || currentDriver?.status !== 'APPROVED' || !isDriverOnline) return;
       activeOffersMap.set(offer.rideId, offer);
       renderOffersList();
 
@@ -1138,7 +1184,7 @@
     }
 
     socket.on('ride:new_offer', (offer) => {
-      if (!currentActiveRideId && currentDriver?.status === 'APPROVED') {
+      if (!currentActiveRideId && currentDriver?.status === 'APPROVED' && isDriverOnline) {
         addOrUpdateOffer(offer);
       }
     });
