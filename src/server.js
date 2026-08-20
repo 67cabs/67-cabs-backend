@@ -198,6 +198,7 @@ const driverLocationSchema = new mongoose.Schema({
     lat: Number,
     lng: Number
   },
+  isBusy: { type: Boolean, default: false },
   lastActive: { type: Date, default: Date.now }
 });
 const DriverLocation = mongoose.model('DriverLocation', driverLocationSchema);
@@ -220,7 +221,7 @@ function isWithinJaipur(lat, lng) {
   );
 }
 
-// ---------------- RIDER AUTH & KYC ROUTES (MONGODB SYNC) ----------------
+// ---------------- RIDER AUTH & KYC ROUTES ----------------
 
 app.post('/api/rider/signup', async (req, res) => {
   try {
@@ -792,7 +793,7 @@ app.get('/api/cabs/nearby-all', async (req, res) => {
   try {
     const driversList = [];
     activeDrivers.forEach((d) => {
-      if (d.status === 'APPROVED' && d.location && d.location.lat) {
+      if (d.status === 'APPROVED' && !d.isBusy && d.location && d.location.lat) {
         driversList.push({
           id: d.driverId,
           name: d.name,
@@ -805,7 +806,7 @@ app.get('/api/cabs/nearby-all', async (req, res) => {
     });
 
     if (driversList.length === 0) {
-      const dbLocations = await DriverLocation.find().sort({ lastActive: -1 }).limit(20);
+      const dbLocations = await DriverLocation.find({ isBusy: { $ne: true } }).sort({ lastActive: -1 }).limit(20);
       dbLocations.forEach((dl) => {
         if (dl.location && dl.location.lat) {
           driversList.push({
@@ -831,13 +832,13 @@ app.get('/api/cabs/nearby', async (req, res) => {
     const cabType = (req.query.cabType || 'HATCHBACK').toUpperCase();
     let liveDriver = null;
     activeDrivers.forEach((d) => {
-      if (d.cabType === cabType && d.location && d.location.lat) {
+      if (d.cabType === cabType && !d.isBusy && d.location && d.location.lat) {
         liveDriver = d;
       }
     });
 
     if (!liveDriver) {
-      const dbDriver = await DriverLocation.findOne({ cabType }).sort({ lastActive: -1 });
+      const dbDriver = await DriverLocation.findOne({ cabType, isBusy: { $ne: true } }).sort({ lastActive: -1 });
       if (dbDriver && dbDriver.location && dbDriver.location.lat) {
         liveDriver = dbDriver;
       }
@@ -863,10 +864,15 @@ let activeRides = new Map();
 io.on('connection', (socket) => {
   console.log(`⚡ Device Connected: ${socket.id}`);
 
-  // 1. Driver Online Registration
+  // 1. Driver Online Registration & Location Upsert
   socket.on('driver:register', async (driverData) => {
     const normalizedCabType = (driverData.cabType || 'HATCHBACK').toUpperCase();
     const driverId = driverData.driverId || socket.id;
+
+    // Preserve current location if incoming payload is temporary null
+    const existingEntry = activeDrivers.get(socket.id);
+    const loc = driverData.location || (existingEntry ? existingEntry.location : null);
+    const isBusy = existingEntry ? existingEntry.isBusy : false;
 
     activeDrivers.set(socket.id, {
       driverId,
@@ -875,11 +881,12 @@ io.on('connection', (socket) => {
       cabType: normalizedCabType,
       upiId: driverData.upiId || '67cabs@upi',
       status: driverData.status || 'APPROVED',
-      location: driverData.location || null,
+      location: loc,
+      isBusy: isBusy,
       socketId: socket.id
     });
 
-    if (driverData.location && driverData.location.lat) {
+    if (loc && loc.lat) {
       try {
         await DriverLocation.findOneAndUpdate(
           { driverId },
@@ -887,7 +894,8 @@ io.on('connection', (socket) => {
             name: driverData.name || 'Driver',
             cabType: normalizedCabType,
             vehicleNo: driverData.vehicleNo || 'RJ 14 TA 6767',
-            location: { lat: driverData.location.lat, lng: driverData.location.lng },
+            location: { lat: loc.lat, lng: loc.lng },
+            isBusy: isBusy,
             lastActive: new Date()
           },
           { upsert: true }
@@ -896,7 +904,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 2. Targeted 1-Click Ride Request
+  // 2. Targeted 1-Click Ride Request (Dispatches to Matching Driver)
   socket.on('ride:request_targeted', async (rideData) => {
     const { rideId, targetDriverId, pickup, stops, cabCategory, totalDistanceKm, totalFare, rider } = rideData;
 
@@ -923,7 +931,8 @@ io.on('connection', (socket) => {
 
     let targetedSocketId = null;
     activeDrivers.forEach((driver, sId) => {
-      if (driver.driverId === targetDriverId) {
+      // Find driver by exact ID and ensure they are not already on another ride
+      if (driver.driverId === targetDriverId && !driver.isBusy) {
         targetedSocketId = sId;
       }
     });
@@ -979,7 +988,7 @@ io.on('connection', (socket) => {
     } catch (dbErr) {}
 
     activeDrivers.forEach((driver, driverSocketId) => {
-      if (driver.status === 'APPROVED' && (driver.cabType === requestedCabType || requestedCabType === 'ALL')) {
+      if (driver.status === 'APPROVED' && !driver.isBusy && (driver.cabType === requestedCabType || requestedCabType === 'ALL')) {
         io.to(driverSocketId).emit('ride:new_offer', ridePayload);
       }
     });
@@ -988,6 +997,11 @@ io.on('connection', (socket) => {
 
   socket.on('ride:cancel', async ({ rideId }) => {
     try {
+      const ride = activeRides.get(rideId);
+      if (ride && ride.driverSocketId) {
+        const d = activeDrivers.get(ride.driverSocketId);
+        if (d) d.isBusy = false;
+      }
       await Trip.updateOne({ rideId }, { status: 'CANCELLED' });
       activeRides.delete(rideId);
       io.emit('ride:cancelled', { rideId });
@@ -998,13 +1012,20 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 3. Driver Accepts Ride
+  // 3. Driver Accepts Ride (Locks Driver Status to Busy)
   socket.on('ride:accept', async ({ rideId, driverData }) => {
     const ride = activeRides.get(rideId);
     const registeredDriver = activeDrivers.get(socket.id);
 
     if (registeredDriver && registeredDriver.status !== 'APPROVED') {
       return socket.emit('ride:error', { message: 'Aapka account abhi Admin se Approved nahi hai.' });
+    }
+
+    if (registeredDriver) {
+      registeredDriver.isBusy = true; // Prevents second simultaneous booking
+      try {
+        await DriverLocation.updateOne({ driverId: registeredDriver.driverId }, { isBusy: true });
+      } catch (e) {}
     }
 
     const startOtp = Math.floor(1000 + Math.random() * 9000).toString();
@@ -1198,6 +1219,17 @@ io.on('connection', (socket) => {
     const ride = activeRides.get(rideId);
     let upiId = ride?.driverData?.upiId || '67cabs@upi';
 
+    // Release Driver Busy Lock so they can take the next ride
+    if (ride && ride.driverSocketId) {
+      const d = activeDrivers.get(ride.driverSocketId);
+      if (d) d.isBusy = false;
+    }
+    if (ride?.driverData?.driverId) {
+      try {
+        await DriverLocation.updateOne({ driverId: ride.driverData.driverId }, { isBusy: false });
+      } catch (e) {}
+    }
+
     try {
       const completedTrip = await Trip.findOneAndUpdate(
         { rideId },
@@ -1214,9 +1246,7 @@ io.on('connection', (socket) => {
         upiId = completedTrip.driverData.upiId;
       }
 
-      // ==============================================================
-      // ONE-TIME 1 FREE RIDE REWARD ENGINE (REFERRER DRIVER ONLY)
-      // ==============================================================
+      // ONE-TIME REFERRAL REWARD ENGINE
       if (completedTrip?.riderData?.phone) {
         const riderPhone = sanitizePhone(completedTrip.riderData.phone);
         const riderDoc = await Rider.findOne({ phone: riderPhone });

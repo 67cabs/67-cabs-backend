@@ -238,7 +238,7 @@
           <span>🚖</span> 67 Partner
         </h1>
         <p id="driver-header-name" class="text-sm font-semibold">Driver Name (WagonR)</p>
-        <p id="gps-status-indicator" class="text-[11px] text-amber-400 font-bold">● Requesting GPS Permission...</p>
+        <p id="gps-status-indicator" class="text-[11px] text-green-400 font-bold">● ONLINE • Acquiring Coordinates...</p>
       </div>
       <div class="flex items-center gap-2">
         <button onclick="openSettingsModal()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-2 rounded-xl font-bold hover:text-amber-400 text-xs transition flex items-center gap-1 shadow">
@@ -970,17 +970,12 @@
         return;
       }
 
-      // 1. Instant fallback coordinates to immediately go ONLINE
-      const fallbackPos = {
-        coords: {
-          latitude: (currentDriver?.location?.lat) || 26.9124,
-          longitude: (currentDriver?.location?.lng) || 75.7873,
-          heading: 0
-        }
-      };
-      updatePosition(fallbackPos);
+      // 1. Instant fallback location update to immediately register as active
+      const fallbackLat = (currentDriver?.location?.lat) || 26.9124;
+      const fallbackLng = (currentDriver?.location?.lng) || 75.7873;
+      updatePosition({ coords: { latitude: fallbackLat, longitude: fallbackLng, heading: 0 } });
 
-      // 2. High accuracy hardware GPS acquisition
+      // 2. High-Accuracy Hardware Position Lock
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           updatePosition(pos);
@@ -993,16 +988,16 @@
           }
         },
         (err) => {
-          console.warn("GPS lookup using fallback coordinates:", err.message);
+          console.warn("High accuracy GPS failed, falling back to network positioning:", err.message);
           if (!geoWatchId) {
             geoWatchId = navigator.geolocation.watchPosition(
               updatePosition,
-              (e) => console.warn("Watch fallback err:", e.message),
+              (e) => console.warn("Network watchPosition err:", e.message),
               { enableHighAccuracy: false, maximumAge: 5000, timeout: 15000 }
             );
           }
         },
-        { enableHighAccuracy: true, timeout: 10000 }
+        { enableHighAccuracy: true, timeout: 8000 }
       );
     }
 
