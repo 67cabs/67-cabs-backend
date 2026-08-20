@@ -1000,13 +1000,12 @@
     // TARGETED 1-CLICK DISPATCH ENGINE (WITH 15-SEC SINGLE LOCK)
     // ==============================================================
     function dispatchTargetedRide(targetDriverId, calculatedFare) {
-      if (activeTargetDriverId) return; // Prevent duplicate multi-clicks
+      if (activeTargetDriverId) return;
 
       activeRideId = `RIDE_${Date.now()}`;
       activeTargetDriverId = targetDriverId;
       tripPhase = 'TO_PICKUP';
       
-      // Update Button State to Dark & Unclickable
       renderProximityCards();
 
       socket.emit('ride:request_targeted', {
@@ -1022,7 +1021,6 @@
 
       document.getElementById('dispatch-waiting-banner').classList.remove('hidden');
 
-      // Start 15-Second Auto-Timeout Countdown
       dispatchCountdown = 15;
       document.getElementById('dispatch-timer-text').innerText = `Awaiting driver response (Auto-timeout in ${dispatchCountdown}s)`;
 
@@ -1032,7 +1030,6 @@
         if (dispatchCountdown > 0) {
           document.getElementById('dispatch-timer-text').innerText = `Awaiting driver response (Auto-timeout in ${dispatchCountdown}s)`;
         } else {
-          // 15s Completed -> Sleep & Restore Button to Light Yellow
           clearInterval(dispatchTimer);
           dispatchTimer = null;
           cancelRideSearchSilent();
@@ -1051,7 +1048,7 @@
         dispatchTimer = null;
       }
       document.getElementById('dispatch-waiting-banner').classList.add('hidden');
-      renderProximityCards(); // Restores button to Light Yellow (Clickable again)
+      renderProximityCards();
     }
 
     function cancelRideSearch() {
@@ -1102,16 +1099,36 @@
       document.getElementById('verify-otp-display').innerText = otp;
     });
 
-    socket.on('ride:driver_arrived', () => {
+    // CRITICAL FIX: Direct Arrival Notification & Safety Verification Popup
+    function handleDriverArrivalUI() {
       tripPhase = 'ARRIVED';
       playArrivedChime();
-      document.getElementById('arrival-safety-modal').classList.remove('hidden');
+      
+      const arrivalModal = document.getElementById('arrival-safety-modal');
+      if (arrivalModal) arrivalModal.classList.remove('hidden');
+
       const statusEl = document.getElementById('trip-live-status');
-      statusEl.innerHTML = `🔔 <b class="text-amber-400">Driver Arrived at Pickup!</b> Share OTP & board cab.`;
-      statusEl.className = "text-center text-xs text-amber-300 bg-amber-950/60 p-3 rounded-xl border border-amber-500 animate-pulse";
-    });
+      if (statusEl) {
+        statusEl.innerHTML = `🔔 <b class="text-amber-400">Driver Arrived at Pickup!</b> Please verify plate & share OTP.`;
+        statusEl.className = "text-center text-xs text-amber-300 bg-amber-950/70 p-3 rounded-xl border border-amber-500 animate-pulse font-bold";
+      }
+
+      const badge = document.getElementById('ride-status-badge');
+      if (badge) {
+        badge.innerText = 'DRIVER ARRIVED AT PICKUP';
+        badge.className = 'text-[10px] text-amber-400 font-bold uppercase tracking-wider animate-pulse';
+      }
+    }
+
+    socket.on('ride:driver_arrived', handleDriverArrivalUI);
+    socket.on(`ride:driver_arrived:${activeRideId}`, handleDriverArrivalUI);
 
     socket.on('driver:location_broadcast', ({ lat, lng, phase }) => {
+      if (phase === 'ARRIVED' || tripPhase === 'ARRIVED') {
+        tripPhase = 'ARRIVED';
+        return; // Do not overwrite arrival state with location calculation text
+      }
+
       if (phase) tripPhase = phase;
       if (liveDriverMarker) {
         liveDriverMarker.setLatLng([lat, lng]);
@@ -1120,13 +1137,8 @@
       }
 
       const statusEl = document.getElementById('trip-live-status');
-      if (tripPhase === 'ARRIVED') {
-        statusEl.innerHTML = `🔔 <b class="text-amber-400">Driver Arrived at Pickup!</b> Share OTP & board cab.`;
-        return;
-      }
-
       const targetCoords = (tripPhase === 'TO_DROP' && dropStops[0].lat) ? [dropStops[0].lat, dropStops[0].lng] : pickupCoords;
-      if (targetCoords) {
+      if (targetCoords && statusEl) {
         const distKm = (map.distance([lat, lng], targetCoords) / 1000).toFixed(1);
         const etaMins = Math.max(1, Math.round(distKm * 3));
 

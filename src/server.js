@@ -1135,7 +1135,7 @@ io.on('connection', (socket) => {
     io.emit('ride:taken', { rideId });
   });
 
-  // 3.1 Driver Arrived
+  // 3.1 Driver Arrived (Guaranteed Multi-Channel Emission)
   socket.on('driver:arrived', async ({ rideId }) => {
     const ride = activeRides.get(rideId);
     if (ride) {
@@ -1150,6 +1150,10 @@ io.on('connection', (socket) => {
     }
     await Trip.updateOne({ rideId }, { status: 'ARRIVED' }).catch(() => {});
     io.emit(`ride:driver_arrived:${rideId}`, {
+      rideId,
+      message: '🚖 Driver has arrived at your pickup location!'
+    });
+    io.emit('ride:driver_arrived', {
       rideId,
       message: '🚖 Driver has arrived at your pickup location!'
     });
