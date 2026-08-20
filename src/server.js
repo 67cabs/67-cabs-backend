@@ -78,6 +78,8 @@ const driverSchema = new mongoose.Schema({
   referralCode: { type: String, default: '' },
   walletBalance: { type: Number, default: 0 },
   bonusFreeRides: { type: Number, default: 0 },
+  rating: { type: Number, default: 5.0 },
+  totalRatingsCount: { type: Number, default: 1 },
   isFirstTripRewardClaimed: { type: Boolean, default: false },
   documents: {
     selfiePhoto: { type: String, default: '' },
@@ -140,7 +142,7 @@ const driverAuditSchema = new mongoose.Schema({
 
 const DriverAudit = mongoose.model('DriverAudit', driverAuditSchema);
 
-// 4. Trip History Schema
+// 4. Trip History Schema (Ratings & Fares in MongoDB)
 const tripSchema = new mongoose.Schema({
   rideId: { type: String, required: true, unique: true, index: true },
   cabType: { type: String, required: true },
@@ -1256,11 +1258,32 @@ io.on('connection', (socket) => {
     completeTripFinal(rideId, totalFare, false, 'STANDARD_DROP');
   });
 
-  // 5.1 Rider Rates Driver Post-Trip
+  // 5.1 Rider Rates Driver Post-Trip (Saved in Trip & Driver Schema in MongoDB)
   socket.on('ride:rate_driver', async ({ rideId, rating }) => {
     try {
-      await Trip.updateOne({ rideId }, { rating: Number(rating) || 5 });
-      console.log(`⭐ Trip ${rideId} rated ${rating} Stars by Rider.`);
+      const numRating = Math.min(5, Math.max(1, Number(rating) || 5));
+      const trip = await Trip.findOneAndUpdate(
+        { rideId }, 
+        { rating: numRating },
+        { new: true }
+      );
+
+      if (trip && trip.driverData && trip.driverData.driverId) {
+        const driver = await Driver.findOne({ driverId: trip.driverData.driverId });
+        if (driver) {
+          const currentCount = driver.totalRatingsCount || 1;
+          const currentAvg = driver.rating || 5.0;
+          const newAvg = parseFloat(((currentAvg * currentCount + numRating) / (currentCount + 1)).toFixed(1));
+          await Driver.updateOne(
+            { driverId: driver.driverId },
+            { 
+              $set: { rating: newAvg },
+              $inc: { totalRatingsCount: 1 }
+            }
+          );
+        }
+      }
+      console.log(`⭐ Trip ${rideId} rated ${numRating} Stars and saved to MongoDB.`);
     } catch (err) {
       console.error('Rating DB Error:', err.message);
     }
