@@ -406,7 +406,7 @@
             <div id="referral-qrcode-target" class="flex justify-center"></div>
           </div>
 
-          <p id="qr-desc-text" class="text-[11px] font-medium text-amber-300">Scan to register Rider (Earn 1 Free Ride upon 1st trip)</p>
+          <p id="qr-desc-text" class="text-[11px] font-medium text-amber-300">Scan to register Rider with bonus</p>
           <p class="text-[10px] text-slate-500">Your Code: <b id="display-ref-code" class="text-white font-mono">-</b></p>
         </div>
       </div>
@@ -737,6 +737,8 @@
         password: document.getElementById('login-password').value.trim()
       };
 
+      let loginSuccessData = null;
+
       try {
         const res = await fetch('/api/driver/login', {
           method: 'POST',
@@ -746,16 +748,25 @@
         
         const data = await res.json();
         if (res.ok && data.success && data.driver) {
+          loginSuccessData = data.driver;
           localStorage.setItem('67_driver_session', JSON.stringify(data.driver));
-          initDriverSession(data.driver);
         } else {
           alert(`⚠️ ${data.message || 'Login failed. Invalid Credentials.'}`);
+          loginBtn.disabled = false;
+          loginBtn.innerText = 'LOGIN TO PARTNER PORTAL';
+          return;
         }
       } catch (err) {
-        alert('Server connection error. Please try again.');
-      } finally {
+        alert('Server connection error. Please check your network and try again.');
         loginBtn.disabled = false;
         loginBtn.innerText = 'LOGIN TO PARTNER PORTAL';
+        return;
+      }
+
+      if (loginSuccessData) {
+        loginBtn.disabled = false;
+        loginBtn.innerText = 'LOGIN TO PARTNER PORTAL';
+        initDriverSession(loginSuccessData);
       }
     }
 

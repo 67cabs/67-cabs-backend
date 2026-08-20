@@ -222,7 +222,6 @@ function isWithinJaipur(lat, lng) {
 
 // ---------------- RIDER AUTH & KYC ROUTES (MONGODB SYNC) ----------------
 
-// Fast 5-Sec Rider Signup API with Password
 app.post('/api/rider/signup', async (req, res) => {
   try {
     const { name, phone, password, referralCode } = req.body;
@@ -276,7 +275,6 @@ app.post('/api/rider/signup', async (req, res) => {
   }
 });
 
-// Rider Login API
 app.post('/api/rider/login', async (req, res) => {
   try {
     const { phone, password } = req.body;
@@ -323,7 +321,6 @@ app.post('/api/rider/login', async (req, res) => {
   }
 });
 
-// Rider KYC Upload API (Govt ID Verification)
 app.post('/api/rider/upload-kyc', async (req, res) => {
   try {
     const { phone, govIdNumber, govIdFront, govIdBack } = req.body;
@@ -361,7 +358,6 @@ app.post('/api/rider/upload-kyc', async (req, res) => {
   }
 });
 
-// Rider Self-Delete Account API
 app.post('/api/rider/delete-account', async (req, res) => {
   try {
     const { phone } = req.body;
