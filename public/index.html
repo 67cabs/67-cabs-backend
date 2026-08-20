@@ -430,30 +430,37 @@
 
       <div class="space-y-2 text-left">
         <label class="text-[10px] font-bold text-slate-400 uppercase">Pay Direct via UPI App / Cash</label>
-        <div class="grid grid-cols-3 gap-2">
-          <a id="btn-pay-gpay" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 p-2.5 rounded-xl flex flex-col items-center justify-center text-center transition shadow cursor-pointer">
-            <span class="text-xl">🔵</span>
-            <span class="text-[10px] font-bold mt-1 text-slate-200">GPay</span>
+        <div class="grid grid-cols-4 gap-1.5">
+          <a id="btn-pay-gpay" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 p-2 rounded-xl flex flex-col items-center justify-center text-center transition shadow cursor-pointer">
+            <span class="text-lg">🔵</span>
+            <span class="text-[9px] font-bold mt-1 text-slate-200">GPay</span>
           </a>
-          <a id="btn-pay-phonepe" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 p-2.5 rounded-xl flex flex-col items-center justify-center text-center transition shadow cursor-pointer">
-            <span class="text-xl">🟣</span>
-            <span class="text-[10px] font-bold mt-1 text-slate-200">PhonePe</span>
+          <a id="btn-pay-phonepe" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 p-2 rounded-xl flex flex-col items-center justify-center text-center transition shadow cursor-pointer">
+            <span class="text-lg">🟣</span>
+            <span class="text-[9px] font-bold mt-1 text-slate-200">PhonePe</span>
           </a>
-          <a id="btn-pay-paytm" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 p-2.5 rounded-xl flex flex-col items-center justify-center text-center transition shadow cursor-pointer">
-            <span class="text-xl">🔷</span>
-            <span class="text-[10px] font-bold mt-1 text-slate-200">Paytm</span>
+          <a id="btn-pay-paytm" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 p-2 rounded-xl flex flex-col items-center justify-center text-center transition shadow cursor-pointer">
+            <span class="text-lg">🔷</span>
+            <span class="text-[9px] font-bold mt-1 text-slate-200">Paytm</span>
+          </a>
+          <a id="btn-pay-any-upi" class="bg-slate-950 hover:bg-slate-800 border border-amber-500/50 p-2 rounded-xl flex flex-col items-center justify-center text-center transition shadow cursor-pointer" title="Pay via Cred, Amazon Pay, BHIM or other UPI Apps">
+            <span class="text-lg">⚡</span>
+            <span class="text-[9px] font-bold mt-1 text-amber-400">Other UPI</span>
           </a>
         </div>
       </div>
 
       <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800 space-y-2">
-        <div class="text-[11px] font-bold text-amber-400">Rate Driver Experience</div>
+        <div class="flex justify-between items-center text-xs">
+          <span class="text-slate-400 font-bold">Rate Experience:</span>
+          <span id="rating-score-display" class="font-black text-amber-400">5.0 ★</span>
+        </div>
         <div class="flex justify-center gap-2 text-2xl" id="star-rating-container">
-          <button onclick="setDriverRating(1)" class="star-btn transition transform hover:scale-125 text-amber-400">⭐</button>
-          <button onclick="setDriverRating(2)" class="star-btn transition transform hover:scale-125 text-amber-400">⭐</button>
-          <button onclick="setDriverRating(3)" class="star-btn transition transform hover:scale-125 text-amber-400">⭐</button>
-          <button onclick="setDriverRating(4)" class="star-btn transition transform hover:scale-125 text-amber-400">⭐</button>
-          <button onclick="setDriverRating(5)" class="star-btn transition transform hover:scale-125 text-amber-400">⭐</button>
+          <button type="button" onclick="setDriverRating(1)" class="star-btn transition transform hover:scale-125 text-amber-400">⭐</button>
+          <button type="button" onclick="setDriverRating(2)" class="star-btn transition transform hover:scale-125 text-amber-400">⭐</button>
+          <button type="button" onclick="setDriverRating(3)" class="star-btn transition transform hover:scale-125 text-amber-400">⭐</button>
+          <button type="button" onclick="setDriverRating(4)" class="star-btn transition transform hover:scale-125 text-amber-400">⭐</button>
+          <button type="button" onclick="setDriverRating(5)" class="star-btn transition transform hover:scale-125 text-amber-400">⭐</button>
         </div>
       </div>
 
@@ -1099,7 +1106,7 @@
       document.getElementById('verify-otp-display').innerText = otp;
     });
 
-    // CRITICAL FIX: Direct Arrival Notification & Safety Verification Popup
+    // Direct Arrival Notification & Safety Verification Popup
     function handleDriverArrivalUI() {
       tripPhase = 'ARRIVED';
       playArrivedChime();
@@ -1126,7 +1133,7 @@
     socket.on('driver:location_broadcast', ({ lat, lng, phase }) => {
       if (phase === 'ARRIVED' || tripPhase === 'ARRIVED') {
         tripPhase = 'ARRIVED';
-        return; // Do not overwrite arrival state with location calculation text
+        return; // Do not overwrite arrival state
       }
 
       if (phase) tripPhase = phase;
@@ -1173,22 +1180,37 @@
       const gpayUrl = `gpay://upi/pay?pa=${encodeURIComponent(upiVpa)}&pn=67Driver&am=${encodeURIComponent(finalFare)}&cu=INR&tn=67CabTrip`;
       const phonepeUrl = `phonepe://pay?pa=${encodeURIComponent(upiVpa)}&pn=67Driver&am=${encodeURIComponent(finalFare)}&cu=INR&tn=67CabTrip`;
       const paytmUrl = `paytmmp://pay?pa=${encodeURIComponent(upiVpa)}&pn=67Driver&am=${encodeURIComponent(finalFare)}&cu=INR&tn=67CabTrip`;
+      const universalUpiUrl = `upi://pay?pa=${encodeURIComponent(upiVpa)}&pn=67Driver&am=${encodeURIComponent(finalFare)}&cu=INR&tn=67CabTrip`;
 
       document.getElementById('btn-pay-gpay').href = gpayUrl;
       document.getElementById('btn-pay-phonepe').href = phonepeUrl;
       document.getElementById('btn-pay-paytm').href = paytmUrl;
+      document.getElementById('btn-pay-any-upi').href = universalUpiUrl;
 
+      setDriverRating(5); // Default 5 Stars
       document.getElementById('rider-settlement-modal').classList.remove('hidden');
     });
 
+    // Dynamic Star Rating Handler
     function setDriverRating(rating) {
       currentSelectedRating = rating;
-      const stars = document.querySelectorAll('.star-btn');
-      stars.forEach((s, idx) => {
-        s.className = idx < rating 
-          ? "star-btn transition transform scale-110 text-amber-400" 
-          : "star-btn transition transform text-slate-600";
-      });
+      const scoreDisplay = document.getElementById('rating-score-display');
+      if (scoreDisplay) {
+        scoreDisplay.innerText = `${rating}.0 ★`;
+      }
+
+      const container = document.getElementById('star-rating-container');
+      if (container) {
+        const stars = container.querySelectorAll('.star-btn');
+        stars.forEach((btn, idx) => {
+          if (idx < rating) {
+            btn.className = "star-btn transition transform hover:scale-125 text-amber-400 grayscale-0 opacity-100";
+          } else {
+            btn.className = "star-btn transition transform hover:scale-125 text-slate-500 opacity-40";
+          }
+        });
+      }
+
       if (activeRideId) {
         socket.emit('ride:rate_driver', { rideId: activeRideId, rating });
       }
