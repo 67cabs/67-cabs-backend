@@ -225,19 +225,28 @@ function isWithinJaipur(lat, lng) {
   );
 }
 
-// ---------------- STUCK TRIPS RESET & PURGE ROUTE ----------------
-app.post('/api/admin/reset-stuck-trips', async (req, res) => {
+// ---------------- STUCK TRIPS RESET & PURGE ROUTE (SUPPORTS GET & POST) ----------------
+const handleResetStuckTrips = async (req, res) => {
   try {
     await Trip.updateMany(
       { status: { $in: ['SEARCHING', 'ACCEPTED', 'ARRIVED', 'ONGOING'] } },
-      { $set: { status: 'CANCELLED' } }
+      { $set: { status: 'CANCELLED', isRiderDismissed: true, isDriverDismissed: true } }
     );
     activeRides.clear();
-    return res.json({ success: true, message: 'All stuck and ghost trips purged from database.' });
+    return res.send(`
+      <div style="font-family:sans-serif; text-align:center; padding:40px; background:#0f172a; color:#f59e0b; min-height:100vh;">
+        <h1 style="font-size:32px;">✅ All Stuck Trips Purged Successfully!</h1>
+        <p style="color:#cbd5e1; font-size:16px;">Purane ghost records cancel kar diye gaye hain. Ab Rider aur Driver app fresh state me khulenge.</p>
+        <a href="/" style="display:inline-block; margin-top:20px; background:#f59e0b; color:#0f172a; font-weight:bold; padding:12px 24px; border-radius:12px; text-decoration:none;">Open Rider App</a>
+      </div>
+    `);
   } catch (e) {
     return res.status(500).json({ success: false, error: e.message });
   }
-});
+};
+
+app.get('/api/admin/reset-stuck-trips', handleResetStuckTrips);
+app.post('/api/admin/reset-stuck-trips', handleResetStuckTrips);
 
 // ---------------- RIDER AUTH & KYC ROUTES ----------------
 
@@ -438,11 +447,10 @@ app.get('/api/rider/active-ride', async (req, res) => {
     }).sort({ updatedAt: -1 });
 
     if (activeTrip) {
-      // Validate driver exists & is approved; if ghost trip, purge it automatically
       if (activeTrip.driverData?.driverId) {
         const validDriver = await Driver.findOne({ driverId: activeTrip.driverData.driverId, status: 'APPROVED' });
         if (!validDriver) {
-          await Trip.updateOne({ _id: activeTrip._id }, { status: 'CANCELLED' });
+          await Trip.updateOne({ _id: activeTrip._id }, { status: 'CANCELLED', isRiderDismissed: true });
           return res.json({ success: true, hasActiveRide: false });
         }
       }
