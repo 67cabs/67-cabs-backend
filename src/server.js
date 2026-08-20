@@ -1309,6 +1309,15 @@ io.on('connection', (socket) => {
         upiId = completedTrip.driverData.upiId;
       }
 
+      // Reset driver memory state to free immediately
+      if (completedTrip?.driverData?.driverId) {
+        activeDrivers.forEach((driver) => {
+          if (driver.driverId === completedTrip.driverData.driverId) {
+            driver.isOnline = true;
+          }
+        });
+      }
+
       // ONE-TIME REFERRAL REWARD ENGINE
       if (completedTrip?.riderData?.phone) {
         const riderPhone = sanitizePhone(completedTrip.riderData.phone);

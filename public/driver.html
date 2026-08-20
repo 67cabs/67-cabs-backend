@@ -1365,10 +1365,26 @@
 
       document.getElementById('payment-modal').classList.remove('hidden');
       document.getElementById('payment-modal').classList.add('flex');
+
+      // Reset driver state immediately to be available for next rides
+      currentActiveRideId = null;
+      acceptedRide = null;
+      activeOffersMap.clear();
+      registerDriver();
     });
 
     function dismissPaymentModal() {
-      window.location.reload();
+      document.getElementById('payment-modal').classList.add('hidden');
+      document.getElementById('payment-modal').classList.remove('flex');
+      document.getElementById('active-ride-card').classList.add('hidden');
+      document.getElementById('waiting-radar').classList.remove('hidden');
+      
+      currentActiveRideId = null;
+      acceptedRide = null;
+      activeOffersMap.clear();
+      
+      // Re-announce driver presence to radar
+      registerDriver();
     }
 
     // ==========================================
