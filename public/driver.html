@@ -883,17 +883,28 @@
         document.getElementById('dash-wallet-bal').innerText = `₹${driver.walletBalance || 0}.00`;
         document.getElementById('dash-bonus-rides').innerText = `${driver.bonusFreeRides || 0} Rides`;
 
-        // Pre-fill profile settings modal
-        document.getElementById('set-profile-name').innerText = driver.name;
-        document.getElementById('set-profile-vehicle').innerText = driver.vehicleNo;
-        document.getElementById('set-profile-category').innerText = driver.cabType;
-        document.getElementById('set-profile-upi').innerText = driver.upiId || '67cabs@upi';
-        document.getElementById('modal-wallet-balance').innerText = `₹${driver.walletBalance || 0}.00`;
-        document.getElementById('modal-bonus-rides').innerText = `${driver.bonusFreeRides || 0} Free Rides`;
+        populateSettingsDetails(driver);
 
         registerDriver();
         initDriverGPS();
       }
+    }
+
+    function populateSettingsDetails(driver) {
+      if (!driver) return;
+      const elName = document.getElementById('set-profile-name');
+      const elVehicle = document.getElementById('set-profile-vehicle');
+      const elCat = document.getElementById('set-profile-category');
+      const elUpi = document.getElementById('set-profile-upi');
+      const elWallet = document.getElementById('modal-wallet-balance');
+      const elBonus = document.getElementById('modal-bonus-rides');
+
+      if (elName) elName.innerText = driver.name || '-';
+      if (elVehicle) elVehicle.innerText = driver.vehicleNo || '-';
+      if (elCat) elCat.innerText = driver.cabType || '-';
+      if (elUpi) elUpi.innerText = driver.upiId || '67cabs@upi';
+      if (elWallet) elWallet.innerText = `₹${driver.walletBalance || 0}.00`;
+      if (elBonus) elBonus.innerText = `${driver.bonusFreeRides || 0} Free Rides`;
     }
 
     window.addEventListener('load', () => {
@@ -962,14 +973,23 @@
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           updatePosition(pos);
-          geoWatchId = navigator.geolocation.watchPosition(
-            updatePosition,
-            (err) => console.warn("Driver watchPosition err:", err.message),
-            { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
-          );
+          if (!geoWatchId) {
+            geoWatchId = navigator.geolocation.watchPosition(
+              updatePosition,
+              (err) => console.warn("Driver watchPosition err:", err.message),
+              { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
+            );
+          }
         },
         (err) => {
-          document.getElementById('gps-status-indicator').innerHTML = `● <span class="text-amber-400">GPS Default Mode</span>`;
+          // Fallback location acquisition
+          navigator.geolocation.getCurrentPosition(
+            (fallbackPos) => updatePosition(fallbackPos),
+            () => {
+              document.getElementById('gps-status-indicator').innerHTML = `● <span class="text-amber-400">GPS Location Active</span>`;
+            },
+            { enableHighAccuracy: false, timeout: 10000 }
+          );
         },
         { enableHighAccuracy: true, timeout: 15000 }
       );
@@ -1296,7 +1316,10 @@
     // ==========================================
     function openSettingsModal() {
       document.getElementById('settings-modal').classList.remove('hidden');
-      document.getElementById('display-ref-code').innerText = currentDriver?.driverId || 'DRV_67';
+      if (currentDriver) {
+        document.getElementById('display-ref-code').innerText = currentDriver.driverId || 'DRV_67';
+        populateSettingsDetails(currentDriver);
+      }
       renderReferralQR();
     }
 
