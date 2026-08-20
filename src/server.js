@@ -198,7 +198,6 @@ const driverLocationSchema = new mongoose.Schema({
     lat: Number,
     lng: Number
   },
-  isBusy: { type: Boolean, default: false },
   lastActive: { type: Date, default: Date.now }
 });
 const DriverLocation = mongoose.model('DriverLocation', driverLocationSchema);
@@ -789,37 +788,46 @@ app.post('/api/fare/estimate', (req, res) => {
   }
 });
 
+// STRICT REAL DRIVER RADAR (FILTERED ONLY BY APPROVED MONGODB DRIVERS)
 app.get('/api/cabs/nearby-all', async (req, res) => {
   try {
+    const approvedDrivers = await Driver.find({ status: 'APPROVED' }).lean();
+    const approvedDriverMap = new Map();
+    approvedDrivers.forEach(d => approvedDriverMap.set(d.driverId, d));
+
     const driversList = [];
+    const addedDriverIds = new Set();
+
     activeDrivers.forEach((d) => {
-      if (d.status === 'APPROVED' && !d.isBusy && d.location && d.location.lat) {
+      if (approvedDriverMap.has(d.driverId) && d.location && d.location.lat) {
+        const dbDriver = approvedDriverMap.get(d.driverId);
         driversList.push({
           id: d.driverId,
-          name: d.name,
-          category: d.cabType,
-          vehicleNo: d.vehicleNo,
+          name: dbDriver.name || d.name,
+          category: dbDriver.cabType || d.cabType,
+          vehicleNo: dbDriver.vehicleNo || d.vehicleNo,
           lat: d.location.lat,
           lng: d.location.lng
         });
+        addedDriverIds.add(d.driverId);
       }
     });
 
-    if (driversList.length === 0) {
-      const dbLocations = await DriverLocation.find({ isBusy: { $ne: true } }).sort({ lastActive: -1 }).limit(20);
-      dbLocations.forEach((dl) => {
-        if (dl.location && dl.location.lat) {
-          driversList.push({
-            id: dl.driverId,
-            name: dl.name,
-            category: dl.cabType || 'HATCHBACK',
-            vehicleNo: dl.vehicleNo || 'RJ 14 TA 6767',
-            lat: dl.location.lat,
-            lng: dl.location.lng
-          });
-        }
-      });
-    }
+    const dbLocations = await DriverLocation.find().sort({ lastActive: -1 }).limit(30);
+    dbLocations.forEach((dl) => {
+      if (approvedDriverMap.has(dl.driverId) && !addedDriverIds.has(dl.driverId) && dl.location && dl.location.lat) {
+        const dbDriver = approvedDriverMap.get(dl.driverId);
+        driversList.push({
+          id: dl.driverId,
+          name: dbDriver.name || dl.name,
+          category: dbDriver.cabType || dl.cabType,
+          vehicleNo: dbDriver.vehicleNo || dl.vehicleNo,
+          lat: dl.location.lat,
+          lng: dl.location.lng
+        });
+        addedDriverIds.add(dl.driverId);
+      }
+    });
 
     return res.json({ success: true, drivers: driversList });
   } catch (e) {
@@ -832,13 +840,13 @@ app.get('/api/cabs/nearby', async (req, res) => {
     const cabType = (req.query.cabType || 'HATCHBACK').toUpperCase();
     let liveDriver = null;
     activeDrivers.forEach((d) => {
-      if (d.cabType === cabType && !d.isBusy && d.location && d.location.lat) {
+      if (d.cabType === cabType && d.location && d.location.lat) {
         liveDriver = d;
       }
     });
 
     if (!liveDriver) {
-      const dbDriver = await DriverLocation.findOne({ cabType, isBusy: { $ne: true } }).sort({ lastActive: -1 });
+      const dbDriver = await DriverLocation.findOne({ cabType }).sort({ lastActive: -1 });
       if (dbDriver && dbDriver.location && dbDriver.location.lat) {
         liveDriver = dbDriver;
       }
@@ -869,10 +877,8 @@ io.on('connection', (socket) => {
     const normalizedCabType = (driverData.cabType || 'HATCHBACK').toUpperCase();
     const driverId = driverData.driverId || socket.id;
 
-    // Preserve current location if incoming payload is temporary null
     const existingEntry = activeDrivers.get(socket.id);
     const loc = driverData.location || (existingEntry ? existingEntry.location : null);
-    const isBusy = existingEntry ? existingEntry.isBusy : false;
 
     activeDrivers.set(socket.id, {
       driverId,
@@ -882,7 +888,6 @@ io.on('connection', (socket) => {
       upiId: driverData.upiId || '67cabs@upi',
       status: driverData.status || 'APPROVED',
       location: loc,
-      isBusy: isBusy,
       socketId: socket.id
     });
 
@@ -895,7 +900,6 @@ io.on('connection', (socket) => {
             cabType: normalizedCabType,
             vehicleNo: driverData.vehicleNo || 'RJ 14 TA 6767',
             location: { lat: loc.lat, lng: loc.lng },
-            isBusy: isBusy,
             lastActive: new Date()
           },
           { upsert: true }
@@ -931,8 +935,7 @@ io.on('connection', (socket) => {
 
     let targetedSocketId = null;
     activeDrivers.forEach((driver, sId) => {
-      // Find driver by exact ID and ensure they are not already on another ride
-      if (driver.driverId === targetDriverId && !driver.isBusy) {
+      if (driver.driverId === targetDriverId) {
         targetedSocketId = sId;
       }
     });
@@ -988,7 +991,7 @@ io.on('connection', (socket) => {
     } catch (dbErr) {}
 
     activeDrivers.forEach((driver, driverSocketId) => {
-      if (driver.status === 'APPROVED' && !driver.isBusy && (driver.cabType === requestedCabType || requestedCabType === 'ALL')) {
+      if (driver.status === 'APPROVED' && (driver.cabType === requestedCabType || requestedCabType === 'ALL')) {
         io.to(driverSocketId).emit('ride:new_offer', ridePayload);
       }
     });
@@ -997,11 +1000,6 @@ io.on('connection', (socket) => {
 
   socket.on('ride:cancel', async ({ rideId }) => {
     try {
-      const ride = activeRides.get(rideId);
-      if (ride && ride.driverSocketId) {
-        const d = activeDrivers.get(ride.driverSocketId);
-        if (d) d.isBusy = false;
-      }
       await Trip.updateOne({ rideId }, { status: 'CANCELLED' });
       activeRides.delete(rideId);
       io.emit('ride:cancelled', { rideId });
@@ -1012,20 +1010,13 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 3. Driver Accepts Ride (Locks Driver Status to Busy)
+  // 3. Driver Accepts Ride
   socket.on('ride:accept', async ({ rideId, driverData }) => {
     const ride = activeRides.get(rideId);
     const registeredDriver = activeDrivers.get(socket.id);
 
     if (registeredDriver && registeredDriver.status !== 'APPROVED') {
       return socket.emit('ride:error', { message: 'Aapka account abhi Admin se Approved nahi hai.' });
-    }
-
-    if (registeredDriver) {
-      registeredDriver.isBusy = true; // Prevents second simultaneous booking
-      try {
-        await DriverLocation.updateOne({ driverId: registeredDriver.driverId }, { isBusy: true });
-      } catch (e) {}
     }
 
     const startOtp = Math.floor(1000 + Math.random() * 9000).toString();
@@ -1218,17 +1209,6 @@ io.on('connection', (socket) => {
   async function completeTripFinal(rideId, finalAmount, isEarlyDrop, settlementReason) {
     const ride = activeRides.get(rideId);
     let upiId = ride?.driverData?.upiId || '67cabs@upi';
-
-    // Release Driver Busy Lock so they can take the next ride
-    if (ride && ride.driverSocketId) {
-      const d = activeDrivers.get(ride.driverSocketId);
-      if (d) d.isBusy = false;
-    }
-    if (ride?.driverData?.driverId) {
-      try {
-        await DriverLocation.updateOne({ driverId: ride.driverData.driverId }, { isBusy: false });
-      } catch (e) {}
-    }
 
     try {
       const completedTrip = await Trip.findOneAndUpdate(
