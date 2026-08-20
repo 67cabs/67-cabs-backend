@@ -633,6 +633,53 @@
       checkSavedUser();
     });
 
+    async function checkAndRestoreRiderActiveRide() {
+      if (!currentUser?.phone) return;
+      try {
+        const res = await fetch(`/api/rider/active-ride?phone=${currentUser.phone}`);
+        const data = await res.json();
+        if (data.success && data.hasActiveRide && data.trip) {
+          const trip = data.trip;
+          activeRideId = trip.rideId;
+          tripPhase = trip.status === 'ARRIVED' ? 'ARRIVED' : (trip.status === 'ONGOING' ? 'TO_DROP' : 'TO_PICKUP');
+
+          document.getElementById('step-1-route-builder').classList.add('hidden');
+          document.getElementById('step-2-cab-selection').classList.add('hidden');
+          document.getElementById('dispatch-waiting-banner').classList.add('hidden');
+
+          document.getElementById('assigned-driver-name').innerText = trip.driverData?.name || 'Driver';
+          document.getElementById('assigned-vehicle-no').innerText = trip.driverData?.vehicleNo || 'RJ 14 TA 6767';
+          document.getElementById('display-otp').innerText = trip.otp || '----';
+
+          document.getElementById('verify-driver-name').innerText = trip.driverData?.name || 'Driver';
+          document.getElementById('verify-plate-no').innerText = trip.driverData?.vehicleNo || 'RJ 14 TA 6767';
+          document.getElementById('verify-otp-display').innerText = trip.otp || '----';
+
+          document.getElementById('rider-confirmed-card').classList.remove('hidden');
+
+          if (tripPhase === 'TO_DROP') {
+            document.getElementById('otp-container-box').classList.add('hidden');
+            document.getElementById('ride-status-badge').innerText = 'Trip Ongoing to Destination';
+            document.getElementById('ride-status-badge').className = 'text-[10px] text-green-400 font-bold uppercase tracking-wider animate-pulse';
+
+            const cancelBtn = document.getElementById('btn-cancel-ride');
+            if (cancelBtn) cancelBtn.classList.add('hidden');
+
+            const earlyBtn = document.getElementById('btn-early-drop');
+            if (earlyBtn) {
+              earlyBtn.className = 'w-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 font-black py-3 rounded-xl text-xs transition shadow flex items-center justify-center gap-1.5';
+            }
+
+            const statusEl = document.getElementById('trip-live-status');
+            statusEl.className = "text-center text-xs text-slate-300 bg-slate-800/80 p-2.5 rounded-xl border border-slate-700";
+            statusEl.innerHTML = "🟢 <b class='text-green-400'>Trip Ongoing</b> (Navigating to Drop Location)";
+          } else if (tripPhase === 'ARRIVED') {
+            handleDriverArrivalUI();
+          }
+        }
+      } catch (e) {}
+    }
+
     function checkSavedUser() {
       const stored = localStorage.getItem('67_rider_user');
       if (stored) {
@@ -642,9 +689,20 @@
           if (!currentUser.isKycDone) {
             document.getElementById('kyc-prompt-banner').classList.remove('hidden');
           }
+          checkAndRestoreRiderActiveRide();
         } catch (e) {}
       }
     }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && currentUser) {
+        checkAndRestoreRiderActiveRide();
+      }
+    });
+
+    socket.on('connect', () => {
+      if (currentUser) checkAndRestoreRiderActiveRide();
+    });
 
     function handleAuthOrSettingsClick() {
       if (currentUser) {
@@ -1102,7 +1160,6 @@
 
       document.getElementById('rider-confirmed-card').classList.remove('hidden');
 
-      // Ensure cancel button is visible when waiting for pickup
       document.getElementById('btn-cancel-ride').classList.remove('hidden');
       document.getElementById('btn-early-drop').className = 'flex-1 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 font-bold py-2.5 rounded-xl text-xs transition';
 
@@ -1404,6 +1461,7 @@
           if (!currentUser.isKycDone) {
             document.getElementById('kyc-prompt-banner').classList.remove('hidden');
           }
+          checkAndRestoreRiderActiveRide();
           alert("✅ Welcome back! Logged in successfully.");
         } else {
           alert(`⚠️ ${data.message}`);

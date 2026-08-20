@@ -380,6 +380,50 @@ app.post('/api/rider/delete-account', async (req, res) => {
   }
 });
 
+// ---------------- ACTIVE RIDE RECOVERY APIS (CRASH / REBOOT RESILIENT) ----------------
+
+app.get('/api/driver/active-ride', async (req, res) => {
+  try {
+    const { driverId } = req.query;
+    if (!driverId) return res.status(400).json({ success: false, message: 'Driver ID required' });
+
+    const activeTrip = await Trip.findOne({
+      'driverData.driverId': driverId,
+      status: { $in: ['ACCEPTED', 'ARRIVED', 'ONGOING'] }
+    }).sort({ updatedAt: -1 });
+
+    if (activeTrip) {
+      return res.json({ success: true, hasActiveRide: true, trip: activeTrip });
+    }
+    return res.json({ success: true, hasActiveRide: false });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+app.get('/api/rider/active-ride', async (req, res) => {
+  try {
+    const { phone } = req.query;
+    if (!phone) return res.status(400).json({ success: false, message: 'Rider phone required' });
+
+    const clean = sanitizePhone(phone);
+    const activeTrip = await Trip.findOne({
+      $or: [
+        { 'riderData.phone': clean },
+        { 'riderData.phone': phone.trim() }
+      ],
+      status: { $in: ['ACCEPTED', 'ARRIVED', 'ONGOING'] }
+    }).sort({ updatedAt: -1 });
+
+    if (activeTrip) {
+      return res.json({ success: true, hasActiveRide: true, trip: activeTrip });
+    }
+    return res.json({ success: true, hasActiveRide: false });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: e.message });
+  }
+});
+
 // ---------------- DRIVER AUTH & ONBOARDING ROUTES ----------------
 
 app.post('/api/driver/signup-fast', async (req, res) => {

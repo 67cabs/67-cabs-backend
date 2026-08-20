@@ -570,7 +570,7 @@
     let geoWatchId = null;
     let wakeLock = null;
     let currentQRTab = 'rider';
-    let isDriverOnline = true;
+    let isDriverOnline = (localStorage.getItem('67_driver_duty') !== 'false');
 
     // 15-Sec Auto-Expire Timers for Incoming Offers
     let offerExpireTimers = new Map();
@@ -794,9 +794,17 @@
       window.location.reload();
     }
 
-    // Toggle Online / Offline Duty Switch
+    // Toggle Online / Offline Duty Switch (With in-trip guard & preference persistence)
     function toggleDriverDutyState(checked) {
+      if (currentActiveRideId) {
+        alert("⚠️ Active ride ongoing hai. Aap trip ke dauraan offline nahi ja sakte.");
+        document.getElementById('driver-duty-toggle').checked = true;
+        return;
+      }
+
       isDriverOnline = checked;
+      localStorage.setItem('67_driver_duty', isDriverOnline ? 'true' : 'false');
+      
       const dot = document.getElementById('duty-status-dot');
       const text = document.getElementById('duty-status-text');
       const gpsIndicator = document.getElementById('gps-status-indicator');
@@ -882,6 +890,46 @@
       document.getElementById('main-driver-dashboard').classList.add('hidden');
     }
 
+    async function checkAndRestoreActiveRide() {
+      if (!currentDriver?.driverId) return;
+      try {
+        const res = await fetch(`/api/driver/active-ride?driverId=${currentDriver.driverId}`);
+        const data = await res.json();
+        if (data.success && data.hasActiveRide && data.trip) {
+          const trip = data.trip;
+          currentActiveRideId = trip.rideId;
+          acceptedRide = trip;
+          currentTripPhase = trip.status === 'ARRIVED' ? 'ARRIVED' : (trip.status === 'ONGOING' ? 'TO_DROP' : 'TO_PICKUP');
+
+          document.getElementById('active-ride-card').classList.remove('hidden');
+          document.getElementById('waiting-radar').classList.add('hidden');
+          document.getElementById('offers-container').innerHTML = '';
+
+          document.getElementById('active-fare').innerText = `₹${trip.totalFare}`;
+          document.getElementById('active-pickup').innerText = trip.pickup?.text || 'Pickup Location';
+          document.getElementById('active-drop').innerText = trip.stops?.[0]?.text || trip.drop?.text || 'Drop Destination';
+
+          const destLat = trip.drop?.lat || trip.stops?.[0]?.lat || trip.pickup?.lat;
+          const destLng = trip.drop?.lng || trip.stops?.[0]?.lng || trip.pickup?.lng;
+          document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}&travelmode=driving`;
+
+          if (currentTripPhase === 'ARRIVED') {
+            const btn = document.getElementById('btn-arrived');
+            btn.innerText = "✅ Arrived Notified";
+            btn.className = "bg-green-700 text-white font-bold py-3 rounded-xl text-xs";
+            document.getElementById('trip-badge').innerText = "Arrived at Pickup";
+            document.getElementById('otp-section').classList.remove('hidden');
+          } else if (currentTripPhase === 'TO_DROP') {
+            document.getElementById('otp-section').classList.add('hidden');
+            document.getElementById('trip-running-section').classList.remove('hidden');
+            const badge = document.getElementById('trip-badge');
+            badge.innerText = "Trip Ongoing";
+            badge.className = "text-xs bg-green-500 text-slate-950 font-bold px-3 py-1 rounded-full uppercase";
+          }
+        }
+      } catch (e) {}
+    }
+
     function initDriverSession(driver) {
       if (!driver) return;
       currentDriver = driver;
@@ -924,10 +972,27 @@
         document.getElementById('dash-wallet-bal').innerText = `₹${driver.walletBalance || 0}.00`;
         document.getElementById('dash-bonus-rides').innerText = `${driver.bonusFreeRides || 0} Rides`;
 
-        populateSettingsDetails(driver);
+        // Sync duty switch with saved preference
+        const savedDuty = localStorage.getItem('67_driver_duty');
+        isDriverOnline = (savedDuty !== 'false');
+        document.getElementById('driver-duty-toggle').checked = isDriverOnline;
+        
+        const dot = document.getElementById('duty-status-dot');
+        const text = document.getElementById('duty-status-text');
+        if (isDriverOnline) {
+          dot.className = "h-3 w-3 rounded-full bg-green-500 animate-pulse";
+          text.className = "text-xs font-black text-green-400 tracking-wider uppercase";
+          text.innerText = "ON DUTY (ONLINE)";
+        } else {
+          dot.className = "h-3 w-3 rounded-full bg-red-500";
+          text.className = "text-xs font-black text-slate-400 tracking-wider uppercase";
+          text.innerText = "OFF DUTY (OFFLINE)";
+        }
 
+        populateSettingsDetails(driver);
         registerDriver();
         initDriverGPS();
+        checkAndRestoreActiveRide();
       }
     }
 
@@ -970,6 +1035,7 @@
       if (document.visibilityState === 'visible' && currentDriver?.status === 'APPROVED') {
         await requestWakeLock();
         registerDriver();
+        checkAndRestoreActiveRide();
       }
     });
 
@@ -986,7 +1052,10 @@
         location: currentDriver.location || null
       });
     }
-    socket.on('connect', registerDriver);
+    socket.on('connect', () => {
+      registerDriver();
+      checkAndRestoreActiveRide();
+    });
 
     setInterval(() => {
       if (socket.connected && currentDriver?.status === 'APPROVED' && isDriverOnline) {
@@ -1012,7 +1081,6 @@
         return;
       }
 
-      // 1. Check if driver has previously verified real coordinates in session
       if (currentDriver?.location?.lat && currentDriver?.location?.lng) {
         updatePosition({ 
           coords: { 
@@ -1023,7 +1091,6 @@
         });
       }
 
-      // 2. High-Accuracy Hardware Position Lock (Pure GPS without fake defaults)
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           updatePosition(pos);
@@ -1158,7 +1225,6 @@
       activeOffersMap.set(offer.rideId, offer);
       renderOffersList();
 
-      // Auto-Expire Offer Card After 15 Seconds
       if (offerExpireTimers.has(offer.rideId)) {
         clearTimeout(offerExpireTimers.get(offer.rideId));
       }
@@ -1366,7 +1432,6 @@
       document.getElementById('payment-modal').classList.remove('hidden');
       document.getElementById('payment-modal').classList.add('flex');
 
-      // Reset driver state immediately to be available for next rides
       currentActiveRideId = null;
       acceptedRide = null;
       activeOffersMap.clear();
@@ -1383,7 +1448,6 @@
       acceptedRide = null;
       activeOffersMap.clear();
       
-      // Re-announce driver presence to radar
       registerDriver();
     }
 
