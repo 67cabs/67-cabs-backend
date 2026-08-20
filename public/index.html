@@ -225,11 +225,12 @@
           </button>
         </div>
 
-        <div class="flex gap-2">
-          <button onclick="openEarlyDropModal()" class="flex-1 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 font-bold py-2 rounded-xl text-xs transition">
+        <!-- In-Trip Control Actions -->
+        <div id="in-trip-buttons-container" class="flex gap-2">
+          <button id="btn-early-drop" onclick="openEarlyDropModal()" class="flex-1 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 font-bold py-2.5 rounded-xl text-xs transition">
             📍 End Trip Early
           </button>
-          <button onclick="cancelRide()" class="flex-1 bg-red-950/60 hover:bg-red-900 border border-red-600 text-red-300 font-bold py-2 rounded-xl text-xs transition">
+          <button id="btn-cancel-ride" onclick="cancelRide()" class="flex-1 bg-red-950/60 hover:bg-red-900 border border-red-600 text-red-300 font-bold py-2.5 rounded-xl text-xs transition">
             ❌ Cancel Ride
           </button>
         </div>
@@ -1101,6 +1102,10 @@
 
       document.getElementById('rider-confirmed-card').classList.remove('hidden');
 
+      // Ensure cancel button is visible when waiting for pickup
+      document.getElementById('btn-cancel-ride').classList.remove('hidden');
+      document.getElementById('btn-early-drop').className = 'flex-1 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 font-bold py-2.5 rounded-xl text-xs transition';
+
       document.getElementById('verify-driver-name').innerText = driver.name;
       document.getElementById('verify-plate-no').innerText = driver.vehicleNo || 'RJ 14 TA 6767';
       document.getElementById('verify-otp-display').innerText = otp;
@@ -1157,12 +1162,23 @@
       }
     });
 
+    // ON OTP VERIFY (TRIP START): Cancel button permanently removed
     socket.on('ride:started', () => {
       tripPhase = 'TO_DROP';
       closeArrivalModal();
       document.getElementById('otp-container-box').classList.add('hidden');
       document.getElementById('ride-status-badge').innerText = 'Trip Ongoing to Destination';
       document.getElementById('ride-status-badge').className = 'text-[10px] text-green-400 font-bold uppercase tracking-wider animate-pulse';
+
+      // PERMANENT REMOVAL OF CANCEL BUTTON DURING ONGOING TRIP
+      const cancelBtn = document.getElementById('btn-cancel-ride');
+      if (cancelBtn) cancelBtn.classList.add('hidden');
+
+      // Expand End Trip Early button to full width
+      const earlyBtn = document.getElementById('btn-early-drop');
+      if (earlyBtn) {
+        earlyBtn.className = 'w-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 font-black py-3 rounded-xl text-xs transition shadow flex items-center justify-center gap-1.5';
+      }
 
       const statusEl = document.getElementById('trip-live-status');
       statusEl.className = "text-center text-xs text-slate-300 bg-slate-800/80 p-2.5 rounded-xl border border-slate-700";
