@@ -176,11 +176,16 @@
           </div>
         </div>
 
-        <!-- Proximity Drivers List -->
+        <!-- Proximity Drivers List (With Refresh Button) -->
         <div>
           <div class="flex justify-between items-center mb-1.5">
             <span class="text-[10px] font-bold text-slate-500 uppercase">Available Nearby Drivers</span>
-            <span id="cabs-count-tag" class="text-[9px] bg-green-100 text-green-800 font-bold px-2 py-0.5 rounded-full">0 Online</span>
+            <div class="flex items-center gap-1.5">
+              <span id="cabs-count-tag" class="text-[9px] bg-green-100 text-green-800 font-bold px-2 py-0.5 rounded-full">0 Online</span>
+              <button onclick="fetchAndRenderNearbyDrivers()" class="text-[10px] bg-slate-200 hover:bg-slate-300 font-bold px-2.5 py-1 rounded-lg text-slate-800 transition flex items-center gap-1" title="Refresh nearby cabs from database">
+                🔄 <span>Refresh Cabs</span>
+              </button>
+            </div>
           </div>
           
           <div id="proximity-drivers-list" class="space-y-2 max-h-56 overflow-y-auto custom-scrollbar pr-1">
@@ -378,7 +383,7 @@
   </div>
 
   <!-- ========================================== -->
-  <!-- MODAL: DEFERRED GOVT ID KYC (FRONT/BACK)  -->
+  <!-- MODAL: DEFERRED GOVT ID KYC (FRONT/BACK)   -->
   <!-- ========================================== -->
   <div id="kyc-modal" class="fixed inset-0 bg-black/75 z-[99999] flex items-center justify-center p-4 hidden backdrop-blur-sm">
     <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
@@ -587,7 +592,7 @@
           gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
           osc.connect(gain);
           gain.connect(audioCtx.destination);
-          osc.start(start);
+          osc.start();
           osc.stop(start + duration);
         }
         note(523.25, audioCtx.currentTime, 0.3);
@@ -911,6 +916,7 @@
       return Math.round(tripCost + pickupCost);
     }
 
+    // STRICT REAL MONGODB RADAR (NO FAKE MOCK FALLBACKS)
     async function fetchAndRenderNearbyDrivers() {
       const listEl = document.getElementById('proximity-drivers-list');
       listEl.innerHTML = '<div class="text-center p-3 text-xs text-slate-400">Scanning Jaipur radar for online drivers...</div>';
@@ -921,12 +927,7 @@
         currentNearbyDrivers = data.drivers || [];
         renderProximityCards();
       } catch (e) {
-        currentNearbyDrivers = [
-          { id: 'DRV_101', name: 'Ramesh Sharma', category: 'HATCHBACK', vehicleNo: 'RJ 14 TA 1102', model: 'WagonR', lat: pickupCoords[0] + 0.008, lng: pickupCoords[1] + 0.005 },
-          { id: 'DRV_102', name: 'Vikram Singh', category: 'HATCHBACK', vehicleNo: 'RJ 14 TA 5541', model: 'Tiago', lat: pickupCoords[0] - 0.012, lng: pickupCoords[1] + 0.009 },
-          { id: 'DRV_201', name: 'Amit Verma', category: 'SEDAN', vehicleNo: 'RJ 14 TB 8820', model: 'Dzire', lat: pickupCoords[0] + 0.005, lng: pickupCoords[1] - 0.007 },
-          { id: 'DRV_301', name: 'Suresh Gurjar', category: 'SUV', vehicleNo: 'RJ 14 TC 9901', model: 'Ertiga', lat: pickupCoords[0] + 0.015, lng: pickupCoords[1] + 0.012 }
-        ];
+        currentNearbyDrivers = [];
         renderProximityCards();
       }
     }
@@ -950,7 +951,7 @@
       if (filtered.length === 0) {
         listEl.innerHTML = `
           <div class="text-center p-4 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-500">
-            No ${selectedCategory} cabs online nearby. Please try Sedan or SUV tab.
+            No ${selectedCategory} cabs online nearby. Please try Sedan or SUV tab, or tap 🔄 Refresh Cabs.
           </div>
         `;
         return;
