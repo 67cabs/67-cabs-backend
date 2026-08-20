@@ -230,7 +230,6 @@
 
   <!-- ================= 4. MAIN DRIVER DASHBOARD (APPROVED ONLY) ================= -->
   <div id="main-driver-dashboard" class="hidden w-full max-w-md pb-12">
-    <!-- Header with Settings, Logout & Dedicated Online/Offline Toggle Switch -->
     <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow mb-3 space-y-3">
       <div class="flex justify-between items-center">
         <div>
@@ -371,7 +370,6 @@
         <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
       </div>
 
-      <!-- Settings Tabs Switcher -->
       <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
         <button onclick="switchSettingsTab('profile')" id="tab-setting-profile" class="w-1/2 py-2 text-xs font-bold rounded-lg bg-amber-500 text-slate-950 transition">
           Profile Settings
@@ -572,10 +570,8 @@
     let currentQRTab = 'rider';
     let isDriverOnline = (localStorage.getItem('67_driver_duty') !== 'false');
 
-    // 15-Sec Auto-Expire Timers for Incoming Offers
     let offerExpireTimers = new Map();
 
-    // Driver Audio Recording
     let driverMediaRecorder = null;
     let driverAudioChunks = [];
     let isDriverRecording = false;
@@ -633,7 +629,6 @@
       }
     }
 
-    // Auto-detect referral code from QR scan URL parameter (?ref=DRV_123)
     window.addEventListener('DOMContentLoaded', () => {
       const urlParams = new URLSearchParams(window.location.search);
       const refCode = urlParams.get('ref');
@@ -643,7 +638,6 @@
       }
     });
 
-    // 1. FAST 5-SECOND SIGNUP (Deferred KYC)
     async function handleDriverSignup(e) {
       e.preventDefault();
       const submitBtn = document.getElementById('submit-signup-btn');
@@ -683,7 +677,6 @@
       }
     }
 
-    // 2. SUBMIT ALL DEFERRED KYC DOCUMENTS POST-SIGNUP
     async function submitDeferredKYC() {
       const submitBtn = document.getElementById('btn-submit-kyc');
       submitBtn.disabled = true;
@@ -794,7 +787,6 @@
       window.location.reload();
     }
 
-    // Toggle Online / Offline Duty Switch (With in-trip guard & preference persistence)
     function toggleDriverDutyState(checked) {
       if (currentActiveRideId) {
         alert("⚠️ Active ride ongoing hai. Aap trip ke dauraan offline nahi ja sakte.");
@@ -890,6 +882,28 @@
       document.getElementById('main-driver-dashboard').classList.add('hidden');
     }
 
+    function renderPaymentModalQR(finalFare, driverUpiId, isEarlyDrop) {
+      const vpa = driverUpiId || currentDriver?.upiId || '67cabs@upi';
+      document.getElementById('modal-fare-amount').innerText = `₹${finalFare}`;
+      
+      const qrTarget = document.getElementById('qrcode-target');
+      qrTarget.innerHTML = '';
+
+      const upiUrl = `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(currentDriver?.name || 'Driver')}&am=${encodeURIComponent(finalFare)}&cu=INR&tn=${encodeURIComponent(isEarlyDrop ? '67 Cabs Early Trip Fare' : '67 Cabs Trip Fare')}`;
+
+      new QRCode(qrTarget, {
+        text: upiUrl,
+        width: 170,
+        height: 170,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
+      });
+
+      document.getElementById('payment-modal').classList.remove('hidden');
+      document.getElementById('payment-modal').classList.add('flex');
+    }
+
     async function checkAndRestoreActiveRide() {
       if (!currentDriver?.driverId) return;
       try {
@@ -899,6 +913,12 @@
           const trip = data.trip;
           currentActiveRideId = trip.rideId;
           acceptedRide = trip;
+
+          if (trip.status === 'COMPLETED' && !trip.isDriverDismissed) {
+            renderPaymentModalQR(trip.finalFare || trip.totalFare, trip.driverData?.upiId, trip.isEarlyDrop);
+            return;
+          }
+
           currentTripPhase = trip.status === 'ARRIVED' ? 'ARRIVED' : (trip.status === 'ONGOING' ? 'TO_DROP' : 'TO_PICKUP');
 
           document.getElementById('active-ride-card').classList.remove('hidden');
@@ -972,7 +992,6 @@
         document.getElementById('dash-wallet-bal').innerText = `₹${driver.walletBalance || 0}.00`;
         document.getElementById('dash-bonus-rides').innerText = `${driver.bonusFreeRides || 0} Rides`;
 
-        // Sync duty switch with saved preference
         const savedDuty = localStorage.getItem('67_driver_duty');
         isDriverOnline = (savedDuty !== 'false');
         document.getElementById('driver-duty-toggle').checked = isDriverOnline;
@@ -1412,33 +1431,20 @@
     }
 
     socket.on('ride:completed', ({ finalFare, driverUpiId, isEarlyDrop }) => {
-      const vpa = driverUpiId || currentDriver?.upiId || '67cabs@upi';
-      document.getElementById('modal-fare-amount').innerText = `₹${finalFare}`;
-      
-      const qrTarget = document.getElementById('qrcode-target');
-      qrTarget.innerHTML = '';
-
-      const upiUrl = `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(currentDriver?.name || 'Driver')}&am=${encodeURIComponent(finalFare)}&cu=INR&tn=${encodeURIComponent(isEarlyDrop ? '67 Cabs Early Trip Fare' : '67 Cabs Trip Fare')}`;
-
-      new QRCode(qrTarget, {
-        text: upiUrl,
-        width: 170,
-        height: 170,
-        colorDark: "#000000",
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.M
-      });
-
-      document.getElementById('payment-modal').classList.remove('hidden');
-      document.getElementById('payment-modal').classList.add('flex');
-
-      currentActiveRideId = null;
-      acceptedRide = null;
-      activeOffersMap.clear();
-      registerDriver();
+      renderPaymentModalQR(finalFare, driverUpiId, isEarlyDrop);
     });
 
-    function dismissPaymentModal() {
+    async function dismissPaymentModal() {
+      if (currentActiveRideId) {
+        try {
+          await fetch('/api/trip/dismiss-settlement', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rideId: currentActiveRideId, role: 'driver' })
+          });
+        } catch (e) {}
+      }
+
       document.getElementById('payment-modal').classList.add('hidden');
       document.getElementById('payment-modal').classList.remove('flex');
       document.getElementById('active-ride-card').classList.add('hidden');
@@ -1449,6 +1455,7 @@
       activeOffersMap.clear();
       
       registerDriver();
+      window.location.reload();
     }
 
     // ==========================================
