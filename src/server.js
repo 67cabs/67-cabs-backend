@@ -114,7 +114,7 @@ const driverAuditSchema = new mongoose.Schema({
 
 const DriverAudit = mongoose.model('DriverAudit', driverAuditSchema);
 
-// 3. Trip History Schema (Multi-Stop & Early Termination Support)
+// 3. Trip History Schema (Multi-Stop, Rating & Early Termination Support)
 const tripSchema = new mongoose.Schema({
   rideId: { type: String, required: true, unique: true, index: true },
   cabType: { type: String, required: true },
@@ -149,6 +149,7 @@ const tripSchema = new mongoose.Schema({
   earlyDropOtp: String,
   isEarlyDrop: { type: Boolean, default: false },
   earlyDropReason: String,
+  rating: { type: Number, default: 5 },
   status: { 
     type: String, 
     enum: ['SEARCHING', 'ACCEPTED', 'ARRIVED', 'ONGOING', 'COMPLETED', 'CANCELLED'], 
@@ -987,6 +988,16 @@ io.on('connection', (socket) => {
   socket.on('ride:complete', async ({ rideId }) => {
     const ride = activeRides.get(rideId);
     completeTripFinal(rideId, ride ? ride.totalFare : 0, false, 'STANDARD_DROP');
+  });
+
+  // 5.1 Rider Rates Driver Post-Trip (Recorded in MongoDB)
+  socket.on('ride:rate_driver', async ({ rideId, rating }) => {
+    try {
+      await Trip.updateOne({ rideId }, { rating: Number(rating) || 5 });
+      console.log(`⭐ Trip ${rideId} rated ${rating} Stars by Rider.`);
+    } catch (err) {
+      console.error('Rating DB Error:', err.message);
+    }
   });
 
   async function completeTripFinal(rideId, finalAmount, isEarlyDrop, settlementReason) {

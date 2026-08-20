@@ -24,7 +24,6 @@
       background: #cbd5e1;
       border-radius: 4px;
     }
-    /* Mobile Leaflet Z-Index Isolation */
     .leaflet-pane {
       z-index: 10 !important;
     }
@@ -67,7 +66,7 @@
         </button>
       </div>
 
-      <!-- Deferred KYC Banner (Shows when logged in without verified doc) -->
+      <!-- Deferred KYC Banner -->
       <div id="kyc-prompt-banner" class="hidden mb-3 bg-amber-50 border border-amber-300 p-2.5 rounded-xl flex items-center justify-between">
         <div class="text-[11px] text-amber-900">
           <span class="font-bold">Identity Verification:</span> Complete KYC to unlock priority rides.
@@ -108,7 +107,6 @@
 
           <!-- Multi-Drop Container -->
           <div id="stops-container" class="space-y-2 mb-2">
-            <!-- Drop Point 1 (Primary) -->
             <div class="relative stop-input-row" data-index="0">
               <label class="text-[10px] font-bold text-slate-500 uppercase flex justify-between">
                 <span>Drop Destination 1</span>
@@ -143,7 +141,7 @@
       <!-- ========================================== -->
       <div id="step-2-cab-selection" class="hidden space-y-3">
         
-        <!-- Live Dispatch Waiting Banner (Shown only while connecting) -->
+        <!-- Live Dispatch Waiting Banner -->
         <div id="dispatch-waiting-banner" class="hidden bg-amber-50 border border-amber-300 p-4 rounded-2xl text-center space-y-2">
           <div class="text-2xl animate-spin">⏳</div>
           <div class="text-xs font-black text-amber-950">Offering Ride to Selected Driver...</div>
@@ -197,11 +195,11 @@
       <div id="rider-confirmed-card" class="mt-2 hidden bg-slate-900 text-white p-4 rounded-2xl shadow-2xl border border-slate-800 space-y-3">
         <div class="flex justify-between items-center border-b border-slate-800 pb-3">
           <div>
-            <div class="text-[10px] text-green-400 font-bold uppercase tracking-wider">Driver Assigned & En Route</div>
+            <div id="ride-status-badge" class="text-[10px] text-green-400 font-bold uppercase tracking-wider">Driver Assigned & En Route</div>
             <div id="assigned-driver-name" class="text-sm font-black text-slate-100">Driver Name</div>
             <div id="assigned-vehicle-no" class="text-xs text-slate-400 font-mono">RJ 14 TA 0000</div>
           </div>
-          <div class="text-right bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
+          <div id="otp-container-box" class="text-right bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
             <div class="text-[9px] text-amber-400 font-bold uppercase">Trip Start OTP</div>
             <div class="text-2xl font-black text-amber-400 tracking-widest" id="display-otp">----</div>
           </div>
@@ -213,12 +211,10 @@
 
         <!-- In-Trip Safety Controls: SOS + Local Audio Recorder + Early Drop -->
         <div class="grid grid-cols-2 gap-2 pt-1">
-          <!-- 1-Click Police SOS Button -->
           <a href="tel:100" class="bg-red-600 hover:bg-red-700 text-white font-black py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md text-center transition">
             🚨 <span>Police SOS (100)</span>
           </a>
 
-          <!-- In-Trip Audio Recording Toggle -->
           <button id="btn-audio-record" onclick="toggleSafetyAudioRecording()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-400 font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition">
             🎙️ <span id="record-btn-text">Record Audio</span>
           </button>
@@ -245,8 +241,62 @@
   <div id="map" class="flex-1 h-full w-full"></div>
 
   <!-- ========================================== -->
-  <!-- MODAL: FAST SIGNUP & REFERRAL              -->
+  <!-- MODAL: TRIP SETTLEMENT, MULTI-APP UPI & RATING -->
   <!-- ========================================== -->
+  <div id="rider-settlement-modal" class="fixed inset-0 bg-black/85 z-[99999] flex items-center justify-center p-4 hidden backdrop-blur-md">
+    <div class="bg-slate-900 text-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-green-500/50 space-y-4 text-center max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+        <span class="text-xs font-bold uppercase tracking-wider text-green-400">🎉 Trip Completed</span>
+        <button onclick="dismissRiderSettlement()" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
+      </div>
+
+      <!-- Fare Card -->
+      <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800">
+        <p class="text-xs text-slate-400">Total Payable Fare</p>
+        <p id="settlement-fare-amount" class="text-3xl font-black text-green-400 mt-0.5">₹0</p>
+      </div>
+
+      <!-- Multi-App Direct UPI Intent Triggers -->
+      <div class="space-y-2 text-left">
+        <label class="text-[10px] font-bold text-slate-400 uppercase">Pay Direct via UPI App</label>
+        <div class="grid grid-cols-3 gap-2">
+          <!-- Google Pay Intent -->
+          <a id="btn-pay-gpay" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 p-2.5 rounded-xl flex flex-col items-center justify-center text-center transition shadow">
+            <span class="text-xl">🔵</span>
+            <span class="text-[10px] font-bold mt-1 text-slate-200">GPay</span>
+          </a>
+          <!-- PhonePe Intent -->
+          <a id="btn-pay-phonepe" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 p-2.5 rounded-xl flex flex-col items-center justify-center text-center transition shadow">
+            <span class="text-xl">🟣</span>
+            <span class="text-[10px] font-bold mt-1 text-slate-200">PhonePe</span>
+          </a>
+          <!-- Paytm Intent -->
+          <a id="btn-pay-paytm" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 p-2.5 rounded-xl flex flex-col items-center justify-center text-center transition shadow">
+            <span class="text-xl">🔷</span>
+            <span class="text-[10px] font-bold mt-1 text-slate-200">Paytm</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Interactive 5-Star Rating Box -->
+      <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800 space-y-2">
+        <div class="text-[11px] font-bold text-amber-400">Rate your 67 Driver Experience</div>
+        <div class="flex justify-center gap-2 text-2xl" id="star-rating-container">
+          <button onclick="setDriverRating(1)" class="star-btn transition transform hover:scale-125 text-slate-600">⭐</button>
+          <button onclick="setDriverRating(2)" class="star-btn transition transform hover:scale-125 text-slate-600">⭐</button>
+          <button onclick="setDriverRating(3)" class="star-btn transition transform hover:scale-125 text-slate-600">⭐</button>
+          <button onclick="setDriverRating(4)" class="star-btn transition transform hover:scale-125 text-slate-600">⭐</button>
+          <button onclick="setDriverRating(5)" class="star-btn transition transform hover:scale-125 text-amber-400">⭐</button>
+        </div>
+      </div>
+
+      <button onclick="dismissRiderSettlement()" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3.5 rounded-xl text-xs transition shadow-lg">
+        ✅ Payment Done & Book New Ride
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: FAST SIGNUP & REFERRAL ================= -->
   <div id="auth-modal" class="fixed inset-0 bg-black/75 z-[99999] flex items-center justify-center p-4 hidden backdrop-blur-sm">
     <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
       <div class="flex justify-between items-center border-b pb-2">
@@ -274,9 +324,7 @@
     </div>
   </div>
 
-  <!-- ========================================== -->
-  <!-- MODAL: DEFERRED KYC IDENTITY UPLOAD        -->
-  <!-- ========================================== -->
+  <!-- ================= MODAL: DEFERRED KYC IDENTITY UPLOAD ================= -->
   <div id="kyc-modal" class="fixed inset-0 bg-black/75 z-[99999] flex items-center justify-center p-4 hidden backdrop-blur-sm">
     <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
       <div class="flex justify-between items-center border-b pb-2">
@@ -297,9 +345,7 @@
     </div>
   </div>
 
-  <!-- ========================================== -->
-  <!-- MODAL: ARRIVAL SAFETY VERIFICATION POPUP   -->
-  <!-- ========================================== -->
+  <!-- ================= MODAL: ARRIVAL SAFETY VERIFICATION POPUP ================= -->
   <div id="arrival-safety-modal" class="fixed inset-0 bg-black/75 z-[99999] flex items-center justify-center p-4 hidden backdrop-blur-sm">
     <div class="bg-slate-900 text-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-amber-500/50 space-y-4 text-center max-h-[90vh] overflow-y-auto custom-scrollbar">
       <div class="text-3xl animate-bounce">🔔</div>
@@ -329,9 +375,7 @@
     </div>
   </div>
 
-  <!-- ========================================== -->
-  <!-- MODAL: EARLY RIDE TERMINATION OTP          -->
-  <!-- ========================================== -->
+  <!-- ================= MODAL: EARLY RIDE TERMINATION OTP ================= -->
   <div id="early-drop-modal" class="fixed inset-0 bg-black/75 z-[99999] flex items-center justify-center p-4 hidden backdrop-blur-sm">
     <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 space-y-3 text-center max-h-[90vh] overflow-y-auto custom-scrollbar">
       <h3 class="text-base font-black text-slate-900">End Ride Before Drop?</h3>
@@ -396,6 +440,7 @@
     let tripPhase = 'TO_PICKUP';
     let activeRideId = null;
     let currentUser = null;
+    let currentSelectedRating = 5;
 
     let mediaRecorder = null;
     let audioChunks = [];
@@ -541,9 +586,7 @@
           const p = data.features[0].properties;
           return [p.name, p.street, p.district || p.city].filter(Boolean).join(', ');
         }
-      } catch (e) {
-        console.warn('Reverse geocode error:', e);
-      }
+      } catch (e) {}
       return `📍 GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     }
 
@@ -637,9 +680,7 @@
               resultsContainer.appendChild(item);
             });
             resultsContainer.classList.remove('hidden');
-          } catch (err) {
-            console.error('Autocomplete fetch error:', err);
-          }
+          } catch (err) {}
         }, 250);
       });
 
@@ -698,7 +739,6 @@
           fetchAndRenderNearbyDrivers();
         }
       } catch (e) {
-        console.error("Multi-stop routing error:", e);
         alert("Failed to calculate route. Please try again.");
       }
     }
@@ -739,7 +779,6 @@
         currentNearbyDrivers = data.drivers || [];
         renderProximityCards();
       } catch (e) {
-        console.warn("Using fallback proximity radar", e);
         currentNearbyDrivers = [
           { id: 'DRV_101', name: 'Ramesh Sharma', category: 'HATCHBACK', vehicleNo: 'RJ 14 TA 1102', model: 'WagonR', lat: pickupCoords[0] + 0.008, lng: pickupCoords[1] + 0.005 },
           { id: 'DRV_102', name: 'Vikram Singh', category: 'HATCHBACK', vehicleNo: 'RJ 14 TA 5541', model: 'Tiago', lat: pickupCoords[0] - 0.012, lng: pickupCoords[1] + 0.009 },
@@ -818,7 +857,6 @@
         rider: currentUser || { name: 'Jaipur Rider', phone: 'Verified' }
       });
 
-      // Show Waiting Banner Without Destroying List & Tabs
       document.getElementById('dispatch-waiting-banner').classList.remove('hidden');
     }
 
@@ -839,10 +877,9 @@
     }
 
     // ==========================================
-    // SOCKET LISTENERS & STATE HANDLERS
+    // SOCKET LISTENERS & REAL-TIME FLOW
     // ==========================================
     socket.on('ride:declined_targeted', () => {
-      // Hide waiting banner and restore full category tabs & proximity driver options
       document.getElementById('dispatch-waiting-banner').classList.add('hidden');
       alert("⚠️ Selected driver was unavailable. Showing all other nearby cabs to book instantly.");
       fetchAndRenderNearbyDrivers();
@@ -863,11 +900,12 @@
       document.getElementById('verify-otp-display').innerText = otp;
     });
 
+    // 1. Arrival Trigger: Shows Alert + Notification
     socket.on('ride:driver_arrived', () => {
       playArrivedChime();
       document.getElementById('arrival-safety-modal').classList.remove('hidden');
       const statusEl = document.getElementById('trip-live-status');
-      statusEl.innerHTML = `🔔 <b class="text-amber-400">Driver Arrived!</b> Verify details & board cab.`;
+      statusEl.innerHTML = `🔔 <b class="text-amber-400">Driver Arrived at Pickup!</b> Share OTP & board.`;
       statusEl.className = "text-center text-xs text-amber-300 bg-amber-950/60 p-3 rounded-xl border border-amber-500 animate-pulse";
     });
 
@@ -893,19 +931,64 @@
       }
     });
 
+    // 2. Ongoing Trip State: Hides OTP Box & Changes Status
     socket.on('ride:started', () => {
       tripPhase = 'TO_DROP';
       closeArrivalModal();
+      document.getElementById('otp-container-box').classList.add('hidden');
+      document.getElementById('ride-status-badge').innerText = 'Trip Ongoing to Destination';
+      document.getElementById('ride-status-badge').className = 'text-[10px] text-green-400 font-bold uppercase tracking-wider animate-pulse';
+
       const statusEl = document.getElementById('trip-live-status');
       statusEl.className = "text-center text-xs text-slate-300 bg-slate-800/80 p-2.5 rounded-xl border border-slate-700";
-      statusEl.innerHTML = "🟢 <b class='text-green-400'>Trip Ongoing</b> (Navigating along route)";
+      statusEl.innerHTML = "🟢 <b class='text-green-400'>Trip Ongoing</b> (Navigating to Drop Location)";
     });
 
-    socket.on('ride:completed', ({ finalFare, isEarlyDrop }) => {
+    // 3. Trip Completed State: Shows Settlement Screen & Payment App Links
+    socket.on('ride:completed', ({ finalFare, driverUpiId, isEarlyDrop }) => {
       if (isRecordingAudio) stopSafetyAudioRecording();
-      alert(`🎉 67 Trip Completed!\n\n${isEarlyDrop ? 'Early Settlement Triggered\n' : ''}Total Payable Fare: ₹${finalFare}\nPlease pay directly via UPI / Cash.`);
-      window.location.reload();
+      
+      const upiVpa = driverUpiId || '67cabs@upi';
+      document.getElementById('settlement-fare-amount').innerText = `₹${finalFare}`;
+
+      // Build Deep Links for Specific Apps
+      const gpayUrl = `gpay://upi/pay?pa=${encodeURIComponent(upiVpa)}&pn=Driver&am=${encodeURIComponent(finalFare)}&cu=INR&tn=67CabTrip`;
+      const phonepeUrl = `phonepe://pay?pa=${encodeURIComponent(upiVpa)}&pn=Driver&am=${encodeURIComponent(finalFare)}&cu=INR&tn=67CabTrip`;
+      const paytmUrl = `paytmmp://pay?pa=${encodeURIComponent(upiVpa)}&pn=Driver&am=${encodeURIComponent(finalFare)}&cu=INR&tn=67CabTrip`;
+
+      document.getElementById('btn-pay-gpay').href = gpayUrl;
+      document.getElementById('btn-pay-phonepe').href = phonepeUrl;
+      document.getElementById('btn-pay-paytm').href = paytmUrl;
+
+      document.getElementById('rider-settlement-modal').classList.remove('hidden');
     });
+
+    // Rating Selection Logic
+    function setDriverRating(rating) {
+      currentSelectedRating = rating;
+      const stars = document.querySelectorAll('.star-btn');
+      stars.forEach((s, idx) => {
+        s.className = idx < rating 
+          ? "star-btn transition transform scale-110 text-amber-400" 
+          : "star-btn transition transform text-slate-600";
+      });
+      if (activeRideId) {
+        socket.emit('ride:rate_driver', { rideId: activeRideId, rating });
+      }
+    }
+
+    // Dismiss & Reset to Book Next Ride
+    function dismissRiderSettlement() {
+      document.getElementById('rider-settlement-modal').classList.add('hidden');
+      document.getElementById('rider-confirmed-card').classList.add('hidden');
+      document.getElementById('otp-container-box').classList.remove('hidden');
+      document.getElementById('step-1-route-builder').classList.remove('hidden');
+      
+      if (routePolyline) map.removeLayer(routePolyline);
+      if (liveDriverMarker) map.removeLayer(liveDriverMarker);
+      activeRideId = null;
+      window.location.reload();
+    }
 
     // ==========================================
     // IN-TRIP SAFETY AUDIO RECORDER (LOCAL)
