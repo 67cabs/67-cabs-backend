@@ -6,16 +6,23 @@ const calculateMasterFare = ({
   pickupTrafficMins = 0,
   cabType = 'HATCHBACK'
 }) => {
-  // Category Base Rates per KM
+  // Category Base Rates per KM (Jaipur Intra-City Standard)
   const perKmRates = { HATCHBACK: 16, SEDAN: 20, SUV: 25 };
   const perKmRate = perKmRates[cabType] || 16;
+  
+  // Dynamic pickup distance rate buffer
   const pickupRatePerKm = 10;
   const trafficRatePer5Min = 10;
 
-  // 1. Trip Base Fare
-  const baseTripFare = Math.round(tripDistanceKm * perKmRate);
+  // Minimum base threshold fare per category
+  const baseThresholds = { HATCHBACK: 50, SEDAN: 70, SUV: 100 };
+  const minBaseFare = baseThresholds[cabType] || 50;
 
-  // 2. Trip Traffic Delay (Standard time: 3 mins per km)
+  // 1. Trip Base Fare (Includes Multi-Stop aggregate distance)
+  const calculatedBaseFare = Math.round(tripDistanceKm * perKmRate);
+  const baseTripFare = Math.max(minBaseFare, calculatedBaseFare);
+
+  // 2. Trip Traffic Delay (Standard SLA: 3 mins per km)
   const tripStandardMins = Math.round(tripDistanceKm * 3);
   let tripDelayMins = 0;
   let tripTrafficCharge = 0;
@@ -24,7 +31,8 @@ const calculateMasterFare = ({
     tripTrafficCharge = Math.ceil(tripDelayMins / 5) * trafficRatePer5Min;
   }
 
-  // 3. Pickup Distance Charge (Driver se rider tak aane ka fare)
+  // 3. Pickup Distance Charge (Driver proximity dynamic buffer)
+  // Note: Pickup < 150m is treated as 0 km charge
   const pickupBaseFare = Math.round(pickupDistanceKm * pickupRatePerKm);
 
   // 4. Pickup Traffic Delay

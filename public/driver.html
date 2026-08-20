@@ -9,8 +9,17 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
+  <style>
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+  </style>
 </head>
-<body class="bg-slate-950 text-white min-h-screen p-4 flex flex-col items-center select-none">
+<body class="bg-slate-950 text-white min-h-screen p-4 flex flex-col items-center select-none font-sans">
 
   <!-- ================= 1. AUTH VIEW ================= -->
   <div id="auth-section" class="w-full max-w-md my-auto space-y-4">
@@ -33,7 +42,7 @@
     <form id="login-form" onsubmit="handleDriverLogin(event)" class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl space-y-3">
       <div>
         <label class="text-[11px] font-bold text-slate-400 uppercase">Mobile Number *</label>
-        <input type="tel" id="login-phone" required placeholder="10-digit Mobile Number" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-3 text-xs outline-none focus:border-amber-400 mt-1" />
+        <input type="tel" id="login-phone" required placeholder="10-digit Mobile Number" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-3 text-xs outline-none focus:border-amber-400 mt-1 font-mono" />
       </div>
       <div>
         <label class="text-[11px] font-bold text-slate-400 uppercase">Password *</label>
@@ -45,7 +54,7 @@
     </form>
 
     <!-- Sign Up Form -->
-    <form id="signup-form" onsubmit="handleDriverSignup(event)" class="hidden bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl space-y-3 max-h-[80vh] overflow-y-auto">
+    <form id="signup-form" onsubmit="handleDriverSignup(event)" class="hidden bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl space-y-3 max-h-[80vh] overflow-y-auto custom-scrollbar">
       <div>
         <label class="text-[11px] font-bold text-slate-400 uppercase">Driver Full Name *</label>
         <input type="text" id="reg-name" required placeholder="e.g. Ramesh Sharma" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-2.5 text-xs outline-none focus:border-amber-400 mt-1" />
@@ -54,7 +63,7 @@
       <div class="grid grid-cols-2 gap-2">
         <div>
           <label class="text-[11px] font-bold text-slate-400 uppercase">Mobile Number *</label>
-          <input type="tel" id="reg-phone" required placeholder="10-digit Phone" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-2.5 text-xs outline-none focus:border-amber-400 mt-1" />
+          <input type="tel" id="reg-phone" required placeholder="10-digit Phone" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-2.5 text-xs outline-none focus:border-amber-400 mt-1 font-mono" />
         </div>
         <div>
           <label class="text-[11px] font-bold text-slate-400 uppercase">Password *</label>
@@ -75,6 +84,11 @@
             <option value="SUV">SUV (₹25/km)</option>
           </select>
         </div>
+      </div>
+
+      <div>
+        <label class="text-[11px] font-bold text-slate-400 uppercase">Referral Code (Optional)</label>
+        <input type="text" id="reg-referral" placeholder="Auto-filled via Driver QR" class="w-full bg-slate-950 border border-slate-700 text-amber-400 rounded-xl p-2.5 text-xs outline-none focus:border-amber-400 mt-1 uppercase font-mono" />
       </div>
 
       <div>
@@ -116,16 +130,6 @@
         <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
           <label class="text-[11px] font-bold text-slate-300 block mb-1">🛡️ Vehicle Fitness Certificate *</label>
           <input type="file" id="doc-fitness" accept="image/*" capture="environment" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
-        </div>
-
-        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-          <label class="text-[11px] font-bold text-slate-400 block mb-1">📋 Vehicle Permit (Optional)</label>
-          <input type="file" id="doc-permit" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-300" />
-        </div>
-
-        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-          <label class="text-[11px] font-bold text-slate-400 block mb-1">📑 Permit Authorization (Optional)</label>
-          <input type="file" id="doc-permit-auth" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-300" />
         </div>
 
         <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-2">
@@ -215,7 +219,7 @@
   <!-- ================= 4. MAIN DRIVER DASHBOARD (APPROVED ONLY) ================= -->
   <div id="main-driver-dashboard" class="hidden w-full max-w-md pb-12">
     <!-- Header -->
-    <div class="flex justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow mb-4">
+    <div class="flex justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow mb-3">
       <div>
         <h1 class="text-base font-bold text-amber-400 flex items-center gap-1.5">
           <span>🚖</span> 67 Partner
@@ -236,8 +240,27 @@
       </div>
     </div>
 
+    <!-- Quick Tools Bar: Wallet & Referral Engine Toggle -->
+    <div class="grid grid-cols-2 gap-2 mb-3">
+      <button onclick="openWalletModal()" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 p-2.5 rounded-2xl flex items-center justify-between text-left transition">
+        <div>
+          <div class="text-[10px] text-slate-400 font-bold uppercase">Wallet Balance</div>
+          <div id="dash-wallet-bal" class="text-base font-black text-green-400">₹150.00</div>
+        </div>
+        <span class="text-xl">💳</span>
+      </button>
+
+      <button onclick="openReferralModal()" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 p-2.5 rounded-2xl flex items-center justify-between text-left transition">
+        <div>
+          <div class="text-[10px] text-slate-400 font-bold uppercase">Bonus Free Rides</div>
+          <div id="dash-bonus-rides" class="text-base font-black text-amber-400">3 Rides</div>
+        </div>
+        <span class="text-xl">🎁</span>
+      </button>
+    </div>
+
     <!-- PWA Install Banner -->
-    <div id="pwa-driver-install-banner" class="hidden mb-4 bg-emerald-600 text-white p-3 rounded-2xl flex items-center justify-between shadow-xl border border-emerald-500">
+    <div id="pwa-driver-install-banner" class="hidden mb-3 bg-emerald-600 text-white p-3 rounded-2xl flex items-center justify-between shadow-xl border border-emerald-500">
       <div class="flex items-center gap-2.5">
         <span class="text-2xl">👨‍✈️</span>
         <div>
@@ -273,6 +296,16 @@
         </a>
       </div>
 
+      <!-- In-Trip Safety Controls: SOS + Local Audio Recorder -->
+      <div class="grid grid-cols-2 gap-2 pt-1">
+        <a href="tel:100" class="bg-red-600 hover:bg-red-700 text-white font-black py-2.5 rounded-xl text-xs text-center flex items-center justify-center gap-1 shadow">
+          🚨 Police SOS (100)
+        </a>
+        <button id="btn-driver-record" onclick="toggleDriverSafetyAudio()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-400 font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1 transition">
+          🎙️ <span id="driver-record-text">Record Audio</span>
+        </button>
+      </div>
+
       <div id="otp-section" class="hidden pt-2 border-t border-slate-800">
         <label class="text-[11px] text-slate-400 block mb-1.5 font-medium">Rider se 4-digit OTP lekar enter karein:</label>
         <div class="flex gap-2">
@@ -290,6 +323,9 @@
         <button onclick="completeRide()" class="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-xl text-sm shadow-lg transition">
           🏁 Complete Trip & Collect Fare
         </button>
+        <button onclick="openEarlyEndModal()" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-400 font-bold py-2 rounded-xl text-xs transition">
+          ⚠️ End Trip Early (Rider OTP / Emergency)
+        </button>
       </div>
     </div>
 
@@ -301,6 +337,110 @@
       <div class="animate-ping h-8 w-8 bg-amber-500 rounded-full mx-auto mb-4 opacity-75"></div>
       <p class="text-sm font-medium text-slate-200">Searching for ride offers...</p>
       <p class="text-xs text-slate-500 mt-1">Keep screen open</p>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: DUAL REFERRAL QR CODES ================= -->
+  <div id="referral-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm">
+    <div class="bg-slate-900 rounded-3xl p-5 max-w-sm w-full shadow-2xl border border-slate-800 space-y-4 text-center">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+        <h3 class="text-sm font-black text-amber-400">Referral QR Codes Engine</h3>
+        <button onclick="closeReferralModal()" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
+      </div>
+
+      <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+        <button onclick="switchQRTab('rider')" id="tab-qr-rider" class="w-1/2 py-2 text-xs font-bold rounded-lg bg-amber-500 text-slate-950 transition">
+          Rider QR
+        </button>
+        <button onclick="switchQRTab('driver')" id="tab-qr-driver" class="w-1/2 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition">
+          Driver QR
+        </button>
+      </div>
+
+      <div class="bg-white p-3.5 rounded-2xl inline-block shadow-inner mx-auto">
+        <div id="referral-qrcode-target" class="flex justify-center"></div>
+      </div>
+
+      <div class="text-xs text-slate-300">
+        <p id="qr-desc-text" class="font-medium text-amber-300">Scan to register Rider with bonus</p>
+        <p class="text-[10px] text-slate-500 mt-0.5">Your Referral Code: <b id="display-ref-code" class="text-white font-mono">-</b></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: DRIVER WALLET & COUPONS ================= -->
+  <div id="wallet-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm">
+    <div class="bg-slate-900 rounded-3xl p-5 max-w-sm w-full shadow-2xl border border-slate-800 space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+        <h3 class="text-sm font-black text-white">Driver Wallet & Recharge</h3>
+        <button onclick="closeWalletModal()" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
+      </div>
+
+      <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 flex justify-between items-center">
+        <div>
+          <div class="text-[10px] text-slate-400 uppercase font-bold">Current Balance</div>
+          <div id="modal-wallet-balance" class="text-2xl font-black text-green-400">₹150.00</div>
+        </div>
+        <div class="text-right">
+          <div class="text-[10px] text-slate-400 uppercase font-bold">Bonus Pool</div>
+          <div id="modal-bonus-rides" class="text-xs font-black text-amber-400">3 Free Rides</div>
+        </div>
+      </div>
+
+      <div class="space-y-2 text-xs">
+        <label class="font-bold text-slate-400 uppercase text-[10px]">Recharge Amount (₹)</label>
+        <div class="grid grid-cols-3 gap-2">
+          <button onclick="setRechargeAmount(100)" class="bg-slate-950 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400">₹100</button>
+          <button onclick="setRechargeAmount(250)" class="bg-slate-950 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400">₹250</button>
+          <button onclick="setRechargeAmount(500)" class="bg-slate-950 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400">₹500</button>
+        </div>
+        <input type="number" id="custom-recharge-amt" placeholder="Enter custom amount" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 outline-none focus:border-amber-400 font-mono mt-1" />
+      </div>
+
+      <div class="space-y-1.5 text-xs">
+        <label class="font-bold text-slate-400 uppercase text-[10px]">Apply Promo Coupon</label>
+        <div class="flex gap-2">
+          <input type="text" id="coupon-code-input" placeholder="e.g. WELCOME100" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 outline-none focus:border-amber-400 font-mono uppercase" />
+          <button onclick="applyCouponCode()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 px-4 rounded-xl font-bold transition">Apply</button>
+        </div>
+      </div>
+
+      <button onclick="executeWalletRecharge()" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3 rounded-xl text-xs transition shadow-lg">
+        ⚡ Pay & Recharge via UPI
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: EARLY TRIP TERMINATION ================= -->
+  <div id="early-end-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm">
+    <div class="bg-slate-900 rounded-3xl p-5 max-w-sm w-full shadow-2xl border border-slate-800 space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+        <h3 class="text-sm font-black text-amber-400">Early Trip Termination</h3>
+        <button onclick="closeEarlyEndModal()" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+          <div class="text-[11px] font-bold text-green-400">Option 1: Rider Wants to End (With OTP)</div>
+          <p class="text-[10px] text-slate-400">Full booked fare will be settled without deduction.</p>
+          <input type="text" id="early-drop-otp-input" maxlength="4" placeholder="Enter 4-Digit Rider OTP" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-center font-mono font-bold text-white outline-none focus:border-green-400" />
+          <button onclick="submitEarlyEndWithOtp()" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded-xl text-xs">
+            End Trip with Rider OTP
+          </button>
+        </div>
+
+        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+          <div class="text-[11px] font-bold text-red-400">Option 2: Driver Issue / Breakdown (No OTP)</div>
+          <p class="text-[10px] text-slate-400">System will calculate dynamic reduced fare based on actual traveled GPS distance.</p>
+          <select id="early-drop-reason" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-2 text-xs outline-none">
+            <option value="VEHICLE_BREAKDOWN">Vehicle Breakdown / Puncture</option>
+            <option value="PERSONAL_EMERGENCY">Driver Personal Emergency</option>
+          </select>
+          <button onclick="submitEarlyEndEmergency()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded-xl text-xs">
+            End with Dynamic Adjusted Fare
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -371,6 +511,11 @@
     let geoWatchId = null;
     let wakeLock = null;
 
+    // Driver Audio Recording
+    let driverMediaRecorder = null;
+    let driverAudioChunks = [];
+    let isDriverRecording = false;
+
     function compressImageFile(file) {
       return new Promise((resolve) => {
         if (!file) return resolve('');
@@ -424,6 +569,16 @@
       }
     }
 
+    // Auto-detect referral code from QR scan URL parameter (?ref=DRV_123)
+    window.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const refCode = urlParams.get('ref');
+      if (refCode) {
+        document.getElementById('reg-referral').value = refCode;
+        switchAuthTab('signup');
+      }
+    });
+
     async function handleDriverSignup(e) {
       e.preventDefault();
       const submitBtn = document.getElementById('submit-signup-btn');
@@ -436,8 +591,6 @@
         const dlBackBase64 = await compressImageFile(document.getElementById('doc-dl-back').files[0]);
         const rcBase64 = await compressImageFile(document.getElementById('doc-rc').files[0]);
         const fitnessBase64 = await compressImageFile(document.getElementById('doc-fitness').files[0]);
-        const permitBase64 = await compressImageFile(document.getElementById('doc-permit').files[0]);
-        const permitAuthBase64 = await compressImageFile(document.getElementById('doc-permit-auth').files[0]);
         const aadhaarFrontBase64 = await compressImageFile(document.getElementById('doc-aadhaar-front').files[0]);
         const aadhaarBackBase64 = await compressImageFile(document.getElementById('doc-aadhaar-back').files[0]);
         const panBase64 = await compressImageFile(document.getElementById('doc-pan').files[0]);
@@ -449,6 +602,7 @@
           password: document.getElementById('reg-password').value,
           vehicleNo: document.getElementById('reg-vehicle').value,
           cabType: document.getElementById('reg-cabtype').value,
+          referralCode: document.getElementById('reg-referral').value || '',
           upiId: document.getElementById('reg-upi').value || '67cabs@upi',
           email: document.getElementById('reg-email')?.value || '',
           documents: {
@@ -457,8 +611,6 @@
             drivingLicenseBack: dlBackBase64,
             vehicleRc: rcBase64,
             vehicleFitness: fitnessBase64,
-            vehiclePermit: permitBase64,
-            permitAuthorization: permitAuthBase64,
             aadhaarCardFront: aadhaarFrontBase64,
             aadhaarCardBack: aadhaarBackBase64,
             panCard: panBase64,
@@ -610,14 +762,12 @@
         return;
       }
 
-      // Condition 1: Admin ne koi additional doc manga hai
       if (driver.status === 'ADDITIONAL_DOC_REQUIRED') {
         document.getElementById('additional-doc-section').classList.remove('hidden');
         document.getElementById('requested-doc-name-display').innerText = driver.documents?.additionalDocName || 'Document Required by Admin';
         return;
       }
 
-      // Condition 2: Verification Pending hai
       if (driver.status === 'PENDING_APPROVAL') {
         document.getElementById('pending-verification-section').classList.remove('hidden');
         document.getElementById('pending-name').innerText = driver.name;
@@ -625,12 +775,13 @@
         return;
       }
 
-      // Condition 3: Approved Driver
       if (driver.status === 'APPROVED') {
         document.getElementById('main-driver-dashboard').classList.remove('hidden');
         document.getElementById('driver-header-name').innerText = `${driver.name} (${driver.vehicleNo})`;
         const rates = { HATCHBACK: '₹16/km', SEDAN: '₹20/km', SUV: '₹25/km' };
         document.getElementById('driver-header-rate').innerText = rates[driver.cabType] || '₹16/km';
+        document.getElementById('dash-wallet-bal').innerText = `₹${driver.walletBalance || 150}.00`;
+        document.getElementById('dash-bonus-rides').innerText = `${driver.bonusFreeRides || 3} Rides`;
 
         registerDriver();
         initDriverGPS();
@@ -787,7 +938,7 @@
       let html = '';
       for (const [rideId, offer] of activeOffersMap.entries()) {
         const pickupStr = offer.pickupName || (await reverseGeocode(offer.pickup.lat, offer.pickup.lng));
-        const dropStr = offer.dropName || (await reverseGeocode(offer.drop.lat, offer.drop.lng));
+        const dropStr = offer.dropName || (await reverseGeocode(offer.drop?.lat || offer.stops?.[0]?.lat, offer.drop?.lng || offer.stops?.[0]?.lng));
         offer.pickupName = pickupStr;
         offer.dropName = dropStr;
 
@@ -829,35 +980,9 @@
     }
 
     function declineSingleOffer(rideId) {
+      socket.emit('ride:decline_targeted', { rideId, driverId: currentDriver?.driverId });
       removeOffer(rideId);
     }
-
-    setInterval(async () => {
-      if (currentActiveRideId || currentDriver?.status !== 'APPROVED') return;
-
-      try {
-        const res = await fetch(`/api/driver/active-offers?cabType=${currentDriver.cabType}`);
-        const data = await res.json();
-
-        if (data.success && data.offers) {
-          const liveIds = new Set(data.offers.map(o => o.rideId));
-          
-          data.offers.forEach(offer => {
-            if (!activeOffersMap.has(offer.rideId)) {
-              activeOffersMap.set(offer.rideId, offer);
-            }
-          });
-
-          for (const rideId of activeOffersMap.keys()) {
-            if (!liveIds.has(rideId)) {
-              activeOffersMap.delete(rideId);
-            }
-          }
-
-          renderOffersList();
-        }
-      } catch (err) {}
-    }, 2500);
 
     socket.on('ride:new_offer', (offer) => {
       if (!currentActiveRideId && currentDriver?.status === 'APPROVED') {
@@ -878,6 +1003,9 @@
       }
     });
 
+    // ==========================================
+    // RIDE ACCEPTANCE & AUTO-DECLINE QUEUE
+    // ==========================================
     async function acceptSelectedRide(rideId) {
       const selected = activeOffersMap.get(rideId);
       if (!selected || !currentDriver) return;
@@ -886,6 +1014,7 @@
       currentActiveRideId = rideId;
       currentTripPhase = 'TO_PICKUP';
 
+      // Auto-Decline all other pending offers
       activeOffersMap.clear();
       syncSirenState();
       document.getElementById('offers-container').innerHTML = '';
@@ -922,11 +1051,12 @@
       btn.innerText = "✅ Arrived Notified";
       btn.className = "bg-green-700 text-white font-bold py-3 rounded-xl text-xs";
       document.getElementById('trip-badge').innerText = "Arrived at Pickup";
-
       document.getElementById('otp-section').classList.remove('hidden');
 
       if (acceptedRide) {
-        document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${acceptedRide.drop.lat},${acceptedRide.drop.lng}&travelmode=driving`;
+        const destLat = acceptedRide.drop?.lat || acceptedRide.stops?.[0]?.lat;
+        const destLng = acceptedRide.drop?.lng || acceptedRide.stops?.[0]?.lng;
+        document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}&travelmode=driving`;
       }
     }
 
@@ -971,10 +1101,11 @@
       badge.className = "text-xs bg-green-500 text-slate-950 font-bold px-3 py-1 rounded-full uppercase";
 
       if (acceptedRide) {
-        document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${acceptedRide.drop.lat},${acceptedRide.drop.lng}&travelmode=driving`;
+        const destLat = acceptedRide.drop?.lat || acceptedRide.stops?.[0]?.lat;
+        const destLng = acceptedRide.drop?.lng || acceptedRide.stops?.[0]?.lng;
+        document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}&travelmode=driving`;
+        startMovementSimulation(acceptedRide.pickup, { lat: destLat, lng: destLng }, 'TO_DROP');
       }
-
-      startMovementSimulation(acceptedRide.pickup, acceptedRide.drop, 'TO_DROP');
     });
 
     socket.on('ride:otp_invalid', (err) => {
@@ -985,18 +1116,44 @@
     function completeRide() {
       if (confirm("Kya aap drop point par pahuch chuke hain?")) {
         if (simInterval) clearInterval(simInterval);
+        if (isDriverRecording) toggleDriverSafetyAudio();
         socket.emit('ride:complete', { rideId: currentActiveRideId });
       }
     }
 
-    socket.on('ride:completed', ({ finalFare, driverUpiId }) => {
+    // ==========================================
+    // EARLY TERMINATION & EMERGENCY SETTLEMENT
+    // ==========================================
+    function openEarlyEndModal() { document.getElementById('early-end-modal').classList.remove('hidden'); }
+    function closeEarlyEndModal() { document.getElementById('early-end-modal').classList.add('hidden'); }
+
+    function submitEarlyEndWithOtp() {
+      const otp = document.getElementById('early-drop-otp-input').value;
+      if (otp.length !== 4) return alert("Please enter 4-digit OTP from rider.");
+      socket.emit('ride:early_complete_otp', { rideId: currentActiveRideId, enteredOtp: otp });
+      closeEarlyEndModal();
+    }
+
+    function submitEarlyEndEmergency() {
+      const reason = document.getElementById('early-drop-reason').value;
+      if (confirm(`End ride immediately due to ${reason}? Dynamic adjusted fare will be applied.`)) {
+        socket.emit('ride:early_complete_emergency', { 
+          rideId: currentActiveRideId, 
+          reason,
+          currentLocation: currentDriver.location 
+        });
+        closeEarlyEndModal();
+      }
+    }
+
+    socket.on('ride:completed', ({ finalFare, driverUpiId, isEarlyDrop }) => {
       const vpa = driverUpiId || currentDriver?.upiId || '67cabs@upi';
       document.getElementById('modal-fare-amount').innerText = `₹${finalFare}`;
       
       const qrTarget = document.getElementById('qrcode-target');
       qrTarget.innerHTML = '';
 
-      const upiUrl = `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(currentDriver?.name || 'Driver')}&am=${encodeURIComponent(finalFare)}&cu=INR&tn=${encodeURIComponent('67 Cabs Ride Fare')}`;
+      const upiUrl = `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(currentDriver?.name || 'Driver')}&am=${encodeURIComponent(finalFare)}&cu=INR&tn=${encodeURIComponent(isEarlyDrop ? '67 Cabs Early Trip Fare' : '67 Cabs Trip Fare')}`;
 
       new QRCode(qrTarget, {
         text: upiUrl,
@@ -1013,6 +1170,137 @@
 
     function dismissPaymentModal() {
       window.location.reload();
+    }
+
+    // ==========================================
+    // DUAL REFERRAL QR ENGINE (DRIVER & RIDER)
+    // ==========================================
+    let currentQRTab = 'rider';
+
+    function openReferralModal() {
+      document.getElementById('referral-modal').classList.remove('hidden');
+      document.getElementById('display-ref-code').innerText = currentDriver?.driverId || 'DRV_67';
+      renderReferralQR();
+    }
+
+    function closeReferralModal() { document.getElementById('referral-modal').classList.add('hidden'); }
+
+    function switchQRTab(tab) {
+      currentQRTab = tab;
+      const btnRider = document.getElementById('tab-qr-rider');
+      const btnDriver = document.getElementById('tab-qr-driver');
+      const desc = document.getElementById('qr-desc-text');
+
+      if (tab === 'rider') {
+        btnRider.className = "w-1/2 py-2 text-xs font-bold rounded-lg bg-amber-500 text-slate-950 transition";
+        btnDriver.className = "w-1/2 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition";
+        desc.innerText = "Scan to register Rider (Earn 1 Free Ride upon 1st trip)";
+      } else {
+        btnDriver.className = "w-1/2 py-2 text-xs font-bold rounded-lg bg-amber-500 text-slate-950 transition";
+        btnRider.className = "w-1/2 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition";
+        desc.innerText = "Scan to register Partner Driver (Earn 1 Free Ride upon 1st trip)";
+      }
+      renderReferralQR();
+    }
+
+    function renderReferralQR() {
+      const qrTarget = document.getElementById('referral-qrcode-target');
+      qrTarget.innerHTML = '';
+      const driverId = currentDriver?.driverId || 'DRV_67';
+      const host = window.location.origin;
+      const targetUrl = currentQRTab === 'rider'
+        ? `${host}/index.html?ref=${driverId}&type=rider`
+        : `${host}/driver.html?ref=${driverId}&type=driver`;
+
+      new QRCode(qrTarget, {
+        text: targetUrl,
+        width: 160,
+        height: 160,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    }
+
+    // ==========================================
+    // DRIVER WALLET & COUPONS ENGINE
+    // ==========================================
+    function openWalletModal() {
+      document.getElementById('wallet-modal').classList.remove('hidden');
+      document.getElementById('modal-wallet-balance').innerText = `₹${currentDriver?.walletBalance || 150}.00`;
+      document.getElementById('modal-bonus-rides').innerText = `${currentDriver?.bonusFreeRides || 3} Free Rides`;
+    }
+
+    function closeWalletModal() { document.getElementById('wallet-modal').classList.add('hidden'); }
+    function setRechargeAmount(amt) { document.getElementById('custom-recharge-amt').value = amt; }
+
+    function applyCouponCode() {
+      const code = document.getElementById('coupon-code-input').value.trim().toUpperCase();
+      if (code === 'WELCOME100') {
+        alert("🎉 Coupon Applied! ₹100 Free Recharge Credit added.");
+        if (currentDriver) currentDriver.walletBalance = (currentDriver.walletBalance || 150) + 100;
+        document.getElementById('modal-wallet-balance').innerText = `₹${currentDriver.walletBalance}.00`;
+        document.getElementById('dash-wallet-bal').innerText = `₹${currentDriver.walletBalance}.00`;
+      } else {
+        alert("⚠️ Invalid or expired coupon code.");
+      }
+    }
+
+    function executeWalletRecharge() {
+      const amt = document.getElementById('custom-recharge-amt').value;
+      if (!amt || amt < 50) return alert("Minimum recharge amount is ₹50.");
+      alert(`⚡ Redirecting to UPI payment for ₹${amt}...`);
+      if (currentDriver) currentDriver.walletBalance = (currentDriver.walletBalance || 150) + parseInt(amt);
+      document.getElementById('modal-wallet-balance').innerText = `₹${currentDriver.walletBalance}.00`;
+      document.getElementById('dash-wallet-bal').innerText = `₹${currentDriver.walletBalance}.00`;
+      closeWalletModal();
+    }
+
+    // ==========================================
+    // DRIVER SAFETY AUDIO RECORDER (LOCAL)
+    // ==========================================
+    async function toggleDriverSafetyAudio() {
+      if (!isDriverRecording) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          driverMediaRecorder = new MediaRecorder(stream);
+          driverAudioChunks = [];
+
+          driverMediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) driverAudioChunks.push(e.data);
+          };
+
+          driverMediaRecorder.onstop = () => {
+            const blob = new Blob(driverAudioChunks, { type: 'audio/webm' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `67Driver_AudioProof_${Date.now()}.webm`;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+              document.body.removeChild(a);
+              window.URL.revokeObjectURL(url);
+            }, 100);
+            alert("🔒 Safety audio saved locally in your phone storage.");
+          };
+
+          driverMediaRecorder.start();
+          isDriverRecording = true;
+          document.getElementById('driver-record-text').innerText = "Stop & Save";
+          document.getElementById('btn-driver-record').className = "bg-red-600 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1 animate-pulse";
+        } catch (err) {
+          alert("Microphone permission denied or unsupported.");
+        }
+      } else {
+        if (driverMediaRecorder) {
+          driverMediaRecorder.stop();
+          isDriverRecording = false;
+          document.getElementById('driver-record-text').innerText = "Record Audio";
+          document.getElementById('btn-driver-record').className = "bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-400 font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1 transition";
+        }
+      }
     }
   </script>
 </body>
