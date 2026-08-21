@@ -19,6 +19,7 @@ public class MainActivity extends BridgeActivity {
 
     private static final int PERMISSION_REQ_CODE = 6701;
     private static final int OVERLAY_REQ_CODE = 6702;
+    private static final int BG_LOCATION_REQ_CODE = 6703;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -59,8 +60,22 @@ public class MainActivity extends BridgeActivity {
         if (!neededPermissions.isEmpty()) {
             ActivityCompat.requestPermissions(this, neededPermissions.toArray(new String[0]), PERMISSION_REQ_CODE);
         } else {
-            checkOverlayPermissionAndStart();
+            checkBackgroundLocationAndProceed();
         }
+    }
+
+    private void checkBackgroundLocationAndProceed() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(
+                        this,
+                        new String[]{Manifest.permission.ACCESS_BACKGROUND_LOCATION},
+                        BG_LOCATION_REQ_CODE
+                );
+                return;
+            }
+        }
+        checkOverlayPermissionAndStart();
     }
 
     private void checkOverlayPermissionAndStart() {
@@ -95,6 +110,8 @@ public class MainActivity extends BridgeActivity {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERMISSION_REQ_CODE) {
+            checkBackgroundLocationAndProceed();
+        } else if (requestCode == BG_LOCATION_REQ_CODE) {
             checkOverlayPermissionAndStart();
         }
     }

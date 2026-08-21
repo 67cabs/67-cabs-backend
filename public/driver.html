@@ -553,30 +553,6 @@
   </div>
 
   <script>
-    // Web Push Registration disabled to prevent Chrome takeover (App operates via Native Background Service)
-    /*
-    const VAPID_PUBLIC_KEY = 'BEj6z8VwcEmB5cjLwMwFLyWMu7CBGP0LyuTyZK_8TihbQYnKxVs4yJZAz0kLUKPDEAcYbArHtfSf5_C1BKHT6b8';
-
-    function urlBase64ToUint8Array(base64String) {
-      const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-      const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
-      const rawData = window.atob(base64);
-      const outputArray = new Uint8Array(rawData.length);
-      for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-      }
-      return outputArray;
-    }
-
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw-driver.js', { scope: '/' });
-    }
-
-    async function initDriverPushSubscription(driverId) {
-      return;
-    }
-    */
-
     let deferredDriverPrompt;
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -620,8 +596,22 @@
     let driverAudioChunks = [];
     let isDriverRecording = false;
 
+    // Global Single-Instance AudioContext to prevent Chromium Audio limit crash
+    let globalAudioCtx = null;
+
     // Active Applied Coupon State
     let appliedCouponData = null;
+
+    function syncSessionToCapacitorStorage(driverData) {
+      if (!driverData) return;
+      const jsonStr = JSON.stringify(driverData);
+      localStorage.setItem('67_driver_session', jsonStr);
+      try {
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences) {
+          window.Capacitor.Plugins.Preferences.set({ key: '67_driver_session', value: jsonStr });
+        }
+      } catch (e) {}
+    }
 
     function compressImageFile(file) {
       return new Promise((resolve) => {
@@ -711,7 +701,7 @@
         });
         const data = await res.json();
         if (data.success) {
-          localStorage.setItem('67_driver_session', JSON.stringify(data.driver));
+          syncSessionToCapacitorStorage(data.driver);
           initDriverSession(data.driver);
         } else {
           alert(`⚠️ ${data.message || data.error}`);
@@ -769,7 +759,7 @@
         if (data.success) {
           alert("✅ Documents submitted successfully! Verification pending approval.");
           currentDriver.status = 'PENDING_APPROVAL';
-          localStorage.setItem('67_driver_session', JSON.stringify(currentDriver));
+          syncSessionToCapacitorStorage(currentDriver);
           initDriverSession(currentDriver);
         } else {
           alert(`⚠️ ${data.message}`);
@@ -805,7 +795,7 @@
         const data = await res.json();
         if (res.ok && data.success && data.driver) {
           loginSuccessData = data.driver;
-          localStorage.setItem('67_driver_session', JSON.stringify(data.driver));
+          syncSessionToCapacitorStorage(data.driver);
         } else {
           alert(`⚠️ ${data.message || 'Login failed. Invalid Credentials.'}`);
           loginBtn.disabled = false;
@@ -909,7 +899,7 @@
         if (data.success) {
           alert("✅ Document submitted successfully! Admin review karega.");
           currentDriver.status = 'PENDING_APPROVAL';
-          localStorage.setItem('67_driver_session', JSON.stringify(currentDriver));
+          syncSessionToCapacitorStorage(currentDriver);
           initDriverSession(currentDriver);
         } else {
           alert(data.message);
@@ -1032,7 +1022,7 @@
           if (!driver.documents) driver.documents = {};
           driver.documents.additionalDocName = docName;
         }
-        localStorage.setItem('67_driver_session', JSON.stringify(driver));
+        syncSessionToCapacitorStorage(driver);
         initDriverSession(driver);
       });
 
@@ -1240,23 +1230,39 @@
       }
     }
 
+    // Singleton AudioContext Engine - Prevents 10-Stream Memory Exhaustion Crash
     function playOfferSiren() {
       try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function beep(freq, duration, type = 'sine') {
-          const osc = audioCtx.createOscillator();
-          const gain = audioCtx.createGain();
-          osc.type = type;
-          osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-          gain.gain.setValueAtTime(0.35, audioCtx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-          osc.connect(gain);
-          osc.connect(audioCtx.destination);
-          osc.start();
-          osc.stop(audioCtx.currentTime + duration);
+        if (!globalAudioCtx || globalAudioCtx.state === 'closed') {
+          globalAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
-        beep(880, 0.25, 'sawtooth');
-        setTimeout(() => beep(1320, 0.35, 'sawtooth'), 260);
+        if (globalAudioCtx.state === 'suspended') {
+          globalAudioCtx.resume();
+        }
+
+        const now = globalAudioCtx.currentTime;
+
+        const osc1 = globalAudioCtx.createOscillator();
+        const gain1 = globalAudioCtx.createGain();
+        osc1.type = 'sawtooth';
+        osc1.frequency.setValueAtTime(880, now);
+        gain1.gain.setValueAtTime(0.3, now);
+        gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+        osc1.connect(gain1);
+        gain1.connect(globalAudioCtx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.25);
+
+        const osc2 = globalAudioCtx.createOscillator();
+        const gain2 = globalAudioCtx.createGain();
+        osc2.type = 'sawtooth';
+        osc2.frequency.setValueAtTime(1320, now + 0.26);
+        gain2.gain.setValueAtTime(0.3, now + 0.26);
+        gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
+        osc2.connect(gain2);
+        gain2.connect(globalAudioCtx.destination);
+        osc2.start(now + 0.26);
+        osc2.stop(now + 0.55);
       } catch (e) {}
     }
 
@@ -1361,7 +1367,7 @@
       removeOffer(rideId);
     });
 
-    // ---------------- UPDATED: INSTANT RESET & RE-REGISTER ON CANCEL ----------------
+    // ---------------- INSTANT RESET & RE-REGISTER ON CANCEL ----------------
     socket.on('ride:cancelled', ({ rideId }) => {
       removeOffer(rideId);
       if (currentActiveRideId === rideId || !currentActiveRideId) {
@@ -1382,7 +1388,7 @@
       }
     });
 
-    // ---------------- UPDATED: INSTANT ONGOING SCREEN SWITCH ----------------
+    // ---------------- INSTANT ONGOING SCREEN SWITCH ----------------
     socket.on('driver:ride_confirmed', (rideData) => {
       checkAndRestoreActiveRide();
     });
@@ -1406,11 +1412,11 @@
       socket.emit('ride:accept', {
         rideId: selected.rideId,
         driverData: { 
-          driverId: currentDriver.driverId,
+          driverId: currentDriver.driverId, 
           name: currentDriver.name, 
           vehicleNo: currentDriver.vehicleNo, 
           phone: currentDriver.phone, 
-          upiId: currentDriver.upiId
+          upiId: currentDriver.upiId 
         }
       });
 
@@ -1797,7 +1803,7 @@
       
       if (currentDriver) {
         currentDriver.walletBalance = (currentDriver.walletBalance || 0) + creditAmt;
-        localStorage.setItem('67_driver_session', JSON.stringify(currentDriver));
+        syncSessionToCapacitorStorage(currentDriver);
       }
 
       document.getElementById('modal-wallet-balance').innerText = `₹${currentDriver.walletBalance}.00`;
