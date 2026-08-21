@@ -553,6 +553,8 @@
   </div>
 
   <script>
+    // Web Push Registration disabled to prevent Chrome takeover (App operates via Native Background Service)
+    /*
     const VAPID_PUBLIC_KEY = 'BEj6z8VwcEmB5cjLwMwFLyWMu7CBGP0LyuTyZK_8TihbQYnKxVs4yJZAz0kLUKPDEAcYbArHtfSf5_C1BKHT6b8';
 
     function urlBase64ToUint8Array(base64String) {
@@ -571,25 +573,9 @@
     }
 
     async function initDriverPushSubscription(driverId) {
-      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-      try {
-        const registration = await navigator.serviceWorker.ready;
-        let subscription = await registration.pushManager.getSubscription();
-        if (!subscription) {
-          subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-          });
-        }
-        await fetch('/api/driver/push-subscription', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ driverId, subscription })
-        });
-      } catch (err) {
-        console.warn('Driver Push Subscription Error:', err.message);
-      }
+      return;
     }
+    */
 
     let deferredDriverPrompt;
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -1099,7 +1085,6 @@
         initDriverGPS();
         checkAndRestoreActiveRide();
         handleUrlDeepLink();
-        initDriverPushSubscription(driver.driverId);
       }
     }
 
