@@ -333,6 +333,11 @@ function isWithinJaipur(lat, lng) {
   );
 }
 
+// Real-Time In-Memory Maps (Keyed by driverId for Zero Lag)
+let activeDrivers = new Map();
+let driverSocketMap = new Map();
+let activeRides = new Map();
+
 // ---------------- STUCK TRIPS RESET & PURGE ROUTE (SUPPORTS GET & POST) ----------------
 const handleResetStuckTrips = async (req, res) => {
   try {
@@ -379,65 +384,92 @@ app.post('/api/driver/push-subscription', async (req, res) => {
 // ---------------- BACKGROUND ACTION HANDLERS FOR PUSH NOTIFICATIONS ----------------
 app.post('/api/ride/accept-bg', async (req, res) => {
   try {
-    const { rideId, driverId } = req.body;
-    if (!rideId || !driverId) {
-      return res.status(400).json({ success: false, message: 'Ride ID and Driver ID required.' });
+    const { rideId } = req.body;
+    let { driverId } = req.body;
+
+    if (!rideId) {
+      return res.status(400).json({ success: false, message: 'Ride ID required.' });
     }
 
-    const driver = await Driver.findOne({ driverId, status: 'APPROVED' });
-    if (!driver) {
-      return res.status(403).json({ success: false, message: 'Driver not found or not approved.' });
+    let trip = await Trip.findOne({ rideId });
+    const memoryRide = activeRides.get(rideId);
+
+    if (!driverId) {
+      driverId = memoryRide?.targetDriverId || trip?.driverData?.driverId;
     }
 
-    const startOtp = Math.floor(1000 + Math.random() * 9000).toString();
+    let driver = null;
+    if (driverId) {
+      driver = await Driver.findOne({ driverId });
+    }
+
+    const resolvedDriverId = driver?.driverId || driverId || 'DRV_DEFAULT';
+    const driverPayload = {
+      driverId: resolvedDriverId,
+      name: driver?.name || memoryRide?.driverData?.name || '67 Partner Driver',
+      vehicleNo: driver?.vehicleNo || memoryRide?.driverData?.vehicleNo || 'RJ 14 TA 6767',
+      phone: driver?.phone || memoryRide?.driverData?.phone || '',
+      upiId: driver?.upiId || '67cabs@upi'
+    };
+
+    const startOtp = trip?.otp || Math.floor(1000 + Math.random() * 9000).toString();
+    const finalFare = trip ? trip.totalFare : (memoryRide ? memoryRide.totalFare : 0);
+
     const updatedTrip = await Trip.findOneAndUpdate(
-      { rideId, status: 'SEARCHING' },
+      { rideId },
       {
-        status: 'ACCEPTED',
-        driverData: {
-          driverId: driver.driverId,
-          name: driver.name,
-          vehicleNo: driver.vehicleNo,
-          phone: driver.phone,
-          upiId: driver.upiId
-        },
-        otp: startOtp
+        $set: {
+          status: 'ACCEPTED',
+          driverData: driverPayload,
+          otp: startOtp
+        }
       },
-      { new: true }
+      { new: true, upsert: true }
     );
 
-    if (!updatedTrip) {
-      return res.status(400).json({ success: false, message: 'Ride already accepted or cancelled.' });
-    }
+    if (memoryRide) {
+      memoryRide.status = 'ACCEPTED';
+      memoryRide.driverData = driverPayload;
+      memoryRide.otp = startOtp;
+      activeRides.set(rideId, memoryRide);
 
-    const ride = activeRides.get(rideId);
-    if (ride) {
-      ride.status = 'ACCEPTED';
-      ride.driverData = updatedTrip.driverData;
-      ride.otp = startOtp;
-      activeRides.set(rideId, ride);
-
-      if (ride.riderSocketId) {
-        io.to(ride.riderSocketId).emit('ride:accepted', {
+      if (memoryRide.riderSocketId) {
+        io.to(memoryRide.riderSocketId).emit('ride:accepted', {
           rideId,
-          driver: ride.driverData,
+          driver: driverPayload,
           otp: startOtp,
-          fare: updatedTrip.totalFare
+          fare: finalFare
         });
       }
     }
 
+    // Broadcast globally to all dynamic sockets
     io.emit(`ride:accepted:${rideId}`, {
       rideId,
-      driver: updatedTrip.driverData,
+      driver: driverPayload,
       otp: startOtp,
-      fare: updatedTrip.totalFare
+      fare: finalFare
     });
-
+    io.emit('ride:accepted', {
+      rideId,
+      driver: driverPayload,
+      otp: startOtp,
+      fare: finalFare
+    });
     io.emit('ride:taken', { rideId });
+
+    if (driverId) {
+      io.to(`driver:${driverId}`).emit('driver:ride_confirmed', {
+        rideId,
+        pickup: updatedTrip.pickup,
+        drop: updatedTrip.drop || updatedTrip.stops?.[0],
+        totalFare: finalFare
+      });
+    }
 
     return res.json({ success: true, trip: updatedTrip });
   } catch (err) {
+    console.error('Accept-bg error:', err);
     return res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -1335,11 +1367,6 @@ app.get('/api/cabs/nearby', async (req, res) => {
   }
 });
 
-// Real-Time In-Memory Maps (Keyed by driverId for Zero Lag)
-let activeDrivers = new Map();
-let driverSocketMap = new Map();
-let activeRides = new Map();
-
 io.on('connection', (socket) => {
   console.log(`⚡ Device Connected: ${socket.id}`);
 
@@ -1438,6 +1465,7 @@ io.on('connection', (socket) => {
       totalFare: Number(totalFare) || 0,
       riderData: rider,
       riderSocketId: socket.id,
+      targetDriverId,
       status: 'SEARCHING',
       startTime: new Date()
     };
@@ -1468,7 +1496,7 @@ io.on('connection', (socket) => {
         data: { 
           rideId: ridePayload.rideId, 
           driverId: targetDriverId,
-          url: `/driver.html?status=ongoing&id=${ridePayload.rideId}` 
+          url: `/driver.html?status=ongoing&id=${ridePayload.rideId}&autoAccept=true` 
         }
       });
 
@@ -1535,7 +1563,7 @@ io.on('connection', (socket) => {
           data: { 
             rideId, 
             driverId: driver.driverId,
-            url: `/driver.html?status=ongoing&id=${rideId}` 
+            url: `/driver.html?status=ongoing&id=${rideId}&autoAccept=true` 
           }
         });
       }
@@ -1552,7 +1580,7 @@ io.on('connection', (socket) => {
     } catch (e) {}
   });
 
-  // 3. Driver Accepts Ride
+  // 3. Driver Accepts Ride (Standard In-App)
   socket.on('ride:accept', async ({ rideId, driverData }) => {
     const ride = activeRides.get(rideId);
     let registeredDriver = null;
@@ -1570,21 +1598,25 @@ io.on('connection', (socket) => {
     const startOtp = Math.floor(1000 + Math.random() * 9000).toString();
     let finalTotalFare = ride ? ride.totalFare : 0;
 
+    const assignedDriverData = {
+      driverId: registeredDriver ? registeredDriver.driverId : (driverData?.driverId || 'DRV_DEFAULT'),
+      name: registeredDriver ? registeredDriver.name : (driverData?.name || 'Partner Driver'),
+      vehicleNo: registeredDriver ? registeredDriver.vehicleNo : (driverData?.vehicleNo || 'RJ 14 TA 6767'),
+      phone: driverData?.phone || '',
+      upiId: registeredDriver ? registeredDriver.upiId : (driverData?.upiId || '67cabs@upi')
+    };
+
     try {
       const updatedTrip = await Trip.findOneAndUpdate(
         { rideId },
         { 
-          status: 'ACCEPTED', 
-          driverData: {
-            driverId: registeredDriver ? registeredDriver.driverId : driverData.driverId,
-            name: registeredDriver ? registeredDriver.name : driverData.name,
-            vehicleNo: registeredDriver ? registeredDriver.vehicleNo : driverData.vehicleNo,
-            phone: driverData?.phone || '',
-            upiId: registeredDriver ? registeredDriver.upiId : (driverData?.upiId || '67cabs@upi')
-          }, 
-          otp: startOtp 
+          $set: {
+            status: 'ACCEPTED', 
+            driverData: assignedDriverData, 
+            otp: startOtp 
+          }
         },
-        { new: true }
+        { new: true, upsert: true }
       );
       if (updatedTrip) finalTotalFare = updatedTrip.totalFare;
     } catch (e) {}
@@ -1592,12 +1624,7 @@ io.on('connection', (socket) => {
     if (ride) {
       ride.status = 'ACCEPTED';
       ride.driverSocketId = socket.id;
-      ride.driverData = {
-        driverId: registeredDriver ? registeredDriver.driverId : driverData.driverId,
-        name: registeredDriver ? registeredDriver.name : driverData.name,
-        vehicleNo: registeredDriver ? registeredDriver.vehicleNo : driverData.vehicleNo,
-        upiId: registeredDriver ? registeredDriver.upiId : '67cabs@upi'
-      };
+      ride.driverData = assignedDriverData;
       ride.otp = startOtp;
       activeRides.set(rideId, ride);
 
@@ -1613,7 +1640,13 @@ io.on('connection', (socket) => {
 
     io.emit(`ride:accepted:${rideId}`, {
       rideId,
-      driver: driverData,
+      driver: assignedDriverData,
+      otp: startOtp,
+      fare: finalTotalFare
+    });
+    io.emit('ride:accepted', {
+      rideId,
+      driver: assignedDriverData,
       otp: startOtp,
       fare: finalTotalFare
     });
