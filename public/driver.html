@@ -49,14 +49,26 @@
         opacity: 0;
       }
     }
+
+    /* Native-like Pull to Refresh Circular Spinner Animation */
+    #ptr-spinner-container {
+      transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s ease;
+      transform: translateY(-80px);
+      opacity: 0;
+    }
+    #ptr-spinner-container.ptr-active {
+      transform: translateY(20px);
+      opacity: 1;
+    }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen p-3 md:p-6 flex flex-col items-center select-none font-sans relative transition-colors duration-200">
 
-  <!-- PULL TO REFRESH SPINNER INDICATOR -->
-  <div id="ptr-indicator" class="fixed top-2 left-1/2 -translate-x-1/2 z-[99999] hidden flex-col items-center gap-1 bg-slate-900 text-amber-400 border border-amber-500/60 px-4 py-2 rounded-full shadow-2xl transition-all">
-    <div class="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
-    <span class="text-[10px] font-black tracking-wider uppercase">Syncing with MongoDB...</span>
+  <!-- NATIVE-LIKE CLEAN CIRCULAR PULL TO REFRESH SPINNER (NO TEXT BOX) -->
+  <div id="ptr-spinner-container" class="fixed top-0 left-1/2 -translate-x-1/2 z-[99999] pointer-events-none">
+    <div class="w-10 h-10 bg-white dark:bg-slate-800 rounded-full shadow-2xl border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+      <div class="w-5 h-5 border-[2.5px] border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+    </div>
   </div>
 
   <!-- ================= 1. AUTH VIEW ================= -->
@@ -364,7 +376,7 @@
     <!-- Multi-Offers Feed Container -->
     <div id="offers-container" class="space-y-4"></div>
 
-    <!-- Enhanced Bright Radar with Continuous Spinning Satellite Core + Expanding Waves -->
+    <!-- Enhanced Bright Radar with Continuous 360-Degree Spinning Satellite Core + Expanding Waves -->
     <div id="waiting-radar" class="text-center py-20 rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 flex flex-col items-center justify-center space-y-6 shadow-xl transition-colors relative overflow-hidden">
       <div class="relative flex items-center justify-center w-28 h-28">
         <!-- 3-Layer Expanding Wave Rings -->
@@ -372,7 +384,7 @@
         <div class="absolute w-24 h-24 rounded-full bg-amber-500/25 radar-pulse-2 pointer-events-none"></div>
         <div class="absolute w-24 h-24 rounded-full bg-amber-500/20 radar-pulse-3 pointer-events-none"></div>
         
-        <!-- Continuously Spinning Radar Core Satellite (360-degree continuous rotation) -->
+        <!-- Continuously Spinning Radar Core Satellite (360-degree rotation) -->
         <div class="relative z-10 w-16 h-16 rounded-full bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center shadow-2xl shadow-amber-500/50 border-2 border-white/40 animate-spin" style="animation-duration: 3s;">
           <span class="text-3xl filter drop-shadow">📡</span>
         </div>
@@ -471,7 +483,7 @@
               <button onclick="switchQRTab('rider')" id="tab-qr-rider" class="w-1/2 py-1.5 text-[11px] font-bold rounded-lg bg-amber-500 text-slate-950 transition">
                 Rider QR
               </button>
-              <button onclick="switchQRTab('driver')" id="tab-qr-driver" class="w-1/2 py-1.5 text-[11px] font-bold rounded-lg text-slate-400 transition">
+              <button onclick="switchQRTab('driver')" id="tab-qr-driver" class="w-1/2 py-1.5 text-[11px] font-bold rounded-lg text-slate-400 hover:text-white transition">
                 Driver QR
               </button>
             </div>
@@ -646,7 +658,7 @@
       }
     }
 
-    // PULL TO REFRESH IMPLEMENTATION
+    // NATIVE-LIKE PULL TO REFRESH LOGIC (CIRCULAR SPINNER ONLY)
     let touchStartY = 0;
     let isPulling = false;
 
@@ -661,19 +673,21 @@
       if (!isPulling) return;
       const currentY = e.touches[0].clientY;
       const pullDistance = currentY - touchStartY;
-      if (pullDistance > 70 && window.scrollY === 0) {
-        const indicator = document.getElementById('ptr-indicator');
-        if (indicator) indicator.classList.remove('hidden');
+      if (pullDistance > 65 && window.scrollY === 0) {
+        const spinner = document.getElementById('ptr-spinner-container');
+        if (spinner) spinner.classList.add('ptr-active');
       }
     }, { passive: true });
 
     window.addEventListener('touchend', async () => {
       if (!isPulling) return;
       isPulling = false;
-      const indicator = document.getElementById('ptr-indicator');
-      if (indicator && !indicator.classList.contains('hidden')) {
+      const spinner = document.getElementById('ptr-spinner-container');
+      if (spinner && spinner.classList.contains('ptr-active')) {
         await executeLiveRefresh();
-        setTimeout(() => indicator.classList.add('hidden'), 600);
+        setTimeout(() => {
+          spinner.classList.remove('ptr-active');
+        }, 500);
       }
     }, { passive: true });
 
@@ -686,6 +700,14 @@
       ]);
       if (isDriverOnline) registerDriver();
     }
+
+    // CONTINUOUS ACTIVE POLLING LOOP (KEEPS DRIVER APP WIDE AWAKE & FETCHES RIDES EVERY 3 SECONDS)
+    setInterval(() => {
+      if (currentDriver && currentDriver.status === 'APPROVED' && isDriverOnline && !currentActiveRideId) {
+        registerDriver();
+        checkAndRestoreActiveRide();
+      }
+    }, 3000);
 
     // Theme Switcher Engine (Light vs Dark Mode)
     function initDriverTheme() {
@@ -772,7 +794,7 @@
         if (badgeVehicle) badgeVehicle.className = "text-[9px] sm:text-[10px] font-mono font-black px-1.5 py-0.5 rounded-lg border bg-slate-800 text-amber-400 border-slate-700";
         if (btnHamburger) btnHamburger.className = "w-11 h-11 rounded-2xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-amber-400 flex items-center justify-center text-xl transition shadow-md active:scale-95";
         
-        if (radarBox) radarBox.className = "text-center py-20 rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 flex flex-col items-center justify-center space-y-4 shadow-xl transition-colors relative overflow-hidden";
+        if (radarBox) radarBox.className = "text-center py-20 rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 flex flex-col items-center justify-center space-y-6 shadow-xl transition-colors relative overflow-hidden";
         if (radarTitle) radarTitle.className = "text-base font-black text-slate-100 tracking-tight";
         if (radarSubtitle) radarSubtitle.className = "text-xs text-slate-400 mt-1 font-medium";
 
