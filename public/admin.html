@@ -25,7 +25,7 @@
         <h1 class="text-2xl font-black text-amber-400 flex items-center gap-2">
           🛡️ 67 Cabs Admin Portal
         </h1>
-        <p class="text-xs text-slate-400 mt-1">Driver Partner & Rider KYC Verification, Coupon Management, Compliance & Security Control</p>
+        <p class="text-xs text-slate-400 mt-1">Driver Partner & Rider KYC Verification, Coupon Management, Compliance, Dynamic Fare & Sound Control</p>
       </div>
       <div class="flex items-center gap-3">
         <button onclick="fetchAllData()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-4 py-2.5 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 shadow">
@@ -35,18 +35,21 @@
     </div>
 
     <!-- Master Tabs Switcher -->
-    <div class="flex bg-slate-900 p-1.5 rounded-2xl border border-slate-800 max-w-2xl">
-      <button onclick="switchAdminTab('drivers')" id="tab-btn-drivers" class="w-1/4 py-2.5 text-xs font-black rounded-xl bg-amber-500 text-slate-950 transition shadow">
+    <div class="flex bg-slate-900 p-1.5 rounded-2xl border border-slate-800 max-w-3xl overflow-x-auto custom-scrollbar">
+      <button onclick="switchAdminTab('drivers')" id="tab-btn-drivers" class="w-1/5 py-2.5 text-xs font-black rounded-xl bg-amber-500 text-slate-950 transition shadow whitespace-nowrap px-2">
         🚖 Drivers (<span id="count-drivers-badge">0</span>)
       </button>
-      <button onclick="switchAdminTab('riders')" id="tab-btn-riders" class="w-1/4 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition">
+      <button onclick="switchAdminTab('riders')" id="tab-btn-riders" class="w-1/5 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition whitespace-nowrap px-2">
         👤 Riders (<span id="count-riders-badge">0</span>)
       </button>
-      <button onclick="switchAdminTab('coupons')" id="tab-btn-coupons" class="w-1/4 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition">
+      <button onclick="switchAdminTab('coupons')" id="tab-btn-coupons" class="w-1/5 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition whitespace-nowrap px-2">
         🎟️ Coupons (<span id="count-coupons-badge">0</span>)
       </button>
-      <button onclick="switchAdminTab('sounds')" id="tab-btn-sounds" class="w-1/4 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition">
+      <button onclick="switchAdminTab('sounds')" id="tab-btn-sounds" class="w-1/5 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition whitespace-nowrap px-2">
         🔔 Sound Control
+      </button>
+      <button onclick="switchAdminTab('fares')" id="tab-btn-fares" class="w-1/5 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition whitespace-nowrap px-2">
+        💰 Fare Rules
       </button>
     </div>
 
@@ -110,7 +113,6 @@
 
     <!-- ================= TAB 3: COUPONS SYSTEM MANAGER ================= -->
     <div id="section-coupons-table" class="hidden space-y-6">
-      <!-- Create Coupon Form Section -->
       <div class="bg-slate-900/80 rounded-3xl border border-slate-800 p-6 shadow-2xl backdrop-blur-md">
         <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
           <h2 class="text-sm font-black text-amber-400 uppercase tracking-wider flex items-center gap-2">
@@ -157,7 +159,6 @@
             </div>
           </div>
 
-          <!-- Target Selection: All or Specific -->
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-950 p-3 rounded-2xl border border-slate-800">
             <div>
               <label class="text-[10px] font-bold text-amber-400 uppercase block mb-1">Coupon Target Audience *</label>
@@ -185,7 +186,6 @@
         </form>
       </div>
 
-      <!-- Coupons List Table Section -->
       <div class="bg-slate-900/60 rounded-3xl border border-slate-800 p-5 shadow-2xl space-y-4">
         <div class="flex justify-between items-center px-1">
           <h2 class="text-sm font-black text-slate-200 uppercase tracking-wider">Active & Historical Coupons</h2>
@@ -227,7 +227,7 @@
         </div>
 
         <div class="space-y-5 text-xs">
-          <!-- 1. Preset Sounds Dropdown -->
+          <!-- Preset Sounds Dropdown -->
           <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
             <label class="text-[10px] font-bold text-amber-400 uppercase block">Option A: Select from Preset Tones</label>
             <select id="global-ringtone-select" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-3 outline-none focus:border-amber-400 text-xs font-bold">
@@ -241,7 +241,7 @@
             </button>
           </div>
 
-          <!-- 2. Custom MP3 File Upload (Jai Jai Deva / Bhakti / Custom Song) -->
+          <!-- Custom MP3 File Upload -->
           <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
             <label class="text-[10px] font-bold text-green-400 uppercase block">Option B: Upload Custom Alert MP3 Song (e.g. Jai Deva Ganpati, Bhakti or Song)</label>
             <p class="text-[10px] text-slate-400">Apne computer/mobile se koi bhi .mp3 song select karke upload karein. Ride aane par yahi gaana sabhi drivers ke phone par bajega.</p>
@@ -257,6 +257,111 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- ================= TAB 5: DYNAMIC FARE RULES MANAGER ================= -->
+    <div id="section-fares-table" class="hidden space-y-6">
+      <div class="bg-slate-900/80 rounded-3xl border border-slate-800 p-6 shadow-2xl backdrop-blur-md max-w-4xl mx-auto space-y-5">
+        <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+          <div>
+            <h2 class="text-sm font-black text-amber-400 uppercase tracking-wider flex items-center gap-2">
+              <span>💰</span> Dynamic Fare & Pricing Control Engine
+            </h2>
+            <p class="text-[10px] text-slate-400 mt-0.5">Control Base Fare, Distance Rates, Pickup & Traffic Charges in Real-Time</p>
+          </div>
+          <span class="text-[10px] bg-green-950 border border-green-700 text-green-400 px-3 py-1 rounded-full font-bold">Live in MongoDB Atlas</span>
+        </div>
+
+        <form id="admin-fare-rules-form" onsubmit="handleSaveFareRules(event)" class="space-y-5 text-xs">
+          <!-- Cab Categories Pricing Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Hatchback -->
+            <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+              <div class="font-black text-amber-400 flex items-center gap-1.5 border-b border-slate-800 pb-2">
+                <span>🚗</span> HATCHBACK
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Base Fare (₹)</label>
+                <input type="number" id="fare-hatch-base" required min="0" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-2.5 font-mono" />
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Per Km Rate (₹/km)</label>
+                <input type="number" id="fare-hatch-perkm" required min="0" step="0.5" class="w-full bg-slate-900 border border-slate-700 text-amber-400 font-bold font-mono rounded-xl p-2.5" />
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Minimum Fare Cap (₹)</label>
+                <input type="number" id="fare-hatch-min" required min="0" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-2.5 font-mono" />
+              </div>
+            </div>
+
+            <!-- Sedan -->
+            <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+              <div class="font-black text-blue-400 flex items-center gap-1.5 border-b border-slate-800 pb-2">
+                <span>🚘</span> SEDAN
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Base Fare (₹)</label>
+                <input type="number" id="fare-sedan-base" required min="0" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-2.5 font-mono" />
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Per Km Rate (₹/km)</label>
+                <input type="number" id="fare-sedan-perkm" required min="0" step="0.5" class="w-full bg-slate-900 border border-slate-700 text-blue-400 font-bold font-mono rounded-xl p-2.5" />
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Minimum Fare Cap (₹)</label>
+                <input type="number" id="fare-sedan-min" required min="0" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-2.5 font-mono" />
+              </div>
+            </div>
+
+            <!-- SUV -->
+            <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+              <div class="font-black text-emerald-400 flex items-center gap-1.5 border-b border-slate-800 pb-2">
+                <span>🚙</span> SUV
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Base Fare (₹)</label>
+                <input type="number" id="fare-suv-base" required min="0" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-2.5 font-mono" />
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Per Km Rate (₹/km)</label>
+                <input type="number" id="fare-suv-perkm" required min="0" step="0.5" class="w-full bg-slate-900 border border-slate-700 text-emerald-400 font-bold font-mono rounded-xl p-2.5" />
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Minimum Fare Cap (₹)</label>
+                <input type="number" id="fare-suv-min" required min="0" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-2.5 font-mono" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Pickup Reach & Traffic Rates -->
+          <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+            <div class="font-black text-orange-400 flex items-center gap-1.5 border-b border-slate-800 pb-2">
+              <span>⏱️</span> Pickup Reach & Traffic Multipliers
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Driver Reach Rate (₹/km)</label>
+                <input type="number" id="fare-rate-pickupkm" required min="0" step="0.5" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-2.5 font-mono" />
+                <span class="text-[9px] text-slate-500">Driver pickup tak aane ka per km charge</span>
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Trip Jam/Traffic (₹/min)</label>
+                <input type="number" id="fare-rate-triptraffic" required min="0" step="0.1" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-2.5 font-mono" />
+                <span class="text-[9px] text-slate-500">Rider trip ke dauraan traffic time charge</span>
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Pickup Traffic (₹/min)</label>
+                <input type="number" id="fare-rate-pickuptraffic" required min="0" step="0.1" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-2.5 font-mono" />
+                <span class="text-[9px] text-slate-500">Pickup pahuchne mein lage jam ka charge</span>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" id="btn-save-fare" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3.5 rounded-xl text-xs transition shadow-lg flex items-center justify-center gap-2">
+            <span>🚀 Save & Apply New Fare Rules to MongoDB</span>
+          </button>
+        </form>
       </div>
     </div>
 
@@ -356,36 +461,48 @@
       const btnRiders = document.getElementById('tab-btn-riders');
       const btnCoupons = document.getElementById('tab-btn-coupons');
       const btnSounds = document.getElementById('tab-btn-sounds');
+      const btnFares = document.getElementById('tab-btn-fares');
+
       const secDrivers = document.getElementById('section-drivers-table');
       const secRiders = document.getElementById('section-riders-table');
       const secCoupons = document.getElementById('section-coupons-table');
       const secSounds = document.getElementById('section-sounds-table');
+      const secFares = document.getElementById('section-fares-table');
 
       // Reset tabs styling
-      btnDrivers.className = "w-1/4 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition";
-      btnRiders.className = "w-1/4 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition";
-      btnCoupons.className = "w-1/4 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition";
-      btnSounds.className = "w-1/4 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition";
+      const defaultTabClass = "w-1/5 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition whitespace-nowrap px-2";
+      btnDrivers.className = defaultTabClass;
+      btnRiders.className = defaultTabClass;
+      btnCoupons.className = defaultTabClass;
+      btnSounds.className = defaultTabClass;
+      btnFares.className = defaultTabClass;
       
       secDrivers.classList.add('hidden');
       secRiders.classList.add('hidden');
       secCoupons.classList.add('hidden');
       secSounds.classList.add('hidden');
+      secFares.classList.add('hidden');
+
+      const activeTabClass = "w-1/5 py-2.5 text-xs font-black rounded-xl bg-amber-500 text-slate-950 transition shadow whitespace-nowrap px-2";
 
       if (tab === 'drivers') {
-        btnDrivers.className = "w-1/4 py-2.5 text-xs font-black rounded-xl bg-amber-500 text-slate-950 transition shadow";
+        btnDrivers.className = activeTabClass;
         secDrivers.classList.remove('hidden');
       } else if (tab === 'riders') {
-        btnRiders.className = "w-1/4 py-2.5 text-xs font-black rounded-xl bg-amber-500 text-slate-950 transition shadow";
+        btnRiders.className = activeTabClass;
         secRiders.classList.remove('hidden');
       } else if (tab === 'coupons') {
-        btnCoupons.className = "w-1/4 py-2.5 text-xs font-black rounded-xl bg-amber-500 text-slate-950 transition shadow";
+        btnCoupons.className = activeTabClass;
         secCoupons.classList.remove('hidden');
         fetchCoupons();
       } else if (tab === 'sounds') {
-        btnSounds.className = "w-1/4 py-2.5 text-xs font-black rounded-xl bg-amber-500 text-slate-950 transition shadow";
+        btnSounds.className = activeTabClass;
         secSounds.classList.remove('hidden');
         fetchCurrentSoundSetting();
+      } else if (tab === 'fares') {
+        btnFares.className = activeTabClass;
+        secFares.classList.remove('hidden');
+        fetchFareRules();
       }
     }
 
@@ -399,7 +516,7 @@
     }
 
     async function fetchAllData() {
-      await Promise.all([fetchDrivers(), fetchRiders(), fetchCoupons(), fetchCurrentSoundSetting()]);
+      await Promise.all([fetchDrivers(), fetchRiders(), fetchCoupons(), fetchCurrentSoundSetting(), fetchFareRules()]);
     }
 
     // 1. Fetch Drivers
@@ -771,6 +888,81 @@
       } finally {
         btn.disabled = false;
         btn.innerText = '📤 Upload & Apply Song';
+      }
+    }
+
+    // 5. Dynamic Fare Rules Handlers (MongoDB Atlas Integrated)
+    async function fetchFareRules() {
+      try {
+        const res = await fetch('/api/admin/fare-rules');
+        const data = await res.json();
+        if (data.success && data.fareRules) {
+          const f = data.fareRules;
+          document.getElementById('fare-hatch-base').value = f.HATCHBACK?.baseFare || 50;
+          document.getElementById('fare-hatch-perkm').value = f.HATCHBACK?.perKm || 16;
+          document.getElementById('fare-hatch-min').value = f.HATCHBACK?.minFare || 50;
+
+          document.getElementById('fare-sedan-base').value = f.SEDAN?.baseFare || 70;
+          document.getElementById('fare-sedan-perkm').value = f.SEDAN?.perKm || 20;
+          document.getElementById('fare-sedan-min').value = f.SEDAN?.minFare || 70;
+
+          document.getElementById('fare-suv-base').value = f.SUV?.baseFare || 100;
+          document.getElementById('fare-suv-perkm').value = f.SUV?.perKm || 25;
+          document.getElementById('fare-suv-min').value = f.SUV?.minFare || 100;
+
+          document.getElementById('fare-rate-pickupkm').value = f.rates?.pickupPerKm || 10;
+          document.getElementById('fare-rate-triptraffic').value = f.rates?.tripTrafficPerMin || 2.0;
+          document.getElementById('fare-rate-pickuptraffic').value = f.rates?.pickupTrafficPerMin || 2.0;
+        }
+      } catch (e) {}
+    }
+
+    async function handleSaveFareRules(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-save-fare');
+      btn.disabled = true;
+      btn.innerText = "⏳ Saving to MongoDB Atlas...";
+
+      const payload = {
+        HATCHBACK: {
+          baseFare: Number(document.getElementById('fare-hatch-base').value),
+          perKm: Number(document.getElementById('fare-hatch-perkm').value),
+          minFare: Number(document.getElementById('fare-hatch-min').value)
+        },
+        SEDAN: {
+          baseFare: Number(document.getElementById('fare-sedan-base').value),
+          perKm: Number(document.getElementById('fare-sedan-perkm').value),
+          minFare: Number(document.getElementById('fare-sedan-min').value)
+        },
+        SUV: {
+          baseFare: Number(document.getElementById('fare-suv-base').value),
+          perKm: Number(document.getElementById('fare-suv-perkm').value),
+          minFare: Number(document.getElementById('fare-suv-min').value)
+        },
+        rates: {
+          pickupPerKm: Number(document.getElementById('fare-rate-pickupkm').value),
+          tripTrafficPerMin: Number(document.getElementById('fare-rate-triptraffic').value),
+          pickupTrafficPerMin: Number(document.getElementById('fare-rate-pickuptraffic').value)
+        }
+      };
+
+      try {
+        const res = await fetch('/api/admin/fare-rules', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert("✅ Fare rules MongoDB Atlas mein successfully update ho gaye! Ab sabhi nayi bookings par yahi rates lagenge.");
+        } else {
+          alert(`⚠️ ${data.message || 'Update failed'}`);
+        }
+      } catch (err) {
+        alert("Server error while updating fare rules.");
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "🚀 Save & Apply New Fare Rules to MongoDB";
       }
     }
 

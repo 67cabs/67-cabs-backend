@@ -71,6 +71,7 @@ if (MONGO_URI) {
       // Purge ghost online states on restart
       await Driver.updateMany({}, { $set: { isOnline: false } });
       await DriverLocation.updateMany({}, { $set: { isOnline: false } });
+      await refreshFareConfigCache();
     } catch (e) {}
   })
   .catch((err) => {
@@ -313,6 +314,48 @@ const settingSchema = new mongoose.Schema({
 
 const Setting = mongoose.model('Setting', settingSchema);
 
+// 9. Admin Dynamic Fare Rules Schema (MongoDB Atlas Pricing Engine)
+const fareConfigSchema = new mongoose.Schema({
+  key: { type: String, default: 'global_fare_rules', unique: true },
+  HATCHBACK: {
+    baseFare: { type: Number, default: 50 },
+    perKm: { type: Number, default: 16 },
+    minFare: { type: Number, default: 50 }
+  },
+  SEDAN: {
+    baseFare: { type: Number, default: 70 },
+    perKm: { type: Number, default: 20 },
+    minFare: { type: Number, default: 70 }
+  },
+  SUV: {
+    baseFare: { type: Number, default: 100 },
+    perKm: { type: Number, default: 25 },
+    minFare: { type: Number, default: 100 }
+  },
+  rates: {
+    pickupPerKm: { type: Number, default: 10 },
+    tripTrafficPerMin: { type: Number, default: 2.0 },
+    pickupTrafficPerMin: { type: Number, default: 2.0 }
+  }
+}, { timestamps: true });
+
+const FareConfig = mongoose.model('FareConfig', fareConfigSchema);
+
+// Fast In-Memory Fare Rules Cache
+let cachedFareConfig = null;
+async function refreshFareConfigCache() {
+  try {
+    let doc = await FareConfig.findOne({ key: 'global_fare_rules' });
+    if (!doc) {
+      doc = await FareConfig.create({ key: 'global_fare_rules' });
+    }
+    cachedFareConfig = doc.toObject();
+  } catch (e) {
+    cachedFareConfig = null;
+  }
+}
+refreshFareConfigCache();
+
 // Memory Cache for Active Ringtone
 let globalActiveSound = 'alert_uber';
 (async () => {
@@ -351,7 +394,7 @@ function isWithinJaipur(lat, lng) {
 let activeDrivers = new Map();
 let driverSocketMap = new Map();
 let activeRides = new Map();
-let rideTimeoutTimers = new Map(); // Tracker for exact 15 seconds timer
+let rideTimeoutTimers = new Map();
 
 // ---------------- STUCK TRIPS RESET & PURGE ROUTE (SUPPORTS GET & POST) ----------------
 const handleResetStuckTrips = async (req, res) => {
@@ -378,6 +421,35 @@ const handleResetStuckTrips = async (req, res) => {
 
 app.get('/api/admin/reset-stuck-trips', handleResetStuckTrips);
 app.post('/api/admin/reset-stuck-trips', handleResetStuckTrips);
+
+// ---------------- ADMIN FARE RULES API ROUTES (MONGODB DRIVEN) ----------------
+app.get('/api/admin/fare-rules', async (req, res) => {
+  try {
+    let doc = await FareConfig.findOne({ key: 'global_fare_rules' });
+    if (!doc) {
+      doc = await FareConfig.create({ key: 'global_fare_rules' });
+    }
+    return res.json({ success: true, fareRules: doc });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+app.post('/api/admin/fare-rules', async (req, res) => {
+  try {
+    const { HATCHBACK, SEDAN, SUV, rates } = req.body;
+    const updated = await FareConfig.findOneAndUpdate(
+      { key: 'global_fare_rules' },
+      { HATCHBACK, SEDAN, SUV, rates },
+      { new: true, upsert: true }
+    );
+    cachedFareConfig = updated.toObject();
+    console.log('💰 MongoDB Dynamic Fare Rules Updated by Admin!');
+    return res.json({ success: true, message: 'Fare rules updated in MongoDB Atlas!', fareRules: updated });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: e.message });
+  }
+});
 
 // ---------------- ADMIN SOUND & SETTINGS ROUTES (MONGODB DRIVEN) ----------------
 app.get('/api/admin/settings/sound', async (req, res) => {
@@ -1405,7 +1477,7 @@ app.post('/api/coupons/apply', async (req, res) => {
     if (coupon.targetType === 'SPECIFIC' && !coupon.allowedDrivers.includes(driverId)) {
       return res.status(403).json({ 
         success: false, 
-        message: 'Yeh coupon aapke account ke लिए valid nahi hai.' 
+        message: 'Yeh coupon aapke account ke liye valid nahi hai.' 
       });
     }
 
@@ -1445,8 +1517,8 @@ app.post('/api/coupons/apply', async (req, res) => {
   }
 });
 
-// ---------------- FARE & PROXIMITY RADAR ROUTES ----------------
-app.post('/api/fare/estimate', (req, res) => {
+// ---------------- FARE & PROXIMITY RADAR ROUTES (DYNAMIC MONGODB RULES) ----------------
+app.post('/api/fare/estimate', async (req, res) => {
   try {
     const { tripDistanceKm, tripTrafficMins, pickupDistanceKm, pickupTrafficMins, cabType } = req.body;
     if (!tripDistanceKm || !tripTrafficMins) {
@@ -1465,7 +1537,8 @@ app.post('/api/fare/estimate', (req, res) => {
       tripTrafficMins: Number(tripTrafficMins),
       pickupDistanceKm: Number(pickupDistanceKm || 0),
       pickupTrafficMins: Number(pickupTrafficMins || 0),
-      cabType: cabType ? cabType.toUpperCase() : 'HATCHBACK'
+      cabType: cabType ? cabType.toUpperCase() : 'HATCHBACK',
+      pricingConfig: cachedFareConfig
     });
 
     return res.status(200).json({ success: true, data: fareData });
