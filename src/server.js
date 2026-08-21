@@ -1451,7 +1451,7 @@ io.on('connection', (socket) => {
     console.log(`🚪 Driver ${driverId} logged out & purged from active radar.`);
   });
 
-  // 2. Targeted 1-Click Ride Request
+  // 2. Targeted 1-Click Ride Request (CHECK BOTH MEMORY & DB TO PREVENT FALSE UNAVAILABLE)
   socket.on('ride:request_targeted', async (rideData) => {
     const { rideId, targetDriverId, pickup, stops, cabCategory, totalDistanceKm, totalFare, rider } = rideData;
 
@@ -1475,9 +1475,10 @@ io.on('connection', (socket) => {
       await Trip.create(ridePayload);
     } catch (dbErr) {}
 
-    const isOnline = activeDrivers.has(targetDriverId) && activeDrivers.get(targetDriverId).isOnline === true;
+    const isMemoryOnline = activeDrivers.has(targetDriverId) && activeDrivers.get(targetDriverId).isOnline === true;
+    const dbDriver = await Driver.findOne({ driverId: targetDriverId, status: 'APPROVED' });
 
-    if (isOnline) {
+    if (isMemoryOnline || dbDriver) {
       io.to(`driver:${targetDriverId}`).emit('ride:new_offer', ridePayload);
       
       const sId = driverSocketMap.get(targetDriverId);
@@ -1500,7 +1501,7 @@ io.on('connection', (socket) => {
         }
       });
 
-      console.log(`🎯 Targeted Ride ${rideId} dispatched to Driver Room: driver:${targetDriverId}`);
+      console.log(`🎯 Targeted Ride ${rideId} dispatched to Driver: ${targetDriverId}`);
     } else {
       socket.emit('ride:declined_targeted', { rideId });
     }
@@ -1571,7 +1572,7 @@ io.on('connection', (socket) => {
     io.emit('ride:new_offer', ridePayload);
   });
 
-  // ---------------- UPDATED: CANCEL RIDE WITH INSTANT DRIVER AVAILABILITY ----------------
+  // ---------------- CANCEL RIDE WITH INSTANT DRIVER AVAILABILITY ----------------
   socket.on('ride:cancel', async ({ rideId }) => {
     try {
       const existingTrip = await Trip.findOne({ rideId });
@@ -1585,7 +1586,6 @@ io.on('connection', (socket) => {
       
       activeRides.delete(rideId);
       
-      // Instant unlock & re-register driver in active radar
       if (assignedDriverId) {
         if (activeDrivers.has(assignedDriverId)) {
           const d = activeDrivers.get(assignedDriverId);
