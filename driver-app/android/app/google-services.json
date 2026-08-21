@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "727987161133",
+    "project_id": "cabs67app",
+    "storage_bucket": "cabs67app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:727987161133:android:6034590f67433cd0e110a4",
+        "android_client_info": {
+          "package_name": "com.cabs67.driver"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB9BrXyswmU0DMYsEmHJlk68c-naAv7Wvs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,9 @@
+{
+  "appId": "com.cabs67.driver",
+  "appName": "67 Partner",
+  "webDir": "www",
+  "server": {
+    "url": "https://137.23.57.23.sslip.io/driver.html",
+    "cleartext": true
+  }
+}

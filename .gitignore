@@ -1,3 +1,16 @@
 node_modules
 .env
 *.log
+
+# Secret / Key Files
+serviceAccountKey.json
+config/serviceAccountKey.json
+google-services.json
+
+# Android Build & Gradle Files
+.gradle/
+build/
+*/build/
+*.apk
+*.aab
+.idea/

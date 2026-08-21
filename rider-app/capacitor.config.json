@@ -1,0 +1,9 @@
+{
+  "appId": "com.cabs67.rider",
+  "appName": "67 Cabs",
+  "webDir": "www",
+  "server": {
+    "url": "https://137.23.57.23.sslip.io",
+    "cleartext": true
+  }
+}
