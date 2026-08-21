@@ -1,4 +1,4 @@
-const CACHE_NAME = '67-driver-cache-v3';
+const CACHE_NAME = '67-driver-cache-v4';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -88,7 +88,7 @@ self.addEventListener('notificationclick', (event) => {
   const targetUrl = event.notification.data?.url || (rideId ? `/driver.html?status=ongoing&id=${rideId}` : '/driver.html');
 
   const handleAcceptAndOpen = async () => {
-    // Sahi Endpoint (/api/ride/accept-bg) par rideId aur driverId dono bhejein
+    // 1. Guaranteed API Call to Backend
     if (rideId) {
       try {
         await fetch('/api/ride/accept-bg', {
@@ -101,14 +101,17 @@ self.addEventListener('notificationclick', (event) => {
       }
     }
 
-    // Window focus karein ya naya tab open karein
+    // 2. Window Switch / Open Window
     const clientList = await clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const client of clientList) {
       if (client.url.includes('driver.html') && 'focus' in client) {
-        client.navigate(targetUrl);
+        if ('navigate' in client) {
+          await client.navigate(targetUrl).catch(() => {});
+        }
         return client.focus();
       }
     }
+
     if (clients.openWindow) {
       return clients.openWindow(targetUrl);
     }
