@@ -22,25 +22,36 @@
     }
   </script>
   <style>
-    .custom-scrollbar::-webkit-scrollbar { 
-      width: 4px; 
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+    
+    /* 3-Level Powerful Glowing Radar Wave */
+    .radar-pulse-1 {
+      animation: pulse-ring 2.4s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
     }
-    .custom-scrollbar::-webkit-scrollbar-thumb { 
-      background: #94a3b8; 
-      border-radius: 4px; 
+    .radar-pulse-2 {
+      animation: pulse-ring 2.4s infinite cubic-bezier(0.215, 0.61, 0.355, 1) 0.8s;
     }
-    .radar-pulse {
-      box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
-      animation: pulse-ring 2s infinite cubic-bezier(0.45, 0, 0, 1);
+    .radar-pulse-3 {
+      animation: pulse-ring 2.4s infinite cubic-bezier(0.215, 0.61, 0.355, 1) 1.6s;
     }
     @keyframes pulse-ring {
-      0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
-      70% { box-shadow: 0 0 0 25px rgba(245, 158, 11, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+      0% {
+        transform: scale(0.6);
+        opacity: 0.9;
+      }
+      80% {
+        transform: scale(2.8);
+        opacity: 0;
+      }
+      100% {
+        transform: scale(3.2);
+        opacity: 0;
+      }
     }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen p-3 md:p-6 flex flex-col items-center select-none font-sans relative transition-colors duration-300">
+<body class="bg-slate-950 text-slate-100 min-h-screen p-3 md:p-6 flex flex-col items-center select-none font-sans relative transition-colors duration-200">
 
   <!-- PULL TO REFRESH SPINNER INDICATOR -->
   <div id="ptr-indicator" class="fixed top-2 left-1/2 -translate-x-1/2 z-[99999] hidden flex-col items-center gap-1 bg-slate-900 text-amber-400 border border-amber-500/60 px-4 py-2 rounded-full shadow-2xl transition-all">
@@ -66,7 +77,7 @@
     </div>
 
     <!-- Login Form -->
-    <form id="login-form" onsubmit="handleDriverLogin(event)" class="bg-slate-900/90 backdrop-blur p-6 rounded-3xl border border-slate-800 shadow-2xl space-y-4">
+    <form id="login-form" onsubmit="handleDriverLogin(event)" class="bg-slate-900/90 p-6 rounded-3xl border border-slate-800 shadow-2xl space-y-4">
       <div>
         <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Mobile Number *</label>
         <input type="tel" id="login-phone" required placeholder="10-digit Mobile Number" class="w-full bg-slate-950 border border-slate-700 text-white rounded-2xl p-3.5 text-xs outline-none focus:border-amber-400 mt-1 font-mono transition" />
@@ -81,7 +92,7 @@
     </form>
 
     <!-- Sign Up Form -->
-    <form id="signup-form" onsubmit="handleDriverSignup(event)" class="hidden bg-slate-900/90 backdrop-blur p-6 rounded-3xl border border-slate-800 shadow-2xl space-y-3 max-h-[80vh] overflow-y-auto custom-scrollbar">
+    <form id="signup-form" onsubmit="handleDriverSignup(event)" class="hidden bg-slate-900/90 p-6 rounded-3xl border border-slate-800 shadow-2xl space-y-3 max-h-[80vh] overflow-y-auto custom-scrollbar">
       <div>
         <label class="text-[11px] font-bold text-slate-400 uppercase">Driver Full Name *</label>
         <input type="text" id="reg-name" required placeholder="e.g. Ramesh Sharma" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-3 text-xs outline-none focus:border-amber-400 mt-1" />
@@ -353,26 +364,30 @@
     <!-- Multi-Offers Feed Container -->
     <div id="offers-container" class="space-y-4"></div>
 
-    <!-- Clean Looking Waiting Radar (Light/Dark Ultra-Clear Contrast) -->
-    <div id="waiting-radar" class="text-center py-20 rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 flex flex-col items-center justify-center space-y-4 shadow-xl transition-colors">
-      <div class="relative">
-        <div class="w-20 h-20 rounded-full bg-amber-500/10 flex items-center justify-center radar-pulse">
-          <div class="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center">
-            <span class="text-2xl animate-spin">📡</span>
-          </div>
+    <!-- Enhanced Bright Radar with 3-Layer Expanding Pulsar Wave -->
+    <div id="waiting-radar" class="text-center py-20 rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 flex flex-col items-center justify-center space-y-6 shadow-xl transition-colors relative overflow-hidden">
+      <div class="relative flex items-center justify-center w-28 h-28">
+        <!-- Expanding Wave Rings -->
+        <div class="absolute w-24 h-24 rounded-full bg-amber-500/30 radar-pulse-1 pointer-events-none"></div>
+        <div class="absolute w-24 h-24 rounded-full bg-amber-500/25 radar-pulse-2 pointer-events-none"></div>
+        <div class="absolute w-24 h-24 rounded-full bg-amber-500/20 radar-pulse-3 pointer-events-none"></div>
+        
+        <!-- Glowing Core Satellite -->
+        <div class="relative z-10 w-16 h-16 rounded-full bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center shadow-2xl shadow-amber-500/50 border-2 border-white/40">
+          <span class="text-3xl filter drop-shadow">📡</span>
         </div>
       </div>
       <div>
-        <p class="text-sm font-black text-slate-200" id="radar-title">Radar Active • Searching Rides</p>
-        <p class="text-[11px] text-slate-400 mt-0.5" id="radar-subtitle">Booking aate hi aapki tone apne aap bajegi</p>
+        <p class="text-base font-black text-slate-100 tracking-tight" id="radar-title">Radar Active • Searching Rides</p>
+        <p class="text-xs text-slate-400 mt-1 font-medium" id="radar-subtitle">Booking aate hi aapki custom tone bajegi</p>
       </div>
     </div>
 
   </div>
 
-  <!-- ================= 5. MASTER SLIDE-IN SIDEBAR / SETTINGS DRAWER (LEFT SLIDE ANIMATION) ================= -->
-  <div id="settings-modal" class="fixed inset-0 bg-black/80 z-[99999] hidden backdrop-blur-sm transition-opacity duration-300">
-    <div id="drawer-container" class="bg-slate-900 text-white w-full max-w-sm h-full shadow-2xl border-r border-slate-800 p-5 space-y-5 overflow-y-auto custom-scrollbar flex flex-col justify-between transform -translate-x-full transition-transform duration-300 ease-in-out">
+  <!-- ================= 5. MASTER SLIDE-IN SIDEBAR / SETTINGS DRAWER (NO BLUR BUG) ================= -->
+  <div id="settings-modal" class="fixed inset-0 bg-black/60 z-[99999] hidden transition-opacity duration-200" onclick="handleBackdropClick(event)">
+    <div id="drawer-container" class="bg-slate-900 text-white w-full max-w-sm h-full shadow-2xl border-r border-slate-800 p-5 space-y-5 overflow-y-auto custom-scrollbar flex flex-col justify-between transform -translate-x-full transition-transform duration-200 ease-in-out">
       
       <div class="space-y-4">
         <!-- Top Drawer Header -->
@@ -470,20 +485,22 @@
           </div>
         </div>
 
-        <!-- TAB 2: RECHARGE PASS & TAX TOP-UP VIA ADMIN UPI -->
+        <!-- TAB 2: DYNAMIC RECHARGE PASSES & DIRECT ADMIN UPI -->
         <div id="setting-pane-account" class="hidden space-y-4">
           
-          <!-- Section A: Ride Validity Recharge Pass -->
-          <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-2 text-xs">
+          <!-- Section A: Dynamic Ride Validity Recharge Passes -->
+          <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-2 text-xs" id="recharge-plans-box">
             <div class="font-bold text-amber-400 uppercase text-[10px] flex justify-between">
-              <span>🎟️ Ride Request Recharge Pass</span>
-              <span class="text-slate-400">Validity & Access</span>
+              <span>🎟️ Ride Request Recharge Passes</span>
+              <span class="text-slate-400" id="plans-sync-badge">MongoDB Live</span>
             </div>
-            <p class="text-[9px] text-slate-400">Recharge pass se aapko naye ride requests lene ki validity milti hai.</p>
-            <div class="grid grid-cols-3 gap-2">
-              <button onclick="setRechargeAmount(100)" class="recharge-btn bg-slate-900 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400 text-amber-300">₹100 (7 Days)</button>
-              <button onclick="setRechargeAmount(250)" class="recharge-btn bg-slate-900 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400 text-amber-300">₹250 (30 Days)</button>
-              <button onclick="setRechargeAmount(500)" class="recharge-btn bg-slate-900 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400 text-amber-300">₹500 (VIP Pass)</button>
+            <p class="text-[9px] text-slate-400">Recharge pass lene se aapko naye ride requests lene ki validity milti hai.</p>
+            
+            <!-- Dynamic Plans Render Target from MongoDB -->
+            <div class="grid grid-cols-3 gap-2" id="dynamic-plans-container">
+              <button onclick="setRechargeAmount(100)" class="recharge-btn bg-slate-900 border border-slate-700 py-2 rounded-xl font-bold text-amber-300">₹100 (7 Days)</button>
+              <button onclick="setRechargeAmount(250)" class="recharge-btn bg-slate-900 border border-slate-700 py-2 rounded-xl font-bold text-amber-300">₹250 (30 Days)</button>
+              <button onclick="setRechargeAmount(500)" class="recharge-btn bg-slate-900 border border-slate-700 py-2 rounded-xl font-bold text-amber-300">₹500 (VIP Pass)</button>
             </div>
             <input type="number" id="custom-recharge-amt" oninput="handleRechargeAmountChange()" placeholder="Enter custom pass amount (₹)" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 outline-none focus:border-amber-400 font-mono mt-1 text-white text-xs" />
           </div>
@@ -505,17 +522,6 @@
                 <div class="text-[10px] text-slate-400">Discount: <b class="text-green-400" id="applied-discount-text">-₹0</b> | Payable to Admin: <b class="font-mono text-white" id="applied-payable-text">₹0</b></div>
               </div>
               <button onclick="removeAppliedCoupon()" class="text-slate-400 hover:text-red-400 text-xs font-bold ml-2">✕ Remove</button>
-            </div>
-
-            <!-- Driver Eligible Coupons List Section -->
-            <div id="driver-eligible-coupons-box" class="pt-2">
-              <div class="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center justify-between">
-                <span>Available Coupons For You</span>
-                <span id="coupons-loading-indicator" class="text-amber-500 font-normal hidden animate-pulse text-[9px]">Fetching...</span>
-              </div>
-              <div id="driver-eligible-coupons-list" class="space-y-1.5 max-h-28 overflow-y-auto custom-scrollbar">
-                <div class="text-[10px] text-slate-400 italic p-1">No coupons available.</div>
-              </div>
             </div>
           </div>
 
@@ -634,6 +640,12 @@
     // Configurable Admin Receiving UPI ID
     let ADMIN_RECEIVING_UPI = '67cabs@upi';
 
+    function handleBackdropClick(e) {
+      if (e.target.id === 'settings-modal') {
+        closeSettingsModal();
+      }
+    }
+
     // PULL TO REFRESH IMPLEMENTATION
     let touchStartY = 0;
     let isPulling = false;
@@ -668,6 +680,7 @@
     async function executeLiveRefresh() {
       await Promise.all([
         fetchLiveFareRatesForDriver(),
+        fetchDynamicRechargePlansFromMongoDB(),
         loadDynamicSoundFromMongoDB(),
         checkAndRestoreActiveRide()
       ]);
@@ -698,8 +711,8 @@
       }
 
       document.body.className = isLight 
-        ? "bg-slate-100 text-slate-900 min-h-screen p-3 md:p-6 flex flex-col items-center select-none font-sans relative transition-colors duration-300"
-        : "bg-slate-950 text-slate-100 min-h-screen p-3 md:p-6 flex flex-col items-center select-none font-sans relative transition-colors duration-300";
+        ? "bg-slate-100 text-slate-900 min-h-screen p-3 md:p-6 flex flex-col items-center select-none font-sans relative transition-colors duration-200"
+        : "bg-slate-950 text-slate-100 min-h-screen p-3 md:p-6 flex flex-col items-center select-none font-sans relative transition-colors duration-200";
 
       const headerCard = document.getElementById('dashboard-header-card');
       const badgeVehicle = document.getElementById('badge-vehicle-no');
@@ -721,6 +734,7 @@
       const themeText = document.getElementById('theme-text');
       const activeRideBox = document.getElementById('active-ride-details-box');
       const activeRideCard = document.getElementById('active-ride-card');
+      const plansBox = document.getElementById('recharge-plans-box');
 
       if (isLight) {
         if (headerCard) headerCard.className = "bg-white border border-slate-200 p-4 rounded-3xl shadow-xl flex items-center justify-between transition-colors";
@@ -728,11 +742,14 @@
         if (btnHamburger) btnHamburger.className = "w-11 h-11 rounded-2xl border bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200 flex items-center justify-center text-xl transition shadow-md active:scale-95";
         
         // High contrast for Radar in Light Mode
-        if (radarBox) radarBox.className = "text-center py-20 rounded-3xl border border-dashed border-slate-300 bg-white shadow-sm flex flex-col items-center justify-center space-y-4 transition-colors";
-        if (radarTitle) radarTitle.className = "text-sm font-black text-slate-900";
-        if (radarSubtitle) radarSubtitle.className = "text-[11px] text-slate-600 font-semibold mt-0.5";
+        if (radarBox) radarBox.className = "text-center py-20 rounded-3xl border border-dashed border-slate-300 bg-white shadow-sm flex flex-col items-center justify-center space-y-6 transition-colors relative overflow-hidden";
+        if (radarTitle) radarTitle.className = "text-base font-black text-slate-900 tracking-tight";
+        if (radarSubtitle) radarSubtitle.className = "text-xs text-slate-600 font-medium mt-1";
 
-        if (drawerContainer) drawerContainer.className = "bg-white text-slate-900 w-full max-w-sm h-full shadow-2xl border-r border-slate-200 p-5 space-y-5 overflow-y-auto custom-scrollbar flex flex-col justify-between transform -translate-x-full transition-transform duration-300 ease-in-out";
+        if (drawerContainer) {
+          drawerContainer.classList.remove('bg-slate-900', 'text-white', 'border-slate-800');
+          drawerContainer.classList.add('bg-white', 'text-slate-900', 'border-slate-200');
+        }
         if (drawerHeader) drawerHeader.className = "flex justify-between items-center border-b border-slate-200 pb-3";
         if (themeSwitchCard) themeSwitchCard.className = "bg-slate-50 p-3.5 rounded-2xl border border-slate-200 flex items-center justify-between";
         if (drawerWalletCard) drawerWalletCard.className = "bg-slate-50 p-3 rounded-2xl border border-slate-200";
@@ -741,6 +758,7 @@
         if (profileDetailsCard) profileDetailsCard.className = "bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2 text-xs";
         if (referralBoxCard) referralBoxCard.className = "bg-slate-50 p-3.5 rounded-2xl border border-slate-200 text-center space-y-3";
         if (qrTabBox) qrTabBox.className = "flex bg-slate-200/60 p-1 rounded-xl border border-slate-200";
+        if (plansBox) plansBox.className = "bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2 text-xs";
         if (btnDrawerLogout) btnDrawerLogout.className = "w-full bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 font-bold py-3 rounded-2xl text-xs transition flex items-center justify-center gap-1.5";
         if (themeIcon) themeIcon.innerText = "☀️";
         if (themeText) themeText.innerText = "Light Mode Active";
@@ -751,14 +769,17 @@
         if (activeRideBox) activeRideBox.className = "space-y-2 text-xs bg-slate-50 p-3.5 rounded-2xl border border-slate-200 text-slate-800";
       } else {
         if (headerCard) headerCard.className = "bg-slate-900 border border-slate-800 p-4 rounded-3xl shadow-2xl flex items-center justify-between transition-colors";
-        if (badgeVehicle) badgeVehicle.className = "text-[9px] sm:text-[10px] font-mono font-black px-2 py-0.5 rounded-lg border bg-slate-800 text-amber-400 border-slate-700";
+        if (badgeVehicle) badgeVehicle.className = "text-[9px] sm:text-[10px] font-mono font-black px-1.5 py-0.5 rounded-lg border bg-slate-800 text-amber-400 border-slate-700";
         if (btnHamburger) btnHamburger.className = "w-11 h-11 rounded-2xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-amber-400 flex items-center justify-center text-xl transition shadow-md active:scale-95";
         
-        if (radarBox) radarBox.className = "text-center py-20 rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 flex flex-col items-center justify-center space-y-4 shadow-xl transition-colors";
-        if (radarTitle) radarTitle.className = "text-sm font-black text-slate-200";
-        if (radarSubtitle) radarSubtitle.className = "text-[11px] text-slate-400 mt-0.5";
+        if (radarBox) radarBox.className = "text-center py-20 rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 flex flex-col items-center justify-center space-y-6 shadow-xl transition-colors relative overflow-hidden";
+        if (radarTitle) radarTitle.className = "text-base font-black text-slate-100 tracking-tight";
+        if (radarSubtitle) radarSubtitle.className = "text-xs text-slate-400 mt-1 font-medium";
 
-        if (drawerContainer) drawerContainer.className = "bg-slate-900 text-white w-full max-w-sm h-full shadow-2xl border-r border-slate-800 p-5 space-y-5 overflow-y-auto custom-scrollbar flex flex-col justify-between transform -translate-x-full transition-transform duration-300 ease-in-out";
+        if (drawerContainer) {
+          drawerContainer.classList.remove('bg-white', 'text-slate-900', 'border-slate-200');
+          drawerContainer.classList.add('bg-slate-900', 'text-white', 'border-slate-800');
+        }
         if (drawerHeader) drawerHeader.className = "flex justify-between items-center border-b border-slate-800 pb-3";
         if (themeSwitchCard) themeSwitchCard.className = "bg-slate-950 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between";
         if (drawerWalletCard) drawerWalletCard.className = "bg-slate-950 p-3 rounded-2xl border border-slate-800";
@@ -767,6 +788,7 @@
         if (profileDetailsCard) profileDetailsCard.className = "bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-2 text-xs";
         if (referralBoxCard) referralBoxCard.className = "bg-slate-950 p-3.5 rounded-2xl border border-slate-800 text-center space-y-3";
         if (qrTabBox) qrTabBox.className = "flex bg-slate-900 p-1 rounded-xl border border-slate-800";
+        if (plansBox) plansBox.className = "bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-2 text-xs";
         if (btnDrawerLogout) btnDrawerLogout.className = "w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-3 rounded-2xl text-xs transition flex items-center justify-center gap-1.5";
         if (themeIcon) themeIcon.innerText = "🌙";
         if (themeText) themeText.innerText = "Dark Mode Active";
@@ -776,6 +798,26 @@
         }
         if (activeRideBox) activeRideBox.className = "space-y-2 text-xs bg-slate-950 p-3.5 rounded-2xl border border-slate-800 text-slate-300";
       }
+    }
+
+    // Dynamic Recharge Plans Fetcher from MongoDB Atlas
+    async function fetchDynamicRechargePlansFromMongoDB() {
+      try {
+        const res = await fetch('/api/driver/recharge-plans');
+        const data = await res.json();
+        if (data.success && data.data) {
+          if (data.data.adminUpiId) ADMIN_RECEIVING_UPI = data.data.adminUpiId;
+          const container = document.getElementById('dynamic-plans-container');
+          if (container && data.data.plans && data.data.plans.length > 0) {
+            container.innerHTML = data.data.plans.map(p => `
+              <button onclick="setRechargeAmount(${p.amount})" class="recharge-btn bg-slate-900 border border-slate-700 py-2.5 px-1 rounded-xl font-bold text-amber-300 hover:border-amber-400 text-center transition flex flex-col items-center justify-center">
+                <span class="text-xs font-black">₹${p.amount}</span>
+                <span class="text-[8px] text-slate-400 font-normal">(${p.validityDays} Days)</span>
+              </button>
+            `).join('');
+          }
+        }
+      } catch (e) {}
     }
 
     async function fetchLiveFareRatesForDriver() {
@@ -887,6 +929,7 @@
       }
       loadDynamicSoundFromMongoDB();
       fetchLiveFareRatesForDriver();
+      fetchDynamicRechargePlansFromMongoDB();
     });
 
     async function handleDriverSignup(e) {
@@ -1323,7 +1366,6 @@
       if (elBonus) elBonus.innerText = `${driver.bonusFreeRides || 0} Free Passes`;
     }
 
-    // Modal Drawer Open / Close Helper Functions
     function openWalletModal() {
       openSettingsModal();
       switchSettingsTab('account');
@@ -1369,6 +1411,7 @@
         checkAndRestoreActiveRide();
         handleUrlDeepLink();
         fetchLiveFareRatesForDriver();
+        fetchDynamicRechargePlansFromMongoDB();
       }
     });
 
@@ -1398,6 +1441,7 @@
       checkAndRestoreActiveRide();
       handleUrlDeepLink();
       fetchLiveFareRatesForDriver();
+      fetchDynamicRechargePlansFromMongoDB();
     });
 
     setInterval(() => {
@@ -1802,18 +1846,17 @@
     }
 
     // ==========================================
-    // ☰ LEFT SLIDE-IN SIDEBAR / SETTINGS DRAWER
+    // ☰ LEFT SLIDE-IN SIDEBAR / SETTINGS DRAWER (NO BLUR BUG)
     // ==========================================
     function openSettingsModal() {
       const modal = document.getElementById('settings-modal');
       const drawer = document.getElementById('drawer-container');
       modal.classList.remove('hidden');
       
-      // Smooth Left-to-Right Slide Animation
       setTimeout(() => {
         drawer.classList.remove('-translate-x-full');
         drawer.classList.add('translate-x-0');
-      }, 20);
+      }, 10);
 
       if (currentDriver) {
         document.getElementById('display-ref-code').innerText = currentDriver.driverId || 'DRV_67';
@@ -1827,7 +1870,7 @@
       const drawer = document.getElementById('drawer-container');
       drawer.classList.remove('translate-x-0');
       drawer.classList.add('-translate-x-full');
-      setTimeout(() => modal.classList.add('hidden'), 300);
+      setTimeout(() => modal.classList.add('hidden'), 200);
     }
 
     function switchSettingsTab(tab) {
@@ -1846,7 +1889,6 @@
         btnProfile.className = "w-1/2 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition";
         paneAccount.classList.remove('hidden');
         paneProfile.classList.add('hidden');
-        fetchDriverEligibleCoupons();
         updatePayableButtonDisplay();
       }
     }
@@ -1916,48 +1958,6 @@
       }
     }
 
-    async function fetchDriverEligibleCoupons() {
-      if (!currentDriver?.driverId) return;
-      const listContainer = document.getElementById('driver-eligible-coupons-list');
-      const loader = document.getElementById('coupons-loading-indicator');
-      loader?.classList.remove('hidden');
-
-      try {
-        const res = await fetch(`/api/coupons/driver/${currentDriver.driverId}`);
-        const data = await res.json();
-        loader?.classList.add('hidden');
-
-        if (data.success && data.coupons && data.coupons.length > 0) {
-          listContainer.innerHTML = data.coupons.map(c => `
-            <div onclick="selectAvailableCoupon('${c.code}', ${c.minRechargeAmount || 0})" class="hover:bg-amber-500/10 border p-2 rounded-xl flex items-center justify-between cursor-pointer transition">
-              <div>
-                <div class="font-black text-amber-500 font-mono text-[11px] flex items-center gap-1.5">
-                  <span>🎟️ ${c.code}</span>
-                  ${c.targetType === 'SPECIFIC' ? '<span class="text-[8px] bg-indigo-500/20 text-indigo-400 px-1.5 py-0.5 rounded font-sans">VIP Dedicated</span>' : ''}
-                </div>
-                <div class="text-[9px] text-slate-400">${c.description || (c.discountType === 'FLAT' ? `Flat ₹${c.discountValue} Off` : `${c.discountValue}% Off on recharge`)} ${c.minRechargeAmount ? `(Min ₹${c.minRechargeAmount})` : ''}</div>
-              </div>
-              <button type="button" class="text-[10px] bg-amber-500/20 text-amber-400 font-bold px-2 py-1 rounded-lg hover:bg-amber-500 hover:text-slate-950 transition">USE</button>
-            </div>
-          `).join('');
-        } else {
-          listContainer.innerHTML = `<div class="text-[10px] text-slate-400 italic p-1">No coupons available.</div>`;
-        }
-      } catch (err) {
-        loader?.classList.add('hidden');
-        listContainer.innerHTML = `<div class="text-[10px] text-slate-400 italic p-1">Coupons load nahi ho sake.</div>`;
-      }
-    }
-
-    function selectAvailableCoupon(code, minAmt) {
-      document.getElementById('coupon-code-input').value = code;
-      const currentAmt = Number(document.getElementById('custom-recharge-amt').value) || 0;
-      if (minAmt && currentAmt < minAmt) {
-        document.getElementById('custom-recharge-amt').value = minAmt;
-      }
-      applyCouponCode();
-    }
-
     async function applyCouponCode() {
       const code = document.getElementById('coupon-code-input').value.trim().toUpperCase();
       const rawAmt = Number(document.getElementById('custom-recharge-amt').value);
@@ -2022,10 +2022,6 @@
       const upiUrl = `upi://pay?pa=${encodeURIComponent(ADMIN_RECEIVING_UPI)}&pn=${encodeURIComponent('67 Cabs Admin')}&am=${encodeURIComponent(finalPayable)}&cu=INR&tn=${encodeURIComponent(`67Cab Pass ${drvId} ${driverName}`)}`;
 
       window.location.href = upiUrl;
-    }
-
-    function executeWalletRecharge() {
-      executeDirectUpiToAdmin();
     }
 
     // Safety Audio Recorder
