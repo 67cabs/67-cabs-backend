@@ -309,7 +309,7 @@
       </label>
     </div>
 
-    <!-- ACTIVE RIDE MANAGEMENT CARD (STRICTLY HIDDEN UNTIL ACCEPTED) -->
+    <!-- ACTIVE RIDE MANAGEMENT CARD -->
     <div id="active-ride-card" class="hidden p-5 rounded-3xl border-2 border-amber-400 shadow-2xl space-y-4 bg-slate-900 text-white shrink-0">
       <div class="flex justify-between items-center border-b border-slate-800 pb-3">
         <span id="trip-badge" class="text-xs bg-amber-500 text-slate-950 font-black px-3.5 py-1 rounded-full uppercase tracking-wider shadow">
@@ -328,7 +328,6 @@
       </div>
 
       <div class="grid grid-cols-3 gap-2">
-        <!-- 📞 Direct Call Button -->
         <a id="btn-call-rider" href="tel:" class="bg-green-600 hover:bg-green-500 text-white font-black py-3 rounded-2xl transition text-xs shadow-lg flex items-center justify-center gap-1">
           📞 Call
         </a>
@@ -381,12 +380,10 @@
       
       <!-- Central Rotating Pulse Core -->
       <div class="relative flex items-center justify-center w-36 h-36">
-        <!-- 3-Layer Expanding Wave Rings -->
         <div class="absolute w-32 h-32 rounded-full bg-amber-500/30 radar-pulse-1 pointer-events-none"></div>
         <div class="absolute w-32 h-32 rounded-full bg-amber-500/25 radar-pulse-2 pointer-events-none"></div>
         <div class="absolute w-32 h-32 rounded-full bg-amber-500/20 radar-pulse-3 pointer-events-none"></div>
         
-        <!-- Continuously Spinning Radar Core Satellite (360-degree rotation) -->
         <div class="relative z-10 w-20 h-20 rounded-full bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center shadow-2xl shadow-amber-500/50 border-2 border-white/40 animate-spin" style="animation-duration: 3s;">
           <span class="text-4xl filter drop-shadow">📡</span>
         </div>
@@ -402,7 +399,7 @@
 
   </div>
 
-  <!-- ================= 5. MASTER SLIDE-IN SIDEBAR / SETTINGS DRAWER (PROFESSIONAL COLOR CODING & WIDER WIDTH) ================= -->
+  <!-- ================= 5. MASTER SLIDE-IN SIDEBAR / SETTINGS DRAWER (HIGH CONTRAST & CLEAR VISIBILITY) ================= -->
   <div id="settings-modal" class="fixed inset-0 bg-black/60 z-[99999] hidden transition-opacity duration-200" onclick="handleBackdropClick(event)">
     <div id="drawer-container" class="bg-slate-900 text-white w-full max-w-md h-full shadow-2xl border-r border-slate-800 p-6 space-y-5 overflow-y-auto custom-scrollbar flex flex-col justify-between transform -translate-x-full transition-transform duration-200 ease-in-out">
       
@@ -412,11 +409,11 @@
           <div class="flex items-center gap-2.5">
             <span class="text-2xl text-amber-500">⚙️</span>
             <div>
-              <h3 class="text-base font-black text-amber-500 leading-tight">Partner Settings</h3>
-              <p class="text-[10px] text-slate-400">Account & Preference Controls</p>
+              <h3 class="text-base font-black text-amber-600 dark:text-amber-400 leading-tight" id="drawer-main-title">Partner Settings</h3>
+              <p class="text-xs font-semibold text-slate-700 dark:text-slate-300" id="drawer-sub-title">Account & Preference Controls</p>
             </div>
           </div>
-          <button onclick="closeSettingsModal()" class="w-8 h-8 rounded-xl border border-slate-700 bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-sm font-bold">
+          <button onclick="closeSettingsModal()" class="w-8 h-8 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:text-amber-500 flex items-center justify-center text-sm font-bold">
             ✕
           </button>
         </div>
@@ -426,11 +423,11 @@
           <div class="flex items-center gap-3">
             <span id="theme-icon" class="text-xl">🌙</span>
             <div>
-              <div class="text-xs font-bold text-slate-200" id="theme-title">Appearance Theme</div>
-              <div id="theme-text" class="text-[10px] text-slate-400">Dark Mode Active</div>
+              <div class="text-xs font-bold text-slate-900 dark:text-white" id="theme-title">Appearance Theme</div>
+              <div id="theme-text" class="text-xs font-semibold text-slate-700 dark:text-slate-300">Dark Mode Active</div>
             </div>
           </div>
-          <button onclick="toggleDriverTheme()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3.5 py-1.5 rounded-xl text-xs font-bold text-amber-500 transition shadow">
+          <button onclick="toggleDriverTheme()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3.5 py-1.5 rounded-xl text-xs font-bold text-amber-400 transition shadow">
             Switch
           </button>
         </div>
@@ -438,14 +435,14 @@
         <!-- Dual Overview: Govt Tax Wallet & Ride Pass Validity -->
         <div class="grid grid-cols-2 gap-3">
           <div id="drawer-wallet-card" class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-0.5">
-            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Govt Tax Wallet</span>
-            <div id="modal-wallet-balance" class="text-lg font-black text-amber-500">₹0.00</div>
-            <span class="text-[9px] text-slate-500 block">For Govt Tax Dues</span>
+            <span class="text-xs font-extrabold text-slate-800 dark:text-slate-300 uppercase tracking-wider block" id="lbl-wallet">Govt Tax Wallet</span>
+            <div id="modal-wallet-balance" class="text-lg font-black text-amber-600 dark:text-amber-400">₹0.00</div>
+            <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block" id="sub-wallet">For Govt Tax Dues</span>
           </div>
           <div id="drawer-bonus-card" class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-0.5">
-            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Ride Pass / Pool</span>
-            <div id="modal-bonus-rides" class="text-lg font-black text-amber-500">0 Active Passes</div>
-            <span class="text-[9px] text-slate-500 block">For Ride Requests</span>
+            <span class="text-xs font-extrabold text-slate-800 dark:text-slate-300 uppercase tracking-wider block" id="lbl-pass">Ride Pass / Pool</span>
+            <div id="modal-bonus-rides" class="text-lg font-black text-amber-600 dark:text-amber-400">0 Active Passes</div>
+            <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block" id="sub-pass">For Ride Requests</span>
           </div>
         </div>
 
@@ -454,7 +451,7 @@
           <button onclick="switchSettingsTab('profile')" id="tab-setting-profile" class="w-1/2 py-2.5 text-xs font-black rounded-xl bg-amber-500 text-slate-950 transition shadow-sm">
             Profile Details
           </button>
-          <button onclick="switchSettingsTab('account')" id="tab-setting-account" class="w-1/2 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition">
+          <button onclick="switchSettingsTab('account')" id="tab-setting-account" class="w-1/2 py-2.5 text-xs font-black rounded-xl text-slate-800 dark:text-slate-300 hover:text-amber-600 transition">
             Recharge & Wallet
           </button>
         </div>
@@ -463,32 +460,32 @@
         <div id="setting-pane-profile" class="space-y-4">
           <div id="profile-details-card" class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2.5 text-xs">
             <div class="flex justify-between items-center">
-              <span class="text-slate-400 font-medium">Driver Name:</span>
-              <span id="set-profile-name" class="font-bold text-white">-</span>
+              <span class="text-slate-800 dark:text-slate-300 font-bold" id="lbl-p-name">Driver Name:</span>
+              <span id="set-profile-name" class="font-black text-slate-900 dark:text-white">-</span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-slate-400 font-medium">Vehicle Number:</span>
-              <span id="set-profile-vehicle" class="font-bold text-amber-500 font-mono">-</span>
+              <span class="text-slate-800 dark:text-slate-300 font-bold" id="lbl-p-veh">Vehicle Number:</span>
+              <span id="set-profile-vehicle" class="font-black text-amber-600 dark:text-amber-400 font-mono">-</span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-slate-400 font-medium">Cab Category:</span>
-              <span id="set-profile-category" class="font-bold text-slate-200">-</span>
+              <span class="text-slate-800 dark:text-slate-300 font-bold" id="lbl-p-cat">Cab Category:</span>
+              <span id="set-profile-category" class="font-black text-slate-900 dark:text-white">-</span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-slate-400 font-medium">Receiving UPI ID:</span>
-              <span id="set-profile-upi" class="font-bold text-amber-500 font-mono">-</span>
+              <span class="text-slate-800 dark:text-slate-300 font-bold" id="lbl-p-upi">Receiving UPI ID:</span>
+              <span id="set-profile-upi" class="font-black text-amber-600 dark:text-amber-400 font-mono">-</span>
             </div>
           </div>
 
           <!-- Dual Referral QR Engine -->
           <div id="referral-box-card" class="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-center space-y-3">
-            <div class="text-xs font-black text-amber-500 uppercase tracking-wider">Referral QR Codes Engine</div>
+            <div class="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">Referral QR Codes Engine</div>
             
             <div id="qr-tab-box" class="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
-              <button onclick="switchQRTab('rider')" id="tab-qr-rider" class="w-1/2 py-1.5 text-[11px] font-bold rounded-lg bg-amber-500 text-slate-950 transition">
+              <button onclick="switchQRTab('rider')" id="tab-qr-rider" class="w-1/2 py-1.5 text-xs font-black rounded-lg bg-amber-500 text-slate-950 transition">
                 Rider QR
               </button>
-              <button onclick="switchQRTab('driver')" id="tab-qr-driver" class="w-1/2 py-1.5 text-[11px] font-bold rounded-lg text-slate-400 hover:text-white transition">
+              <button onclick="switchQRTab('driver')" id="tab-qr-driver" class="w-1/2 py-1.5 text-xs font-black rounded-lg text-slate-800 dark:text-slate-300 hover:text-amber-600 transition">
                 Driver QR
               </button>
             </div>
@@ -497,8 +494,8 @@
               <div id="referral-qrcode-target" class="flex justify-center"></div>
             </div>
 
-            <p id="qr-desc-text" class="text-[11px] font-semibold text-amber-500">Scan to register Rider with bonus</p>
-            <p class="text-[10px] text-slate-400">Your Code: <b id="display-ref-code" class="font-mono text-amber-500 font-bold">-</b></p>
+            <p id="qr-desc-text" class="text-xs font-bold text-amber-600 dark:text-amber-400">Scan to register Rider with bonus</p>
+            <p class="text-xs font-semibold text-slate-800 dark:text-slate-300">Your Code: <b id="display-ref-code" class="font-mono text-amber-600 dark:text-amber-400 font-black">-</b></p>
           </div>
         </div>
 
@@ -507,47 +504,47 @@
           
           <!-- Section A: Dynamic Ride Validity Recharge Passes -->
           <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2 text-xs" id="recharge-plans-box">
-            <div class="font-black text-amber-500 uppercase text-[10px] flex justify-between items-center">
+            <div class="font-black text-amber-600 dark:text-amber-400 uppercase text-xs flex justify-between items-center">
               <span>🎟️ Ride Request Recharge Passes</span>
-              <span class="text-[9px] bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-md font-bold border border-amber-500/20" id="plans-sync-badge">Instant Activation</span>
+              <span class="text-[10px] bg-amber-500/15 text-amber-700 dark:text-amber-400 px-2.5 py-0.5 rounded-md font-extrabold border border-amber-500/30" id="plans-sync-badge">Instant Activation</span>
             </div>
-            <p class="text-[10px] text-slate-400 leading-relaxed">Recharge pass lene se aapko naye ride requests lene ki validity milti hai.</p>
+            <p class="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-relaxed" id="lbl-recharge-note">Recharge pass lene se aapko naye ride requests lene ki validity milti hai.</p>
             
-            <!-- Dynamic Plans Render Target from Database -->
+            <!-- Dynamic Plans Render Target -->
             <div class="grid grid-cols-3 gap-2 pt-1" id="dynamic-plans-container">
               <button onclick="setRechargeAmount(100)" class="recharge-btn bg-slate-900 border border-slate-700 py-3 rounded-xl font-bold text-amber-400 hover:border-amber-400 text-center transition flex flex-col items-center justify-center">
                 <span class="text-xs font-black">₹100</span>
-                <span class="text-[9px] text-slate-400 font-medium">(7 Days)</span>
+                <span class="text-[10px] text-slate-400 font-semibold">(7 Days)</span>
               </button>
               <button onclick="setRechargeAmount(250)" class="recharge-btn bg-slate-900 border border-slate-700 py-3 rounded-xl font-bold text-amber-400 hover:border-amber-400 text-center transition flex flex-col items-center justify-center">
                 <span class="text-xs font-black">₹250</span>
-                <span class="text-[9px] text-slate-400 font-medium">(30 Days)</span>
+                <span class="text-[10px] text-slate-400 font-semibold">(30 Days)</span>
               </button>
               <button onclick="setRechargeAmount(500)" class="recharge-btn bg-slate-900 border border-slate-700 py-3 rounded-xl font-bold text-amber-400 hover:border-amber-400 text-center transition flex flex-col items-center justify-center">
                 <span class="text-xs font-black">₹500</span>
-                <span class="text-[9px] text-slate-400 font-medium">(VIP Pass)</span>
+                <span class="text-[10px] text-slate-400 font-semibold">(VIP Pass)</span>
               </button>
             </div>
-            <input type="number" id="custom-recharge-amt" oninput="handleRechargeAmountChange()" placeholder="Enter custom pass amount (₹)" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 outline-none focus:border-amber-400 font-mono mt-1 text-white text-xs" />
+            <input type="number" id="custom-recharge-amt" oninput="handleRechargeAmountChange()" placeholder="Enter custom pass amount (₹)" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 outline-none focus:border-amber-400 font-mono mt-1 text-white text-xs font-bold" />
           </div>
 
           <!-- Section B: Coupon Promo Code for Recharge -->
           <div class="space-y-1.5 text-xs">
-            <label class="font-bold text-slate-400 uppercase text-[10px] tracking-wider">Apply Promo Coupon</label>
+            <label class="font-extrabold text-slate-800 dark:text-slate-300 uppercase text-xs tracking-wider" id="lbl-coupon">Apply Promo Coupon</label>
             <div class="flex gap-2">
-              <input type="text" id="coupon-code-input" placeholder="e.g. WELCOME100" class="w-full border rounded-xl p-2.5 outline-none focus:border-amber-400 font-mono uppercase bg-slate-950 border-slate-700 text-white text-xs" />
+              <input type="text" id="coupon-code-input" placeholder="e.g. WELCOME100" class="w-full border rounded-xl p-2.5 outline-none focus:border-amber-400 font-mono uppercase bg-slate-950 border-slate-700 text-white text-xs font-bold" />
               <button id="btn-apply-coupon" onclick="applyCouponCode()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-4 rounded-xl transition">Apply</button>
             </div>
 
             <!-- Applied Coupon Status -->
             <div id="coupon-applied-status" class="hidden bg-amber-500/10 border border-amber-500/40 p-2.5 rounded-xl flex items-center justify-between text-xs mt-2">
               <div>
-                <div class="font-black text-amber-500 flex items-center gap-1">
+                <div class="font-black text-amber-600 dark:text-amber-400 flex items-center gap-1">
                   <span>🎉</span> <span id="applied-coupon-tag">COUPON APPLIED</span>
                 </div>
-                <div class="text-[10px] text-slate-400">Discount: <b class="text-amber-400" id="applied-discount-text">-₹0</b> | Payable: <b class="font-mono text-white" id="applied-payable-text">₹0</b></div>
+                <div class="text-[11px] font-bold text-slate-700 dark:text-slate-300">Discount: <b class="text-amber-600 dark:text-amber-400" id="applied-discount-text">-₹0</b> | Payable: <b class="font-mono text-slate-900 dark:text-white" id="applied-payable-text">₹0</b></div>
               </div>
-              <button onclick="removeAppliedCoupon()" class="text-slate-400 hover:text-red-400 text-xs font-bold ml-2">✕ Remove</button>
+              <button onclick="removeAppliedCoupon()" class="text-slate-600 hover:text-red-500 text-xs font-bold ml-2">✕ Remove</button>
             </div>
           </div>
 
@@ -560,11 +557,11 @@
       </div>
 
       <!-- Drawer Bottom: Logout & Delete Account -->
-      <div class="pt-3 border-t border-slate-800 space-y-2">
-        <button onclick="logoutDriver()" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-3 rounded-2xl text-xs transition flex items-center justify-center gap-1.5" id="btn-drawer-logout">
+      <div class="pt-3 border-t border-slate-800 space-y-2" id="drawer-footer-sec">
+        <button onclick="logoutDriver()" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-extrabold py-3 rounded-2xl text-xs transition flex items-center justify-center gap-1.5 shadow" id="btn-drawer-logout">
           🚪 Logout Account
         </button>
-        <button onclick="deleteAccountDriver()" class="w-full bg-red-950/40 hover:bg-red-900/60 border border-red-800/80 text-red-300 font-bold py-2 rounded-xl text-[10px] transition flex items-center justify-center gap-1">
+        <button onclick="deleteAccountDriver()" class="w-full bg-red-950/40 hover:bg-red-900/60 border border-red-800 text-red-400 font-extrabold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1" id="btn-drawer-delete">
           🗑️ Delete Driver Account
         </button>
       </div>
@@ -715,7 +712,7 @@
       if (isDriverOnline) registerDriver();
     }
 
-    // CONTINUOUS ACTIVE POLLING LOOP (KEEPS APP AWAKE & SYNCED)
+    // CONTINUOUS ACTIVE POLLING LOOP
     setInterval(() => {
       if (currentDriver && currentDriver.status === 'APPROVED' && isDriverOnline && !currentActiveRideId) {
         registerDriver();
@@ -723,7 +720,7 @@
       }
     }, 3000);
 
-    // Theme Switcher Engine (Light vs Dark Mode with High Contrast)
+    // Theme Switcher Engine with Full Contrast Injection
     function initDriverTheme() {
       const savedTheme = localStorage.getItem('67_driver_theme') || 'dark';
       applyDriverTheme(savedTheme);
@@ -766,42 +763,50 @@
       const referralBoxCard = document.getElementById('referral-box-card');
       const qrTabBox = document.getElementById('qr-tab-box');
       const btnDrawerLogout = document.getElementById('btn-drawer-logout');
+      const btnDrawerDelete = document.getElementById('btn-drawer-delete');
+      const drawerFooterSec = document.getElementById('drawer-footer-sec');
       const themeIcon = document.getElementById('theme-icon');
       const themeText = document.getElementById('theme-text');
       const activeRideBox = document.getElementById('active-ride-details-box');
       const activeRideCard = document.getElementById('active-ride-card');
       const plansBox = document.getElementById('recharge-plans-box');
+      const customRechargeInput = document.getElementById('custom-recharge-amt');
+      const couponInput = document.getElementById('coupon-code-input');
 
       if (isLight) {
-        if (headerCard) headerCard.className = "bg-white border border-slate-200 p-4 rounded-3xl shadow-xl flex items-center justify-between transition-colors shrink-0";
-        if (badgeVehicle) badgeVehicle.className = "text-[9px] sm:text-[10px] font-mono font-black px-1.5 py-0.5 rounded-lg border bg-amber-50 text-amber-700 border-amber-200";
-        if (btnHamburger) btnHamburger.className = "w-11 h-11 rounded-2xl border bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200 flex items-center justify-center text-xl transition shadow-md active:scale-95";
+        if (headerCard) headerCard.className = "bg-white border border-slate-300 p-4 rounded-3xl shadow-xl flex items-center justify-between transition-colors shrink-0";
+        if (badgeVehicle) badgeVehicle.className = "text-[9px] sm:text-[10px] font-mono font-black px-1.5 py-0.5 rounded-lg border bg-amber-100 text-amber-800 border-amber-300";
+        if (btnHamburger) btnHamburger.className = "w-11 h-11 rounded-2xl border bg-slate-100 hover:bg-slate-200 text-slate-900 border-slate-300 flex items-center justify-center text-xl transition shadow-md active:scale-95";
         
         if (radarBox) radarBox.className = "flex-1 w-full min-h-[calc(100vh-140px)] rounded-3xl border border-dashed border-slate-300 bg-white shadow-sm flex flex-col items-center justify-center space-y-8 transition-colors relative overflow-hidden my-auto";
         if (radarTitle) radarTitle.className = "text-lg font-black text-slate-900 tracking-tight";
-        if (radarSubtitle) radarSubtitle.className = "text-xs text-slate-600 font-medium mt-1";
+        if (radarSubtitle) radarSubtitle.className = "text-xs text-slate-700 font-bold mt-1";
 
-        if (drawerContainer) {
-          drawerContainer.classList.remove('bg-slate-900', 'text-white', 'border-slate-800');
-          drawerContainer.classList.add('bg-white', 'text-slate-900', 'border-slate-200');
-        }
-        if (drawerHeader) drawerHeader.className = "flex justify-between items-center border-b border-slate-200 pb-3";
-        if (themeSwitchCard) themeSwitchCard.className = "bg-slate-50 p-4 rounded-2xl border border-slate-200 flex items-center justify-between";
-        if (drawerWalletCard) drawerWalletCard.className = "bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-0.5";
-        if (drawerBonusCard) drawerBonusCard.className = "bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-0.5";
-        if (drawerTabSwitcher) drawerTabSwitcher.className = "flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200";
-        if (profileDetailsCard) profileDetailsCard.className = "bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2.5 text-xs text-slate-800";
-        if (referralBoxCard) referralBoxCard.className = "bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center space-y-3";
-        if (qrTabBox) qrTabBox.className = "flex bg-slate-200/70 p-1 rounded-xl border border-slate-200";
-        if (plansBox) plansBox.className = "bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2 text-xs";
-        if (btnDrawerLogout) btnDrawerLogout.className = "w-full bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 font-bold py-3 rounded-2xl text-xs transition flex items-center justify-center gap-1.5";
+        if (drawerContainer) drawerContainer.className = "bg-white text-slate-900 w-full max-w-md h-full shadow-2xl border-r border-slate-300 p-6 space-y-5 overflow-y-auto custom-scrollbar flex flex-col justify-between transform -translate-x-full transition-transform duration-200 ease-in-out";
+        if (drawerHeader) drawerHeader.className = "flex justify-between items-center border-b border-slate-300 pb-3";
+        if (themeSwitchCard) themeSwitchCard.className = "bg-slate-100 p-4 rounded-2xl border border-slate-300 flex items-center justify-between";
+        if (drawerWalletCard) drawerWalletCard.className = "bg-slate-100 p-3.5 rounded-2xl border border-slate-300 space-y-0.5";
+        if (drawerBonusCard) drawerBonusCard.className = "bg-slate-100 p-3.5 rounded-2xl border border-slate-300 space-y-0.5";
+        if (drawerTabSwitcher) drawerTabSwitcher.className = "flex bg-slate-200 p-1.5 rounded-2xl border border-slate-300";
+        if (profileDetailsCard) profileDetailsCard.className = "bg-slate-100 p-4 rounded-2xl border border-slate-300 space-y-2.5 text-xs text-slate-900";
+        if (referralBoxCard) referralBoxCard.className = "bg-slate-100 p-4 rounded-2xl border border-slate-300 text-center space-y-3";
+        if (qrTabBox) qrTabBox.className = "flex bg-slate-200 p-1 rounded-xl border border-slate-300";
+        if (plansBox) plansBox.className = "bg-slate-100 p-4 rounded-2xl border border-slate-300 space-y-2 text-xs text-slate-900";
+        
+        if (customRechargeInput) customRechargeInput.className = "w-full bg-white border border-slate-300 rounded-xl p-3 outline-none focus:border-amber-500 font-mono mt-1 text-slate-900 text-xs font-bold";
+        if (couponInput) couponInput.className = "w-full border border-slate-300 rounded-xl p-2.5 outline-none focus:border-amber-500 font-mono uppercase bg-white text-slate-900 text-xs font-bold";
+
+        if (drawerFooterSec) drawerFooterSec.className = "pt-3 border-t border-slate-300 space-y-2";
+        if (btnDrawerLogout) btnDrawerLogout.className = "w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-3.5 rounded-2xl text-xs transition flex items-center justify-center gap-1.5 shadow-md";
+        if (btnDrawerDelete) btnDrawerDelete.className = "w-full bg-red-100 hover:bg-red-200 border border-red-300 text-red-700 font-black py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1";
+
         if (themeIcon) themeIcon.innerText = "☀️";
         if (themeText) themeText.innerText = "Light Mode Active";
         if (activeRideCard) {
           activeRideCard.classList.remove('bg-slate-900', 'text-white');
           activeRideCard.classList.add('bg-white', 'text-slate-900');
         }
-        if (activeRideBox) activeRideBox.className = "space-y-2 text-xs bg-slate-50 p-3.5 rounded-2xl border border-slate-200 text-slate-800";
+        if (activeRideBox) activeRideBox.className = "space-y-2 text-xs bg-slate-100 p-3.5 rounded-2xl border border-slate-300 text-slate-900";
       } else {
         if (headerCard) headerCard.className = "bg-slate-900 border border-slate-800 p-4 rounded-3xl shadow-2xl flex items-center justify-between transition-colors shrink-0";
         if (badgeVehicle) badgeVehicle.className = "text-[9px] sm:text-[10px] font-mono font-black px-1.5 py-0.5 rounded-lg border bg-slate-800 text-amber-400 border-slate-700";
@@ -811,10 +816,7 @@
         if (radarTitle) radarTitle.className = "text-lg font-black text-slate-100 tracking-tight";
         if (radarSubtitle) radarSubtitle.className = "text-xs text-slate-400 mt-1 font-medium";
 
-        if (drawerContainer) {
-          drawerContainer.classList.remove('bg-white', 'text-slate-900', 'border-slate-200');
-          drawerContainer.classList.add('bg-slate-900', 'text-white', 'border-slate-800');
-        }
+        if (drawerContainer) drawerContainer.className = "bg-slate-900 text-white w-full max-w-md h-full shadow-2xl border-r border-slate-800 p-6 space-y-5 overflow-y-auto custom-scrollbar flex flex-col justify-between transform -translate-x-full transition-transform duration-200 ease-in-out";
         if (drawerHeader) drawerHeader.className = "flex justify-between items-center border-b border-slate-800 pb-3";
         if (themeSwitchCard) themeSwitchCard.className = "bg-slate-950 p-4 rounded-2xl border border-slate-800 flex items-center justify-between";
         if (drawerWalletCard) drawerWalletCard.className = "bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-0.5";
@@ -824,7 +826,14 @@
         if (referralBoxCard) referralBoxCard.className = "bg-slate-950 p-4 rounded-2xl border border-slate-800 text-center space-y-3";
         if (qrTabBox) qrTabBox.className = "flex bg-slate-900 p-1 rounded-xl border border-slate-800";
         if (plansBox) plansBox.className = "bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2 text-xs";
-        if (btnDrawerLogout) btnDrawerLogout.className = "w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-3 rounded-2xl text-xs transition flex items-center justify-center gap-1.5";
+        
+        if (customRechargeInput) customRechargeInput.className = "w-full bg-slate-900 border border-slate-700 rounded-xl p-3 outline-none focus:border-amber-400 font-mono mt-1 text-white text-xs font-bold";
+        if (couponInput) couponInput.className = "w-full border rounded-xl p-2.5 outline-none focus:border-amber-400 font-mono uppercase bg-slate-950 border-slate-700 text-white text-xs font-bold";
+
+        if (drawerFooterSec) drawerFooterSec.className = "pt-3 border-t border-slate-800 space-y-2";
+        if (btnDrawerLogout) btnDrawerLogout.className = "w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-black py-3.5 rounded-2xl text-xs transition flex items-center justify-center gap-1.5 shadow";
+        if (btnDrawerDelete) btnDrawerDelete.className = "w-full bg-red-950/40 hover:bg-red-900/60 border border-red-800 text-red-400 font-black py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1";
+
         if (themeIcon) themeIcon.innerText = "🌙";
         if (themeText) themeText.innerText = "Dark Mode Active";
         if (activeRideCard) {
@@ -844,10 +853,11 @@
           if (data.data.adminUpiId) ADMIN_RECEIVING_UPI = data.data.adminUpiId;
           const container = document.getElementById('dynamic-plans-container');
           if (container && data.data.plans && data.data.plans.length > 0) {
+            const isLight = !document.documentElement.classList.contains('dark');
             container.innerHTML = data.data.plans.map(p => `
-              <button onclick="setRechargeAmount(${p.amount})" class="recharge-btn bg-slate-900 border border-slate-700 py-3 rounded-xl font-bold text-amber-400 hover:border-amber-400 text-center transition flex flex-col items-center justify-center">
+              <button onclick="setRechargeAmount(${p.amount})" class="recharge-btn ${isLight ? 'bg-white border-slate-300 text-amber-700' : 'bg-slate-900 border-slate-700 text-amber-400'} border py-3 rounded-xl font-bold hover:border-amber-500 text-center transition flex flex-col items-center justify-center shadow-sm">
                 <span class="text-xs font-black">₹${p.amount}</span>
-                <span class="text-[9px] text-slate-400 font-medium">(${p.validityDays} Days)</span>
+                <span class="text-[10px] ${isLight ? 'text-slate-600' : 'text-slate-400'} font-bold">(${p.validityDays} Days)</span>
               </button>
             `).join('');
           }
@@ -1258,7 +1268,6 @@
 
           currentTripPhase = trip.status === 'ARRIVED' ? 'ARRIVED' : (trip.status === 'ONGOING' ? 'TO_DROP' : 'TO_PICKUP');
 
-          // SHOW ACTIVE RIDE CARD AND HIDE RADAR
           document.getElementById('active-ride-card').classList.remove('hidden');
           document.getElementById('waiting-radar').classList.add('hidden');
           document.getElementById('offers-container').innerHTML = '';
@@ -1290,7 +1299,6 @@
             badge.className = "text-xs bg-green-500 text-slate-950 font-bold px-3 py-1 rounded-full uppercase";
           }
         } else {
-          // STRICTLY HIDE ACTIVE RIDE CARD IF NO ONGOING RIDE
           currentActiveRideId = null;
           acceptedRide = null;
           document.getElementById('active-ride-card').classList.add('hidden');
@@ -1546,7 +1554,7 @@
       }
     }
 
-    // Dynamic Full-Length Uninterrupted Sound Player
+    // Dynamic Sound Player
     function playOfferSiren() {
       if (mongoDriverAudio) {
         if (mongoDriverAudio.paused) {
@@ -1595,7 +1603,7 @@
       return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     }
 
-    // MULTI-OFFERS RENDER WITH CLOSEST DISTANCE & LOWEST FARE SORTING + DOWN-TO-TOP SCROLL
+    // Multi-Offers Render with Smart Sorting
     async function renderOffersList() {
       const container = document.getElementById('offers-container');
       const radar = document.getElementById('waiting-radar');
@@ -1610,7 +1618,6 @@
       radar.classList.add('hidden');
       syncSirenState();
 
-      // Sort offers: closest pickup distance and lowest fare first
       const sortedOffers = Array.from(activeOffersMap.entries()).map(([rideId, offer]) => {
         let distKm = 999;
         if (currentDriver?.location && offer.pickup?.lat) {
@@ -1932,14 +1939,16 @@
       const paneProfile = document.getElementById('setting-pane-profile');
       const paneAccount = document.getElementById('setting-pane-account');
 
+      const isLight = !document.documentElement.classList.contains('dark');
+
       if (tab === 'profile') {
         btnProfile.className = "w-1/2 py-2.5 text-xs font-black rounded-xl bg-amber-500 text-slate-950 transition shadow-sm";
-        btnAccount.className = "w-1/2 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition";
+        btnAccount.className = `w-1/2 py-2.5 text-xs font-black rounded-xl ${isLight ? 'text-slate-900' : 'text-slate-300'} hover:text-amber-500 transition`;
         paneProfile.classList.remove('hidden');
         paneAccount.classList.add('hidden');
       } else {
         btnAccount.className = "w-1/2 py-2.5 text-xs font-black rounded-xl bg-amber-500 text-slate-950 transition shadow-sm";
-        btnProfile.className = "w-1/2 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition";
+        btnProfile.className = `w-1/2 py-2.5 text-xs font-black rounded-xl ${isLight ? 'text-slate-900' : 'text-slate-300'} hover:text-amber-500 transition`;
         paneAccount.classList.remove('hidden');
         paneProfile.classList.add('hidden');
         updatePayableButtonDisplay();
@@ -1951,14 +1960,15 @@
       const btnRider = document.getElementById('tab-qr-rider');
       const btnDriver = document.getElementById('tab-qr-driver');
       const desc = document.getElementById('qr-desc-text');
+      const isLight = !document.documentElement.classList.contains('dark');
 
       if (tab === 'rider') {
-        btnRider.className = "w-1/2 py-1.5 text-[11px] font-bold rounded-lg bg-amber-500 text-slate-950 transition";
-        btnDriver.className = "w-1/2 py-1.5 text-[11px] font-bold rounded-lg text-slate-400 hover:text-white transition";
+        btnRider.className = "w-1/2 py-1.5 text-xs font-black rounded-lg bg-amber-500 text-slate-950 transition";
+        btnDriver.className = `w-1/2 py-1.5 text-xs font-black rounded-lg ${isLight ? 'text-slate-900' : 'text-slate-300'} hover:text-amber-500 transition`;
         desc.innerText = "Scan to register Rider with bonus";
       } else {
-        btnDriver.className = "w-1/2 py-1.5 text-[11px] font-bold rounded-lg bg-amber-500 text-slate-950 transition";
-        btnRider.className = "w-1/2 py-1.5 text-[11px] font-bold rounded-lg text-slate-400 hover:text-white transition";
+        btnDriver.className = "w-1/2 py-1.5 text-xs font-black rounded-lg bg-amber-500 text-slate-950 transition";
+        btnRider.className = `w-1/2 py-1.5 text-xs font-black rounded-lg ${isLight ? 'text-slate-900' : 'text-slate-300'} hover:text-amber-500 transition`;
         desc.innerText = "Scan to register Partner Driver with bonus";
       }
       renderReferralQR();
@@ -1984,9 +1994,7 @@
       });
     }
 
-    // ==========================================
-    // RECHARGE PASS ENGINE & DIRECT UPI TO ADMIN
-    // ==========================================
+    // Recharge Pass Engine
     function setRechargeAmount(amt) { 
       document.getElementById('custom-recharge-amt').value = amt;
       handleRechargeAmountChange();
@@ -2063,7 +2071,7 @@
       updatePayableButtonDisplay();
     }
 
-    // Direct UPI Payment to Admin
+    // Direct UPI Payment
     function executeDirectUpiToAdmin() {
       const rawAmt = Number(document.getElementById('custom-recharge-amt').value);
       if (!rawAmt || rawAmt < 50) return alert("Minimum recharge amount is ₹50.");
@@ -2075,10 +2083,6 @@
       const upiUrl = `upi://pay?pa=${encodeURIComponent(ADMIN_RECEIVING_UPI)}&pn=${encodeURIComponent('67 Cabs Admin')}&am=${encodeURIComponent(finalPayable)}&cu=INR&tn=${encodeURIComponent(`67Cab Pass ${drvId} ${driverName}`)}`;
 
       window.location.href = upiUrl;
-    }
-
-    function executeWalletRecharge() {
-      executeDirectUpiToAdmin();
     }
 
     // Safety Audio Recorder
