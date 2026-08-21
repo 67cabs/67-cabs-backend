@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="BackgroundLocationAccess,ForegroundServicePermission,FullScreenIntentBanner,ProtectedPermissions,SpellCheckingInspection">
 
     <!-- Location & Network Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission
@@ -35,6 +37,11 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
+        <!-- Android 14/15/16 Full Screen Alert Enforcement -->
+        <property
+            android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+            android:value="cab_dispatch_alert" />
+
         <!-- Main WebView Activity -->
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
@@ -55,8 +62,8 @@
         <activity
             android:name=".IncomingRideActivity"
             android:excludeFromRecents="true"
-            android:launchMode="singleTop"
-            android:taskAffinity=""
+            android:launchMode="singleInstance"
+            android:taskAffinity="com.cabs67.driver.incoming"
             android:noHistory="true"
             android:exported="true"
             android:showWhenLocked="true"
