@@ -1044,14 +1044,19 @@
 
     async function fetchAndRenderNearbyDrivers() {
       if (!pickupCoords) return;
+      const refreshBtn = document.querySelector('button[onclick="fetchAndRenderNearbyDrivers()"]');
+      if (refreshBtn) refreshBtn.innerHTML = `🔄 <span class="animate-pulse">Checking...</span>`;
+
       try {
-        const res = await fetch(`/api/cabs/nearby-all?lat=${pickupCoords[0]}&lng=${pickupCoords[1]}`);
+        const res = await fetch(`/api/cabs/nearby-all?lat=${pickupCoords[0]}&lng=${pickupCoords[1]}&t=${Date.now()}`);
         const data = await res.json();
         currentNearbyDrivers = data.drivers || [];
         renderProximityCards();
       } catch (e) {
         currentNearbyDrivers = [];
         renderProximityCards();
+      } finally {
+        if (refreshBtn) refreshBtn.innerHTML = `🔄 <span>Refresh Cabs</span>`;
       }
     }
 

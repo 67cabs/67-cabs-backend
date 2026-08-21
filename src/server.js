@@ -57,7 +57,14 @@ if (MONGO_URI) {
     tls: true,
     tlsAllowInvalidCertificates: true
   })
-  .then(() => console.log('🍃 MongoDB Atlas Connected (67-CABS Production)'))
+  .then(async () => {
+    console.log('🍃 MongoDB Atlas Connected (67-CABS Production)');
+    try {
+      // Purge ghost online states on restart
+      await Driver.updateMany({}, { $set: { isOnline: false } });
+      await DriverLocation.updateMany({}, { $set: { isOnline: false } });
+    } catch (e) {}
+  })
   .catch((err) => {
     console.error('❌ MongoDB Connection Error:', err.message);
     console.warn('⚡ Server running in RAM Cache mode. Real-time rides remain active.');
@@ -213,7 +220,7 @@ const driverLocationSchema = new mongoose.Schema({
     lat: Number,
     lng: Number
   },
-  isOnline: { type: Boolean, default: true },
+  isOnline: { type: Boolean, default: false },
   lastActive: { type: Date, default: Date.now }
 });
 const DriverLocation = mongoose.model('DriverLocation', driverLocationSchema);
@@ -454,7 +461,6 @@ app.post('/api/ride/decline', async (req, res) => {
 });
 
 // ---------------- RIDER AUTH & KYC ROUTES ----------------
-
 app.post('/api/rider/signup', async (req, res) => {
   try {
     const { name, phone, password, referralCode } = req.body;
@@ -611,7 +617,6 @@ app.post('/api/rider/delete-account', async (req, res) => {
 });
 
 // ---------------- ACTIVE RIDE & SETTLEMENT RECOVERY APIS ----------------
-
 app.get('/api/driver/active-ride', async (req, res) => {
   try {
     const { driverId } = req.query;
@@ -684,7 +689,6 @@ app.post('/api/trip/dismiss-settlement', async (req, res) => {
 });
 
 // ---------------- DRIVER AUTH & ONBOARDING ROUTES ----------------
-
 app.post('/api/driver/signup-fast', async (req, res) => {
   try {
     const { name, phone, password, vehicleNo, cabType, referralCode } = req.body;
@@ -928,7 +932,6 @@ app.post('/api/driver/upload-additional-doc', async (req, res) => {
 });
 
 // ---------------- ADMIN DASHBOARD ROUTES ----------------
-
 app.get('/api/admin/drivers', async (req, res) => {
   try {
     const drivers = await Driver.find().sort({ createdAt: -1 }).lean();
@@ -1068,7 +1071,6 @@ app.post('/api/admin/driver/suspend', async (req, res) => {
 });
 
 // ---------------- COUPON SYSTEM ROUTES ----------------
-
 app.post('/api/admin/coupons', async (req, res) => {
   try {
     const {
@@ -1254,7 +1256,6 @@ app.post('/api/coupons/apply', async (req, res) => {
 });
 
 // ---------------- FARE & PROXIMITY RADAR ROUTES ----------------
-
 app.post('/api/fare/estimate', (req, res) => {
   try {
     const { tripDistanceKm, tripTrafficMins, pickupDistanceKm, pickupTrafficMins, cabType } = req.body;
@@ -1283,44 +1284,23 @@ app.post('/api/fare/estimate', (req, res) => {
   }
 });
 
-// Real-Time Driver Proximity Radar (Strictly Approved AND Online Drivers Only)
+// Real-Time Driver Radar (STRICTLY ACTIVE SOCKET & ONLINE DRIVERS ONLY)
 app.get('/api/cabs/nearby-all', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   try {
-    const approvedDrivers = await Driver.find({ status: 'APPROVED', isOnline: true }).lean();
-    const approvedDriverMap = new Map();
-    approvedDrivers.forEach(d => approvedDriverMap.set(d.driverId, d));
-
     const driversList = [];
-    const addedDriverIds = new Set();
 
-    activeDrivers.forEach((d) => {
-      if (approvedDriverMap.has(d.driverId) && d.isOnline === true && d.location && d.location.lat) {
-        const dbDriver = approvedDriverMap.get(d.driverId);
+    activeDrivers.forEach((d, driverId) => {
+      const isSocketConnected = driverSocketMap.has(driverId);
+      if (isSocketConnected && d.isOnline === true && d.status === 'APPROVED' && d.location && d.location.lat && d.location.lng) {
         driversList.push({
           id: d.driverId,
-          name: dbDriver.name || d.name,
-          category: dbDriver.cabType || d.cabType,
-          vehicleNo: dbDriver.vehicleNo || d.vehicleNo,
+          name: d.name,
+          category: (d.cabType || 'HATCHBACK').toUpperCase(),
+          vehicleNo: d.vehicleNo,
           lat: d.location.lat,
           lng: d.location.lng
         });
-        addedDriverIds.add(d.driverId);
-      }
-    });
-
-    const dbLocations = await DriverLocation.find({ isOnline: true }).sort({ lastActive: -1 }).limit(30);
-    dbLocations.forEach((dl) => {
-      if (approvedDriverMap.has(dl.driverId) && !addedDriverIds.has(dl.driverId) && dl.location && dl.location.lat) {
-        const dbDriver = approvedDriverMap.get(dl.driverId);
-        driversList.push({
-          id: dl.driverId,
-          name: dbDriver.name || dl.name,
-          category: dbDriver.cabType || dl.cabType,
-          vehicleNo: dbDriver.vehicleNo || dl.vehicleNo,
-          lat: dl.location.lat,
-          lng: dl.location.lng
-        });
-        addedDriverIds.add(dl.driverId);
       }
     });
 
@@ -1331,21 +1311,16 @@ app.get('/api/cabs/nearby-all', async (req, res) => {
 });
 
 app.get('/api/cabs/nearby', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   try {
     const cabType = (req.query.cabType || 'HATCHBACK').toUpperCase();
     let liveDriver = null;
-    activeDrivers.forEach((d) => {
-      if (d.cabType === cabType && d.isOnline === true && d.location && d.location.lat) {
+    activeDrivers.forEach((d, driverId) => {
+      const isSocketConnected = driverSocketMap.has(driverId);
+      if (isSocketConnected && d.cabType === cabType && d.isOnline === true && d.status === 'APPROVED' && d.location && d.location.lat) {
         liveDriver = d;
       }
     });
-
-    if (!liveDriver) {
-      const dbDriver = await DriverLocation.findOne({ cabType, isOnline: true }).sort({ lastActive: -1 });
-      if (dbDriver && dbDriver.location && dbDriver.location.lat) {
-        liveDriver = dbDriver;
-      }
-    }
 
     if (liveDriver && liveDriver.location) {
       return res.json({ 
@@ -1376,28 +1351,29 @@ io.on('connection', (socket) => {
     socket.join(`driver:${driverId}`);
     driverSocketMap.set(driverId, socket.id);
 
+    const isOnlineState = driverData.isOnline === true;
     const existingEntry = activeDrivers.get(driverId);
     const loc = driverData.location || (existingEntry ? existingEntry.location : null);
-    const isOnlineState = driverData.isOnline !== undefined ? driverData.isOnline : true;
 
-    activeDrivers.set(driverId, {
-      driverId,
-      name: driverData.name,
-      vehicleNo: driverData.vehicleNo,
-      cabType: normalizedCabType,
-      upiId: driverData.upiId || '67cabs@upi',
-      status: driverData.status || 'APPROVED',
-      isOnline: isOnlineState,
-      location: loc,
-      socketId: socket.id
-    });
+    if (isOnlineState) {
+      activeDrivers.set(driverId, {
+        driverId,
+        name: driverData.name,
+        vehicleNo: driverData.vehicleNo,
+        cabType: normalizedCabType,
+        upiId: driverData.upiId || '67cabs@upi',
+        status: driverData.status || 'APPROVED',
+        isOnline: true,
+        location: loc,
+        socketId: socket.id
+      });
+    } else {
+      activeDrivers.delete(driverId);
+    }
 
     try {
       await Driver.updateOne({ driverId }, { isOnline: isOnlineState });
-    } catch (e) {}
-
-    if (loc && loc.lat) {
-      try {
+      if (loc && loc.lat) {
         await DriverLocation.findOneAndUpdate(
           { driverId },
           {
@@ -1410,19 +1386,24 @@ io.on('connection', (socket) => {
           },
           { upsert: true }
         );
-      } catch (e) {}
-    }
+      }
+    } catch (e) {}
   });
 
   // 1.1 Driver Toggle Online/Offline State
   socket.on('driver:toggle_online', async ({ driverId, isOnline }) => {
     if (!driverId) return;
-    const d = activeDrivers.get(driverId);
-    if (d) d.isOnline = isOnline;
+    
+    if (isOnline) {
+      const d = activeDrivers.get(driverId);
+      if (d) d.isOnline = true;
+    } else {
+      activeDrivers.delete(driverId);
+    }
 
     try {
-      await Driver.updateOne({ driverId }, { isOnline });
-      await DriverLocation.updateOne({ driverId }, { isOnline, lastActive: new Date() });
+      await Driver.updateOne({ driverId }, { isOnline: !!isOnline });
+      await DriverLocation.updateOne({ driverId }, { isOnline: !!isOnline, lastActive: new Date() });
     } catch (e) {}
 
     console.log(`📡 Driver ${driverId} status updated: ${isOnline ? 'ONLINE' : 'OFFLINE'}`);
@@ -1443,7 +1424,7 @@ io.on('connection', (socket) => {
     console.log(`🚪 Driver ${driverId} logged out & purged from active radar.`);
   });
 
-  // 2. Targeted 1-Click Ride Request (Dual Dispatch: Direct Room + Socket Map + Rich Web Push)
+  // 2. Targeted 1-Click Ride Request
   socket.on('ride:request_targeted', async (rideData) => {
     const { rideId, targetDriverId, pickup, stops, cabCategory, totalDistanceKm, totalFare, rider } = rideData;
 
@@ -1464,19 +1445,11 @@ io.on('connection', (socket) => {
 
     try {
       await Trip.create(ridePayload);
-    } catch (dbErr) {
-      console.warn(`Initial DB Save Warning for ${rideId}:`, dbErr.message);
-    }
+    } catch (dbErr) {}
 
-    let isOnline = activeDrivers.has(targetDriverId) && activeDrivers.get(targetDriverId).isOnline === true;
-
-    if (!isOnline) {
-      const dbCheck = await Driver.findOne({ driverId: targetDriverId, status: 'APPROVED', isOnline: true });
-      if (dbCheck) isOnline = true;
-    }
+    const isOnline = activeDrivers.has(targetDriverId) && activeDrivers.get(targetDriverId).isOnline === true;
 
     if (isOnline) {
-      // 100% Reliable Guaranteed Delivery to Driver's Permanent Room
       io.to(`driver:${targetDriverId}`).emit('ride:new_offer', ridePayload);
       
       const sId = driverSocketMap.get(targetDriverId);
@@ -1484,7 +1457,6 @@ io.on('connection', (socket) => {
         io.to(sId).emit('ride:new_offer', ridePayload);
       }
 
-      // Rich Actionable Web Push Notification Payload
       sendDriverPushNotification(targetDriverId, {
         title: '🚖 Nayi Direct Ride Request!',
         body: `Kiraya: ₹${ridePayload.totalFare}`,
@@ -1547,7 +1519,6 @@ io.on('connection', (socket) => {
       if (driver.status === 'APPROVED' && driver.isOnline === true && (driver.cabType === requestedCabType || requestedCabType === 'ALL')) {
         io.to(`driver:${driver.driverId}`).emit('ride:new_offer', ridePayload);
 
-        // Rich Actionable Web Push Notification Payload to all matching drivers
         sendDriverPushNotification(driver.driverId, {
           title: '🚖 Nayi Ride Request!',
           body: `Category: ${requestedCabType} | Kiraya: ₹${totalFare}`,
@@ -1568,10 +1539,7 @@ io.on('connection', (socket) => {
       activeRides.delete(rideId);
       io.emit('ride:cancelled', { rideId });
       io.emit('ride:taken', { rideId });
-      console.log(`❌ Ride ${rideId} cancelled by Rider.`);
-    } catch (e) {
-      console.error('Cancel Error:', e.message);
-    }
+    } catch (e) {}
   });
 
   // 3. Driver Accepts Ride
@@ -1609,9 +1577,7 @@ io.on('connection', (socket) => {
         { new: true }
       );
       if (updatedTrip) finalTotalFare = updatedTrip.totalFare;
-    } catch (e) {
-      console.error('DB Update Error (ACCEPTED):', e.message);
-    }
+    } catch (e) {}
 
     if (ride) {
       ride.status = 'ACCEPTED';
@@ -1800,10 +1766,7 @@ io.on('connection', (socket) => {
           );
         }
       }
-      console.log(`⭐ Trip ${rideId} rated ${numRating} Stars and saved to MongoDB.`);
-    } catch (err) {
-      console.error('Rating DB Error:', err.message);
-    }
+    } catch (err) {}
   });
 
   async function completeTripFinal(rideId, finalAmount, isEarlyDrop, settlementReason) {
@@ -1845,7 +1808,6 @@ io.on('connection', (socket) => {
               { $inc: { bonusFreeRides: 1 } }
             );
             await Rider.updateOne({ _id: riderDoc._id }, { isFirstTripRewardClaimed: true });
-            console.log(`🎁 1-Time Referral Bonus: 1 Free Ride awarded to Driver ${referrerDriver.driverId} for Rider's 1st trip.`);
           }
         }
       }
@@ -1860,13 +1822,10 @@ io.on('connection', (socket) => {
               { $inc: { bonusFreeRides: 1 } }
             );
             await Driver.updateOne({ _id: currentDriverDoc._id }, { isFirstTripRewardClaimed: true });
-            console.log(`🎁 1-Time Referral Bonus: 1 Free Ride awarded to Driver ${referrerDriver.driverId} for Driver's 1st trip.`);
           }
         }
       }
-    } catch (dbErr) {
-      console.error(`MongoDB Log Error for ${rideId}:`, dbErr.message);
-    }
+    } catch (dbErr) {}
 
     const completionPayload = {
       rideId,
@@ -1883,10 +1842,9 @@ io.on('connection', (socket) => {
     socket.emit('ride:completed', completionPayload);
 
     activeRides.delete(rideId);
-    console.log(`🏁 Trip ${rideId} Finalized. Total Fare: ₹${finalAmount}`);
   }
 
-  // Handle Disconnect (Updated: Marks driver offline immediately upon disconnect)
+  // Handle Disconnect (PURGES DRIVER FROM RADAR IMMEDIATELY)
   socket.on('disconnect', async () => {
     let disconnectedDriverId = null;
     driverSocketMap.forEach((sId, dId) => {
@@ -1895,15 +1853,14 @@ io.on('connection', (socket) => {
 
     if (disconnectedDriverId) {
       driverSocketMap.delete(disconnectedDriverId);
-      const d = activeDrivers.get(disconnectedDriverId);
-      if (d) d.isOnline = false;
+      activeDrivers.delete(disconnectedDriverId);
 
       try {
         await Driver.updateOne({ driverId: disconnectedDriverId }, { isOnline: false });
         await DriverLocation.updateOne({ driverId: disconnectedDriverId }, { isOnline: false });
       } catch (e) {}
 
-      console.log(`📡 Driver ${disconnectedDriverId} disconnected and marked OFFLINE.`);
+      console.log(`📡 Driver ${disconnectedDriverId} disconnected and purged from radar.`);
     }
   });
 });
