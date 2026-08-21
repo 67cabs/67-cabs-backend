@@ -1,6 +1,7 @@
 package com.cabs67.driver;
 
 import android.annotation.SuppressLint;
+import android.app.ActivityManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -28,14 +29,15 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import org.json.JSONObject;
 import io.socket.client.IO;
 import io.socket.client.Socket;
 
 public class LocationService extends Service {
 
-    private static final String CHANNEL_ID = "DriverLocationChannel_v9";
-    private static final String ALERT_CHANNEL_ID = "DriverIncomingRideAlertChannel_v9";
+    private static final String CHANNEL_ID = "DriverLocationChannel_v11";
+    private static final String ALERT_CHANNEL_ID = "DriverIncomingRideAlertChannel_v11";
     private static final int ALERT_NOTIFICATION_ID = 6705;
 
     private LocationManager locationManager;
@@ -175,11 +177,11 @@ public class LocationService extends Service {
         }
     }
 
+    // DIRECT APP FORWARD ENGINE: Pushes MainActivity directly ahead of YouTube / Active App
     private void launchIncomingRideFullScreen(JSONObject offer) {
         try {
             String rideId = offer.optString("rideId", "");
             String fare = offer.optString("totalFare", "0");
-            String driverId = offer.optString("targetDriverId", cachedDriverId);
             String pickup = "Jaipur Pickup Point";
             String drop = "Drop Destination";
 
@@ -197,7 +199,7 @@ public class LocationService extends Service {
                 if (sObj != null) drop = sObj.optString("text", "Drop Destination");
             }
 
-            // 1. Hardware Screen Wakeup
+            // 1. Hardware Screen Force Wakeup
             PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
             if (pm != null) {
                 if (wakeLock != null && wakeLock.isHeld()) {
@@ -207,29 +209,40 @@ public class LocationService extends Service {
                         PowerManager.FULL_WAKE_LOCK |
                                 PowerManager.ACQUIRE_CAUSES_WAKEUP |
                                 PowerManager.ON_AFTER_RELEASE,
-                        "67Cabs:LocationServiceRideWakeLock"
+                        "67Cabs:DirectAppWakeLock"
                 );
                 wakeLock.acquire(15000);
             }
 
-            // 2. Setup Full Screen Intent
-            Intent fullScreenIntent = new Intent(this, IncomingRideActivity.class);
-            fullScreenIntent.addFlags(
+            // 2. Direct Intent to bring MainActivity (Driver App) to Front
+            Intent openMainAppIntent = new Intent(this, MainActivity.class);
+            openMainAppIntent.addFlags(
                     Intent.FLAG_ACTIVITY_NEW_TASK |
-                            Intent.FLAG_ACTIVITY_CLEAR_TOP |
-                            Intent.FLAG_ACTIVITY_SINGLE_TOP |
-                            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT |
+                            Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED |
+                            Intent.FLAG_ACTIVITY_SINGLE_TOP
             );
-            fullScreenIntent.putExtra("rideId", rideId);
-            fullScreenIntent.putExtra("driverId", driverId);
-            fullScreenIntent.putExtra("fare", fare);
-            fullScreenIntent.putExtra("pickup", pickup);
-            fullScreenIntent.putExtra("drop", drop);
+            openMainAppIntent.putExtra("directIncomingRideId", rideId);
 
+            // 3. Native App Task Reorder (Bypasses YouTube and pulls Main App to screen)
+            try {
+                ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+                if (am != null) {
+                    List<ActivityManager.AppTask> tasks = am.getAppTasks();
+                    if (tasks != null && !tasks.isEmpty()) {
+                        tasks.get(0).moveToFront();
+                    }
+                }
+            } catch (Exception ignored) {}
+
+            // 4. Launch Main App directly
+            startActivity(openMainAppIntent);
+
+            // 5. Full-Screen Call Style Banner with Sound
             PendingIntent pendingIntent = PendingIntent.getActivity(
                     this,
                     (int) System.currentTimeMillis(),
-                    fullScreenIntent,
+                    openMainAppIntent,
                     PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0)
             );
 
@@ -245,20 +258,12 @@ public class LocationService extends Service {
                     .setFullScreenIntent(pendingIntent, true)
                     .setContentIntent(pendingIntent)
                     .setAutoCancel(true)
-                    .setOngoing(true)
                     .build();
-
-            alertNotification.flags |= Notification.FLAG_INSISTENT;
 
             NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             if (manager != null) {
                 manager.notify(ALERT_NOTIFICATION_ID, alertNotification);
             }
-
-            // Direct Window Overlay
-            try {
-                startActivity(fullScreenIntent);
-            } catch (Exception ignored) {}
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -341,10 +346,10 @@ public class LocationService extends Service {
                 Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
                 NotificationChannel alertChannel = new NotificationChannel(
                         ALERT_CHANNEL_ID,
-                        "Driver Incoming Ride Full Screen",
+                        "Driver Direct App Launch",
                         NotificationManager.IMPORTANCE_HIGH
                 );
-                alertChannel.setDescription("Shows full screen incoming ride requests over any open app");
+                alertChannel.setDescription("Brings Driver App directly to screen when ride arrives");
                 alertChannel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
                 alertChannel.enableVibration(true);
                 alertChannel.setBypassDnd(true);
