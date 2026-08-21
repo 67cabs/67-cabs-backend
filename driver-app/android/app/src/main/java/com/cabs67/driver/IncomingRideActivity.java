@@ -16,6 +16,7 @@ import android.os.CountDownTimer;
 import android.os.PowerManager;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
+import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
@@ -62,6 +63,8 @@ public class IncomingRideActivity extends Activity {
     }
 
     private void wakeAndUnlockScreen() {
+        Window window = getWindow();
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true);
             setTurnScreenOn(true);
@@ -71,12 +74,19 @@ public class IncomingRideActivity extends Activity {
             }
         }
 
-        getWindow().addFlags(
+        // Window Flags to display on top of YouTube, Games, and Lockscreen
+        window.addFlags(
                 WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
                         WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD |
                         WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON |
                         WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON |
                         WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON
+        );
+
+        // Hardware Acceleration to prevent UI freezing behind YouTube
+        window.setFlags(
+                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
         );
 
         try {

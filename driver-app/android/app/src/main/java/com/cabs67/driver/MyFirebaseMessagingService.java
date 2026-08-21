@@ -11,6 +11,7 @@ import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.PowerManager;
+import android.provider.Settings;
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 import com.google.firebase.messaging.FirebaseMessagingService;
@@ -19,9 +20,9 @@ import java.util.Map;
 
 public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
-    // Unique channel ID ensuring highest priority settings persist
-    private static final String CHANNEL_ID = "67_driver_incoming_call_v4";
-    private static final int NOTIFICATION_ID = 6702;
+    // Unique Channel ID to ensure High-Priority alert enforcement
+    private static final String CHANNEL_ID = "67_driver_urgent_dispatch_v5";
+    private static final int NOTIFICATION_ID = 6705;
 
     @Override
     public void onMessageReceived(@NonNull RemoteMessage remoteMessage) {
@@ -31,8 +32,8 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         String body = "Accept karne ke liye tap karein";
         String rideId = "";
         String driverId = "";
-        String pickup = "Jaipur Pickup Point";
-        String drop = "Jaipur Destination";
+        String pickup = "Pickup Point";
+        String drop = "Destination";
         String fare = "0";
 
         // 1. Extract pure data payload safely
@@ -57,10 +58,10 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             }
         }
 
-        // 3. Acquire short WakeLock to wake CPU & Screen instantly (Ola/Uber Engine)
+        // 3. Acquire strong WakeLock
         acquireScreenWakeLock();
 
-        // 4. Trigger Full-Screen Overlay Alert
+        // 4. Trigger Full-Screen Alert / Overlay
         showFullScreenRideAlert(title, body, rideId, driverId, pickup, drop, fare);
     }
 
@@ -74,7 +75,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                                 PowerManager.ON_AFTER_RELEASE,
                         "67Cabs:IncomingRideWakeLock"
                 );
-                wakeLock.acquire(10000); // 10 seconds wake lock
+                wakeLock.acquire(15000); // 15 seconds wake lock
             }
         } catch (Exception ignored) {}
     }
@@ -83,17 +84,18 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
 
-        // Android 8.0 (API 26)+ High-Priority Alert Channel
+        // Android 8.0 (API 26)+ Channel Creation
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
-                    "67 Urgent Ride Requests",
+                    "67 Urgent Ride Alert Channel",
                     NotificationManager.IMPORTANCE_HIGH
             );
-            channel.setDescription("Critical incoming ride requests overlay channel");
+            channel.setDescription("Critical high priority popup channel for incoming rides");
             channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
             channel.enableVibration(true);
             channel.setBypassDnd(true);
+            channel.setVibrationPattern(new long[]{0, 500, 200, 500, 200, 500});
 
             AudioAttributes audioAttributes = new AudioAttributes.Builder()
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
@@ -106,7 +108,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             }
         }
 
-        // Target Activity: IncomingRideActivity (Force Pop over other apps)
+        // Setup Intent for IncomingRideActivity
         Intent fullScreenIntent = new Intent(this, IncomingRideActivity.class);
         fullScreenIntent.putExtra("rideId", rideId);
         fullScreenIntent.putExtra("driverId", driverId);
@@ -116,6 +118,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         fullScreenIntent.putExtra("title", title);
         fullScreenIntent.putExtra("body", body);
 
+        // Flags required to break through other running apps (YouTube, etc.)
         fullScreenIntent.addFlags(
                 Intent.FLAG_ACTIVITY_NEW_TASK |
                         Intent.FLAG_ACTIVITY_CLEAR_TOP |
@@ -124,11 +127,16 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         );
 
         int uniqueReqCode = (int) System.currentTimeMillis();
+        int pendingIntentFlags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            pendingIntentFlags |= PendingIntent.FLAG_IMMUTABLE;
+        }
+
         PendingIntent fullScreenPendingIntent = PendingIntent.getActivity(
                 this,
                 uniqueReqCode,
                 fullScreenIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0)
+                pendingIntentFlags
         );
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
@@ -137,6 +145,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 .setContentText("Kiraya: ₹" + fare + " • " + pickup)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_CALL)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setSound(soundUri)
                 .setAutoCancel(true)
                 .setOngoing(true)
@@ -150,9 +159,11 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             manager.notify(NOTIFICATION_ID, notification);
         }
 
-        // Direct Activity Trigger (Works over other running apps when Display over other apps is on)
-        try {
-            startActivity(fullScreenIntent);
-        } catch (Exception ignored) {}
+        // If overlay permission is granted, force start activity directly over YouTube
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || Settings.canDrawOverlays(this)) {
+            try {
+                startActivity(fullScreenIntent);
+            } catch (Exception ignored) {}
+        }
     }
 }
