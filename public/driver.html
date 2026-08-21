@@ -77,7 +77,7 @@
     </div>
 
     <!-- Login Form -->
-    <form id="login-form" onsubmit="handleDriverLogin(event)" class="bg-slate-900/90 p-6 rounded-3xl border border-slate-800 shadow-2xl space-y-4">
+    <form id="login-form" onsubmit="handleDriverLogin(event)" class="bg-slate-900/90 backdrop-blur p-6 rounded-3xl border border-slate-800 shadow-2xl space-y-4">
       <div>
         <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Mobile Number *</label>
         <input type="tel" id="login-phone" required placeholder="10-digit Mobile Number" class="w-full bg-slate-950 border border-slate-700 text-white rounded-2xl p-3.5 text-xs outline-none focus:border-amber-400 mt-1 font-mono transition" />
@@ -92,7 +92,7 @@
     </form>
 
     <!-- Sign Up Form -->
-    <form id="signup-form" onsubmit="handleDriverSignup(event)" class="hidden bg-slate-900/90 p-6 rounded-3xl border border-slate-800 shadow-2xl space-y-3 max-h-[80vh] overflow-y-auto custom-scrollbar">
+    <form id="signup-form" onsubmit="handleDriverSignup(event)" class="hidden bg-slate-900/90 backdrop-blur p-6 rounded-3xl border border-slate-800 shadow-2xl space-y-3 max-h-[80vh] overflow-y-auto custom-scrollbar">
       <div>
         <label class="text-[11px] font-bold text-slate-400 uppercase">Driver Full Name *</label>
         <input type="text" id="reg-name" required placeholder="e.g. Ramesh Sharma" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-3 text-xs outline-none focus:border-amber-400 mt-1" />
@@ -364,16 +364,16 @@
     <!-- Multi-Offers Feed Container -->
     <div id="offers-container" class="space-y-4"></div>
 
-    <!-- Enhanced Bright Radar with 3-Layer Expanding Pulsar Wave -->
+    <!-- Enhanced Bright Radar with Continuous Spinning Satellite Core + Expanding Waves -->
     <div id="waiting-radar" class="text-center py-20 rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 flex flex-col items-center justify-center space-y-6 shadow-xl transition-colors relative overflow-hidden">
       <div class="relative flex items-center justify-center w-28 h-28">
-        <!-- Expanding Wave Rings -->
+        <!-- 3-Layer Expanding Wave Rings -->
         <div class="absolute w-24 h-24 rounded-full bg-amber-500/30 radar-pulse-1 pointer-events-none"></div>
         <div class="absolute w-24 h-24 rounded-full bg-amber-500/25 radar-pulse-2 pointer-events-none"></div>
         <div class="absolute w-24 h-24 rounded-full bg-amber-500/20 radar-pulse-3 pointer-events-none"></div>
         
-        <!-- Glowing Core Satellite -->
-        <div class="relative z-10 w-16 h-16 rounded-full bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center shadow-2xl shadow-amber-500/50 border-2 border-white/40">
+        <!-- Continuously Spinning Radar Core Satellite (360-degree continuous rotation) -->
+        <div class="relative z-10 w-16 h-16 rounded-full bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center shadow-2xl shadow-amber-500/50 border-2 border-white/40 animate-spin" style="animation-duration: 3s;">
           <span class="text-3xl filter drop-shadow">📡</span>
         </div>
       </div>
@@ -772,7 +772,7 @@
         if (badgeVehicle) badgeVehicle.className = "text-[9px] sm:text-[10px] font-mono font-black px-1.5 py-0.5 rounded-lg border bg-slate-800 text-amber-400 border-slate-700";
         if (btnHamburger) btnHamburger.className = "w-11 h-11 rounded-2xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-amber-400 flex items-center justify-center text-xl transition shadow-md active:scale-95";
         
-        if (radarBox) radarBox.className = "text-center py-20 rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 flex flex-col items-center justify-center space-y-6 shadow-xl transition-colors relative overflow-hidden";
+        if (radarBox) radarBox.className = "text-center py-20 rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 flex flex-col items-center justify-center space-y-4 shadow-xl transition-colors relative overflow-hidden";
         if (radarTitle) radarTitle.className = "text-base font-black text-slate-100 tracking-tight";
         if (radarSubtitle) radarSubtitle.className = "text-xs text-slate-400 mt-1 font-medium";
 
@@ -2022,6 +2022,10 @@
       const upiUrl = `upi://pay?pa=${encodeURIComponent(ADMIN_RECEIVING_UPI)}&pn=${encodeURIComponent('67 Cabs Admin')}&am=${encodeURIComponent(finalPayable)}&cu=INR&tn=${encodeURIComponent(`67Cab Pass ${drvId} ${driverName}`)}`;
 
       window.location.href = upiUrl;
+    }
+
+    function executeWalletRecharge() {
+      executeDirectUpiToAdmin();
     }
 
     // Safety Audio Recorder
