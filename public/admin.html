@@ -25,7 +25,7 @@
         <h1 class="text-2xl font-black text-amber-400 flex items-center gap-2">
           🛡️ 67 Cabs Admin Portal
         </h1>
-        <p class="text-xs text-slate-400 mt-1">Driver Partner & Rider KYC Verification, Coupon Management, Compliance, Dynamic Fare & Sound Control</p>
+        <p class="text-xs text-slate-400 mt-1">Driver Partner & Rider KYC Verification, Coupon Management, Compliance, Dynamic Fare, Recharge Plans & Sound Control</p>
       </div>
       <div class="flex items-center gap-3">
         <button onclick="fetchAllData()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-4 py-2.5 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 shadow">
@@ -49,7 +49,7 @@
         🔔 Sound Control
       </button>
       <button onclick="switchAdminTab('fares')" id="tab-btn-fares" class="w-1/5 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition whitespace-nowrap px-2">
-        💰 Fare Rules
+        💰 Fare & Plans
       </button>
     </div>
 
@@ -260,7 +260,7 @@
       </div>
     </div>
 
-    <!-- ================= TAB 5: DYNAMIC FARE RULES MANAGER ================= -->
+    <!-- ================= TAB 5: DYNAMIC FARE RULES & DRIVER RECHARGE PLANS ================= -->
     <div id="section-fares-table" class="hidden space-y-6">
       <div class="bg-slate-900/80 rounded-3xl border border-slate-800 p-6 shadow-2xl backdrop-blur-md max-w-4xl mx-auto space-y-5">
         <div class="flex justify-between items-center border-b border-slate-800 pb-3">
@@ -273,8 +273,8 @@
           <span class="text-[10px] bg-green-950 border border-green-700 text-green-400 px-3 py-1 rounded-full font-bold">Live in MongoDB Atlas</span>
         </div>
 
+        <!-- 1. Master Vehicle Fares Form -->
         <form id="admin-fare-rules-form" onsubmit="handleSaveFareRules(event)" class="space-y-5 text-xs">
-          <!-- Cab Categories Pricing Grid -->
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <!-- Hatchback -->
             <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
@@ -362,6 +362,61 @@
             <span>🚀 Save & Apply New Fare Rules to MongoDB</span>
           </button>
         </form>
+
+        <!-- 2. Dynamic Driver Recharge Passes & Admin Receiving UPI Controller -->
+        <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-4 text-xs mt-6">
+          <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+            <div class="font-black text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+              <span>💳</span> Admin Receiving UPI ID & Recharge Plans Controller
+            </div>
+            <span class="text-[9px] text-slate-400">Live in MongoDB</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Admin UPI ID (To Receive Driver Payments) *</label>
+              <input type="text" id="admin-receiving-upi-input" placeholder="e.g. yourname@okaxis / 67cabs@upi" class="w-full bg-slate-900 border border-slate-700 text-green-400 font-mono font-bold rounded-xl p-2.5 outline-none focus:border-amber-400" />
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-[10px] font-bold text-slate-400 uppercase block">Configured Driver Recharge Passes (Amount & Validity Days)</label>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <!-- Plan 1 -->
+              <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-2">
+                <span class="text-[10px] font-bold text-amber-300 block">Plan 1 (Starter)</span>
+                <input type="text" id="plan1-title" placeholder="Plan 1 Title" value="7 Days Pass" class="w-full bg-slate-950 border border-slate-700 text-white rounded-lg p-1.5 text-[11px]" />
+                <div class="flex gap-2">
+                  <input type="number" id="plan1-amt" placeholder="₹ Amount" value="100" class="w-1/2 bg-slate-950 border border-slate-700 text-green-400 font-mono rounded-lg p-1.5 text-[11px]" />
+                  <input type="number" id="plan1-days" placeholder="Days" value="7" class="w-1/2 bg-slate-950 border border-slate-700 text-white rounded-lg p-1.5 text-[11px]" />
+                </div>
+              </div>
+              <!-- Plan 2 -->
+              <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-2">
+                <span class="text-[10px] font-bold text-amber-300 block">Plan 2 (Monthly)</span>
+                <input type="text" id="plan2-title" placeholder="Plan 2 Title" value="30 Days Pass" class="w-full bg-slate-950 border border-slate-700 text-white rounded-lg p-1.5 text-[11px]" />
+                <div class="flex gap-2">
+                  <input type="number" id="plan2-amt" placeholder="₹ Amount" value="250" class="w-1/2 bg-slate-950 border border-slate-700 text-green-400 font-mono rounded-lg p-1.5 text-[11px]" />
+                  <input type="number" id="plan2-days" placeholder="Days" value="30" class="w-1/2 bg-slate-950 border border-slate-700 text-white rounded-lg p-1.5 text-[11px]" />
+                </div>
+              </div>
+              <!-- Plan 3 -->
+              <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-2">
+                <span class="text-[10px] font-bold text-amber-300 block">Plan 3 (VIP)</span>
+                <input type="text" id="plan3-title" placeholder="Plan 3 Title" value="VIP Unlimited" class="w-full bg-slate-950 border border-slate-700 text-white rounded-lg p-1.5 text-[11px]" />
+                <div class="flex gap-2">
+                  <input type="number" id="plan3-amt" placeholder="₹ Amount" value="500" class="w-1/2 bg-slate-950 border border-slate-700 text-green-400 font-mono rounded-lg p-1.5 text-[11px]" />
+                  <input type="number" id="plan3-days" placeholder="Days" value="60" class="w-1/2 bg-slate-950 border border-slate-700 text-white rounded-lg p-1.5 text-[11px]" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button onclick="saveAdminRechargePlans()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 rounded-xl text-xs transition shadow flex items-center justify-center gap-1.5">
+            <span>💾 Save Plans & Admin UPI ID to MongoDB</span>
+          </button>
+        </div>
+
       </div>
     </div>
 
@@ -503,6 +558,7 @@
         btnFares.className = activeTabClass;
         secFares.classList.remove('hidden');
         fetchFareRules();
+        fetchAdminRechargePlans();
       }
     }
 
@@ -516,7 +572,14 @@
     }
 
     async function fetchAllData() {
-      await Promise.all([fetchDrivers(), fetchRiders(), fetchCoupons(), fetchCurrentSoundSetting(), fetchFareRules()]);
+      await Promise.all([
+        fetchDrivers(), 
+        fetchRiders(), 
+        fetchCoupons(), 
+        fetchCurrentSoundSetting(), 
+        fetchFareRules(),
+        fetchAdminRechargePlans()
+      ]);
     }
 
     // 1. Fetch Drivers
@@ -891,7 +954,7 @@
       }
     }
 
-    // 5. Dynamic Fare Rules Handlers (MongoDB Atlas Integrated)
+    // 5. Dynamic Fare Rules Handlers
     async function fetchFareRules() {
       try {
         const res = await fetch('/api/admin/fare-rules');
@@ -907,7 +970,7 @@
           document.getElementById('fare-sedan-min').value = f.SEDAN?.minFare || 70;
 
           document.getElementById('fare-suv-base').value = f.SUV?.baseFare || 100;
-          document.getElementById('fare-suv-perkm').value = f.SUV?.perKm || 25;
+          document.getElementById('fare-suv-perkm').value = f.SUV?.perKm || 30;
           document.getElementById('fare-suv-min').value = f.SUV?.minFare || 100;
 
           document.getElementById('fare-rate-pickupkm').value = f.rates?.pickupPerKm || 10;
@@ -963,6 +1026,81 @@
       } finally {
         btn.disabled = false;
         btn.innerText = "🚀 Save & Apply New Fare Rules to MongoDB";
+      }
+    }
+
+    // 6. Dynamic Recharge Plans Handlers
+    async function fetchAdminRechargePlans() {
+      try {
+        const res = await fetch('/api/driver/recharge-plans');
+        const data = await res.json();
+        if (data.success && data.data) {
+          document.getElementById('admin-receiving-upi-input').value = data.data.adminUpiId || '67cabs@upi';
+          const p = data.data.plans || [];
+          if (p[0]) {
+            document.getElementById('plan1-title').value = p[0].title;
+            document.getElementById('plan1-amt').value = p[0].amount;
+            document.getElementById('plan1-days').value = p[0].validityDays;
+          }
+          if (p[1]) {
+            document.getElementById('plan2-title').value = p[1].title;
+            document.getElementById('plan2-amt').value = p[1].amount;
+            document.getElementById('plan2-days').value = p[1].validityDays;
+          }
+          if (p[2]) {
+            document.getElementById('plan3-title').value = p[2].title;
+            document.getElementById('plan3-amt').value = p[2].amount;
+            document.getElementById('plan3-days').value = p[2].validityDays;
+          }
+        }
+      } catch (e) {}
+    }
+
+    async function saveAdminRechargePlans() {
+      const upiId = document.getElementById('admin-receiving-upi-input').value.trim();
+      if (!upiId) return alert('Please enter Admin UPI ID.');
+
+      const plans = [
+        {
+          planId: 'p_100',
+          title: document.getElementById('plan1-title').value.trim() || '7 Days Pass',
+          amount: Number(document.getElementById('plan1-amt').value) || 100,
+          validityDays: Number(document.getElementById('plan1-days').value) || 7,
+          ridesLimit: 50,
+          isPopular: false
+        },
+        {
+          planId: 'p_250',
+          title: document.getElementById('plan2-title').value.trim() || '30 Days Pass',
+          amount: Number(document.getElementById('plan2-amt').value) || 250,
+          validityDays: Number(document.getElementById('plan2-days').value) || 30,
+          ridesLimit: 200,
+          isPopular: true
+        },
+        {
+          planId: 'p_500',
+          title: document.getElementById('plan3-title').value.trim() || 'VIP Unlimited',
+          amount: Number(document.getElementById('plan3-amt').value) || 500,
+          validityDays: Number(document.getElementById('plan3-days').value) || 60,
+          ridesLimit: 9999,
+          isPopular: false
+        }
+      ];
+
+      try {
+        const res = await fetch('/api/admin/recharge-plans', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ adminUpiId: upiId, plans })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('✅ Admin UPI ID and Dynamic Recharge Plans saved successfully in MongoDB!');
+        } else {
+          alert(`⚠️ ${data.message}`);
+        }
+      } catch (e) {
+        alert('Failed to save plans.');
       }
     }
 
