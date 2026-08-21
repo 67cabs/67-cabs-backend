@@ -1,4 +1,4 @@
-const CACHE_NAME = '67-driver-cache-v1';
+const CACHE_NAME = '67-driver-cache-v2';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -47,7 +47,7 @@ self.addEventListener('push', (event) => {
     requireInteraction: true,
     data: {
       rideId: rideId,
-      url: rideId ? `/driver.html?status=ongoing&id=${rideId}&autoAccept=true` : (data.data?.url || '/driver.html')
+      url: rideId ? `/driver.html?status=ongoing&id=${rideId}` : (data.data?.url || '/driver.html')
     },
     actions: [
       { action: 'accept_ride', title: '✅ ACCEPT RIDE' },
@@ -81,19 +81,34 @@ self.addEventListener('notificationclick', (event) => {
   }
 
   // 2. Agar Driver ne 'ACCEPT RIDE' dabaya ya Notification body par direct tap kiya
-  const targetUrl = event.notification.data?.url || (rideId ? `/driver.html?status=ongoing&id=${rideId}&autoAccept=true` : '/driver.html');
+  const targetUrl = event.notification.data?.url || (rideId ? `/driver.html?status=ongoing&id=${rideId}` : '/driver.html');
 
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      for (const client of clientList) {
-        if (client.url.includes('driver.html') && 'focus' in client) {
-          client.navigate(targetUrl);
-          return client.focus();
-        }
+  const handleAcceptAndOpen = async () => {
+    // Instant Backend API Call: Browser window khulne ke delay se pehle hi status confirm
+    if (rideId) {
+      try {
+        await fetch('/api/ride/accept', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rideId })
+        });
+      } catch (err) {
+        console.error('Ride accept call failed:', err);
       }
-      if (clients.openWindow) {
-        return clients.openWindow(targetUrl);
+    }
+
+    // Window focus karein ya naya tab open karein
+    const clientList = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of clientList) {
+      if (client.url.includes('driver.html') && 'focus' in client) {
+        client.navigate(targetUrl);
+        return client.focus();
       }
-    })
-  );
+    }
+    if (clients.openWindow) {
+      return clients.openWindow(targetUrl);
+    }
+  };
+
+  event.waitUntil(handleAcceptAndOpen());
 });
