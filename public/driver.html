@@ -583,7 +583,6 @@
     let acceptedRide = null;
     let currentActiveRideId = null;
     let simInterval = null;
-    let alertSoundInterval = null;
     let currentTripPhase = 'TO_PICKUP';
     let geoWatchId = null;
     let wakeLock = null;
@@ -1253,35 +1252,39 @@
       }
     }
 
-    // Dynamic Sound Player - Directly Plays Admin-Uploaded Song from MongoDB Atlas
+    // Dynamic Full-Length Uninterrupted Sound Player
     function playOfferSiren() {
       if (mongoDriverAudio) {
-        mongoDriverAudio.currentTime = 0;
-        mongoDriverAudio.play().catch(e => console.log('Audio autoplay retry'));
+        if (mongoDriverAudio.paused) {
+          mongoDriverAudio.currentTime = 0;
+          mongoDriverAudio.play().catch(e => console.log('Audio autoplay retry'));
+        }
       } else {
         try {
-          const fallbackAudio = new Audio('/sounds/custom_driver_alert.mp3');
-          fallbackAudio.loop = true;
-          fallbackAudio.play().catch(() => {});
+          if (!window.fallbackDriverAudio) {
+            window.fallbackDriverAudio = new Audio('/sounds/custom_driver_alert.mp3');
+            window.fallbackDriverAudio.loop = true;
+          }
+          if (window.fallbackDriverAudio.paused) {
+            window.fallbackDriverAudio.currentTime = 0;
+            window.fallbackDriverAudio.play().catch(() => {});
+          }
         } catch (e) {}
       }
     }
 
     function syncSirenState() {
       if (activeOffersMap.size > 0 && !currentActiveRideId) {
-        if (!alertSoundInterval) {
-          playOfferSiren();
-          alertSoundInterval = setInterval(playOfferSiren, 2000);
-          if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200]);
-        }
+        playOfferSiren();
+        if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200]);
       } else {
-        if (alertSoundInterval) {
-          clearInterval(alertSoundInterval);
-          alertSoundInterval = null;
-        }
         if (mongoDriverAudio) {
           mongoDriverAudio.pause();
           mongoDriverAudio.currentTime = 0;
+        }
+        if (window.fallbackDriverAudio) {
+          window.fallbackDriverAudio.pause();
+          window.fallbackDriverAudio.currentTime = 0;
         }
       }
     }
