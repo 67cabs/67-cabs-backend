@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>67 Cabs - Rider App</title>
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#f59e0b" />
@@ -33,6 +33,12 @@
   </style>
 </head>
 <body class="bg-slate-100 flex flex-col md:flex-row h-screen overflow-hidden font-sans relative">
+
+  <!-- PULL TO REFRESH SPINNER INDICATOR FOR RIDER -->
+  <div id="rider-ptr-indicator" class="fixed top-3 left-1/2 -translate-x-1/2 z-[999999] hidden flex-col items-center gap-1 bg-slate-900 text-amber-400 border border-amber-500/60 px-4 py-2 rounded-full shadow-2xl transition-all">
+    <div class="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+    <span class="text-[10px] font-black tracking-wider uppercase">Refreshing Jaipur Cabs...</span>
+  </div>
 
   <!-- IN-APP ALERT BANNER (REPLACES NATIVE JAVASCRIPT POPUPS) -->
   <div id="in-app-toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-[999999] hidden max-w-sm w-11/12 bg-slate-900 text-amber-300 border border-amber-500/60 p-3 rounded-2xl shadow-2xl flex items-center gap-2.5 text-xs font-bold transition-all duration-300 transform -translate-y-4 opacity-0">
@@ -606,6 +612,47 @@
     let activeRideId = null;
     let currentUser = null;
     let currentSelectedRating = 5;
+
+    // RIDER PULL-TO-REFRESH (SWIPE DOWN GESTURE)
+    let riderTouchStartY = 0;
+    let isRiderPulling = false;
+
+    window.addEventListener('touchstart', (e) => {
+      if (window.scrollY === 0) {
+        riderTouchStartY = e.touches[0].clientY;
+        isRiderPulling = true;
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+      if (!isRiderPulling) return;
+      const currentY = e.touches[0].clientY;
+      const pullDistance = currentY - riderTouchStartY;
+      if (pullDistance > 75 && window.scrollY === 0) {
+        const indicator = document.getElementById('rider-ptr-indicator');
+        if (indicator) indicator.classList.remove('hidden');
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchend', async (e) => {
+      if (!isRiderPulling) return;
+      isRiderPulling = false;
+      const indicator = document.getElementById('rider-ptr-indicator');
+      if (indicator && !indicator.classList.contains('hidden')) {
+        console.log("🔄 Pull-to-refresh: Syncing Rider App with MongoDB...");
+        await Promise.all([
+          fetchLiveFareRatesFromMongoDB(),
+          checkAndRestoreRiderActiveRide()
+        ]);
+        if (pickupCoords && !activeRideId && !document.getElementById('step-2-cab-selection').classList.contains('hidden')) {
+          fetchAndRenderNearbyDrivers();
+        }
+        showInAppToast("Rider Data Refreshed!", "🔄");
+        setTimeout(() => {
+          indicator.classList.add('hidden');
+        }, 600);
+      }
+    }, { passive: true });
 
     // Live Dynamic Pricing from MongoDB Atlas
     let dynamicCategoryRates = {
