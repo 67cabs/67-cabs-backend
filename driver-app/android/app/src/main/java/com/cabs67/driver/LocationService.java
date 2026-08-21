@@ -18,7 +18,9 @@ import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.PowerManager;
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
@@ -32,37 +34,45 @@ import io.socket.client.Socket;
 
 public class LocationService extends Service {
 
-    private static final String CHANNEL_ID = "DriverLocationChannel_v8";
-    private static final String ALERT_CHANNEL_ID = "DriverIncomingRideAlertChannel_v8";
+    private static final String CHANNEL_ID = "DriverLocationChannel_v9";
+    private static final String ALERT_CHANNEL_ID = "DriverIncomingRideAlertChannel_v9";
     private static final int ALERT_NOTIFICATION_ID = 6705;
 
     private LocationManager locationManager;
     private LocationListener locationListener;
     private Socket mSocket;
     private PowerManager.WakeLock wakeLock;
+
     private String cachedDriverId = "";
+    private String cachedName = "Driver";
+    private String cachedVehicleNo = "RJ 14 TA 6767";
+    private String cachedCabType = "HATCHBACK";
+    private String cachedUpiId = "67cabs@upi";
+    private double lastLat = 26.9124;
+    private double lastLng = 75.7873;
+
+    private Handler heartbeatHandler;
+    private Runnable heartbeatRunnable;
 
     @Override
     public void onCreate() {
         super.onCreate();
-        loadCachedDriverId();
+        loadCachedDriverData();
         createNotificationChannels();
         initNativeBackgroundSocket();
+        startNativeHeartbeat();
     }
 
-    private void loadCachedDriverId() {
+    private void loadCachedDriverData() {
         try {
-            // 1. Check Default App Shared Preferences
             SharedPreferences defaultPrefs = getSharedPreferences(getPackageName() + "_preferences", Context.MODE_PRIVATE);
             String driverSessionJson = defaultPrefs.getString("67_driver_session", null);
 
-            // 2. Check Standard Capacitor Preferences Key
             if (driverSessionJson == null) {
                 SharedPreferences capPrefs = getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE);
                 driverSessionJson = capPrefs.getString("67_driver_session", null);
             }
 
-            // 3. Fallback Capacitor Standard Key
             if (driverSessionJson == null) {
                 SharedPreferences capPrefs2 = getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE);
                 driverSessionJson = capPrefs2.getString("CapacitorStorage.67_driver_session", null);
@@ -71,6 +81,10 @@ public class LocationService extends Service {
             if (driverSessionJson != null) {
                 JSONObject driver = new JSONObject(driverSessionJson);
                 cachedDriverId = driver.optString("driverId", "");
+                cachedName = driver.optString("name", "Driver");
+                cachedVehicleNo = driver.optString("vehicleNo", "RJ 14 TA 6767");
+                cachedCabType = driver.optString("cabType", "HATCHBACK");
+                cachedUpiId = driver.optString("upiId", "67cabs@upi");
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -79,11 +93,7 @@ public class LocationService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent != null && intent.hasExtra("driverId")) {
-            cachedDriverId = intent.getStringExtra("driverId");
-        } else if (cachedDriverId.isEmpty()) {
-            loadCachedDriverId();
-        }
+        loadCachedDriverData();
 
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("67 Cabs Driver Online")
@@ -93,7 +103,6 @@ public class LocationService extends Service {
                 .setOngoing(true)
                 .build();
 
-        // Strict Android 14+ (API 34/35/36) Foreground Location Type Enforcement
         if (Build.VERSION.SDK_INT >= 34) {
             startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
         } else {
@@ -101,8 +110,44 @@ public class LocationService extends Service {
         }
 
         startLocationUpdates();
-
         return START_STICKY;
+    }
+
+    private void emitDriverHeartbeat() {
+        if (mSocket != null && mSocket.connected()) {
+            loadCachedDriverData();
+            if (!cachedDriverId.isEmpty()) {
+                try {
+                    JSONObject regData = new JSONObject();
+                    regData.put("driverId", cachedDriverId);
+                    regData.put("name", cachedName);
+                    regData.put("vehicleNo", cachedVehicleNo);
+                    regData.put("cabType", cachedCabType);
+                    regData.put("upiId", cachedUpiId);
+                    regData.put("status", "APPROVED");
+                    regData.put("isOnline", true);
+
+                    JSONObject loc = new JSONObject();
+                    loc.put("lat", lastLat);
+                    loc.put("lng", lastLng);
+                    regData.put("location", loc);
+
+                    mSocket.emit("driver:register", regData);
+                } catch (Exception ignored) {}
+            }
+        }
+    }
+
+    private void startNativeHeartbeat() {
+        heartbeatHandler = new Handler(Looper.getMainLooper());
+        heartbeatRunnable = new Runnable() {
+            @Override
+            public void run() {
+                emitDriverHeartbeat();
+                heartbeatHandler.postDelayed(this, 3000); // 3-second continuous background pulse
+            }
+        };
+        heartbeatHandler.postDelayed(heartbeatRunnable, 3000);
     }
 
     private void initNativeBackgroundSocket() {
@@ -110,25 +155,12 @@ public class LocationService extends Service {
             IO.Options opts = new IO.Options();
             opts.transports = new String[]{"websocket", "polling"};
             opts.reconnection = true;
-            opts.reconnectionAttempts = 500;
+            opts.reconnectionAttempts = 1000;
             opts.reconnectionDelay = 1000;
 
             mSocket = IO.socket("https://137.23.57.23.sslip.io", opts);
 
-            mSocket.on(Socket.EVENT_CONNECT, args -> {
-                loadCachedDriverId();
-                if (!cachedDriverId.isEmpty()) {
-                    try {
-                        JSONObject regData = new JSONObject();
-                        regData.put("driverId", cachedDriverId);
-                        regData.put("status", "APPROVED");
-                        regData.put("isOnline", true);
-                        mSocket.emit("driver:register", regData);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-            });
+            mSocket.on(Socket.EVENT_CONNECT, args -> emitDriverHeartbeat());
 
             mSocket.on("ride:new_offer", args -> {
                 if (args.length > 0 && args[0] instanceof JSONObject) {
@@ -165,7 +197,7 @@ public class LocationService extends Service {
                 if (sObj != null) drop = sObj.optString("text", "Drop Destination");
             }
 
-            // 1. Instant Hardware Screen Wakeup
+            // 1. Hardware Screen Wakeup
             PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
             if (pm != null) {
                 if (wakeLock != null && wakeLock.isHeld()) {
@@ -223,7 +255,7 @@ public class LocationService extends Service {
                 manager.notify(ALERT_NOTIFICATION_ID, alertNotification);
             }
 
-            // Direct Overlay Launch
+            // Direct Window Overlay
             try {
                 startActivity(fullScreenIntent);
             } catch (Exception ignored) {}
@@ -239,7 +271,10 @@ public class LocationService extends Service {
         locationListener = new LocationListener() {
             @Override
             public void onLocationChanged(@NonNull Location location) {
-                sendLocationToServer(location.getLatitude(), location.getLongitude());
+                lastLat = location.getLatitude();
+                lastLng = location.getLongitude();
+                sendLocationToServer(lastLat, lastLng);
+                emitDriverHeartbeat();
             }
             @Override
             public void onStatusChanged(String provider, int status, Bundle extras) {}
@@ -252,10 +287,10 @@ public class LocationService extends Service {
         try {
             if (locationManager != null) {
                 if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                    locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 4000, 3, locationListener);
+                    locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 3000, 2, locationListener);
                 }
                 if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-                    locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 4000, 3, locationListener);
+                    locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 3000, 2, locationListener);
                 }
             }
         } catch (Exception e) {
@@ -270,8 +305,8 @@ public class LocationService extends Service {
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-                conn.setConnectTimeout(6000);
-                conn.setReadTimeout(6000);
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(5000);
                 conn.setDoOutput(true);
 
                 JSONObject jsonParam = new JSONObject();
@@ -288,9 +323,7 @@ public class LocationService extends Service {
 
                 conn.getResponseCode();
                 conn.disconnect();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            } catch (Exception ignored) {}
         }).start();
     }
 
@@ -330,6 +363,9 @@ public class LocationService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        if (heartbeatHandler != null && heartbeatRunnable != null) {
+            heartbeatHandler.removeCallbacks(heartbeatRunnable);
+        }
         if (locationManager != null && locationListener != null) {
             locationManager.removeUpdates(locationListener);
         }
