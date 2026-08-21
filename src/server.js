@@ -22,13 +22,13 @@ const { calculateMasterFare } = require('./utils/fareCalculator');
 const app = express();
 const server = http.createServer(app);
 
-// Sounds directory setup (Public MP3 Storage)
+// Sounds directory setup (Public MP3 Storage Fallback)
 const soundDir = path.join(__dirname, '../public/sounds');
 if (!fs.existsSync(soundDir)) {
   fs.mkdirSync(soundDir, { recursive: true });
 }
 
-// Multer Storage Configuration for Audio
+// Multer Storage Configuration for Audio Upload
 const soundStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, soundDir),
   filename: (req, file, cb) => {
@@ -379,7 +379,7 @@ const handleResetStuckTrips = async (req, res) => {
 app.get('/api/admin/reset-stuck-trips', handleResetStuckTrips);
 app.post('/api/admin/reset-stuck-trips', handleResetStuckTrips);
 
-// ---------------- ADMIN SOUND & SETTINGS ROUTES ----------------
+// ---------------- ADMIN SOUND & SETTINGS ROUTES (MONGODB DRIVEN) ----------------
 app.get('/api/admin/settings/sound', async (req, res) => {
   try {
     const doc = await Setting.findOne({ key: 'driver_alert_sound' });
@@ -401,19 +401,33 @@ app.post('/api/admin/settings/sound', async (req, res) => {
       { upsert: true, new: true }
     );
 
-    console.log(`🔔 Global driver alert sound updated to: ${globalActiveSound}`);
+    // If preset is selected, purge base64 override
+    await Setting.deleteOne({ key: 'driver_alert_sound_base64' });
+
+    console.log(`🔔 Global driver alert sound updated in MongoDB: ${globalActiveSound}`);
     return res.json({ success: true, message: 'Alert tone updated successfully.', soundName: globalActiveSound });
   } catch (e) {
     return res.status(500).json({ success: false, error: e.message });
   }
 });
 
-// Custom MP3 Audio Upload Route (Allows any custom song like Ganesh Vandana, Bhakti, etc.)
+// Custom MP3 Audio Upload Route (Stores Directly into MongoDB as Base64)
 app.post('/api/admin/upload-custom-sound', uploadSound.single('audioFile'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'Audio file upload failed.' });
     }
+
+    // Convert file to Base64 to store in MongoDB directly
+    const fileBuffer = fs.readFileSync(req.file.path);
+    const base64Audio = `data:${req.file.mimetype || 'audio/mp3'};base64,${fileBuffer.toString('base64')}`;
+
+    await Setting.findOneAndUpdate(
+      { key: 'driver_alert_sound_base64' },
+      { value: base64Audio },
+      { upsert: true, new: true }
+    );
+
     const soundUrl = `/sounds/${req.file.filename}?v=${Date.now()}`;
     globalActiveSound = soundUrl;
 
@@ -423,10 +437,29 @@ app.post('/api/admin/upload-custom-sound', uploadSound.single('audioFile'), asyn
       { upsert: true, new: true }
     );
 
-    console.log(`🎵 Custom driver alert sound updated to: ${soundUrl}`);
-    return res.json({ success: true, message: 'Custom song uploaded & applied!', soundUrl });
+    console.log(`🍃 Custom audio song successfully stored in MongoDB Atlas!`);
+    return res.json({ success: true, message: 'Custom song uploaded & stored in MongoDB!', soundUrl });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Fetch Live Sound Directly from MongoDB for Driver App
+app.get('/api/driver/alert-sound', async (req, res) => {
+  try {
+    const doc = await Setting.findOne({ key: 'driver_alert_sound_base64' });
+    if (doc && doc.value) {
+      return res.json({ success: true, audioData: doc.value, isCustom: true });
+    }
+    const standardDoc = await Setting.findOne({ key: 'driver_alert_sound' });
+    return res.json({ 
+      success: true, 
+      audioData: null, 
+      soundName: standardDoc ? standardDoc.value : globalActiveSound,
+      isCustom: false 
+    });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: e.message });
   }
 });
 
@@ -1372,7 +1405,7 @@ app.post('/api/coupons/apply', async (req, res) => {
     if (coupon.targetType === 'SPECIFIC' && !coupon.allowedDrivers.includes(driverId)) {
       return res.status(403).json({ 
         success: false, 
-        message: 'Yeh coupon aapke account ke liye valid nahi hai.' 
+        message: 'Yeh coupon aapke account ke लिए valid nahi hai.' 
       });
     }
 
@@ -1575,7 +1608,7 @@ io.on('connection', (socket) => {
     console.log(`🚪 Driver ${driverId} logged out & purged from active radar.`);
   });
 
-  // 2. Targeted 1-Click Ride Request (15 SECONDS AUTO-CANCEL TIMER + DYNAMIC SOUND + NO CHROME NOTIFICATION)
+  // 2. Targeted 1-Click Ride Request (15 SECONDS AUTO-CANCEL TIMER + DYNAMIC MONGODB SOUND)
   socket.on('ride:request_targeted', async (rideData) => {
     const { rideId, targetDriverId, pickup, stops, cabCategory, totalDistanceKm, totalFare, rider } = rideData;
 

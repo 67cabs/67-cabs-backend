@@ -596,11 +596,33 @@
     let driverAudioChunks = [];
     let isDriverRecording = false;
 
-    // Global Single-Instance AudioContext to prevent Chromium Audio limit crash
-    let globalAudioCtx = null;
+    // MongoDB Atlas Dynamic Audio Player Instance
+    let mongoDriverAudio = null;
 
     // Active Applied Coupon State
     let appliedCouponData = null;
+
+    async function loadDynamicSoundFromMongoDB() {
+      try {
+        const res = await fetch('/api/driver/alert-sound');
+        const data = await res.json();
+        if (data.success) {
+          if (data.isCustom && data.audioData) {
+            mongoDriverAudio = new Audio(data.audioData);
+            mongoDriverAudio.loop = true;
+            console.log('🍃 MongoDB Base64 Custom Audio loaded successfully!');
+          } else if (data.soundName && data.soundName.startsWith('/sounds/')) {
+            mongoDriverAudio = new Audio(data.soundName);
+            mongoDriverAudio.loop = true;
+            console.log('🎵 Custom MP3 sound loaded:', data.soundName);
+          } else {
+            mongoDriverAudio = null;
+          }
+        }
+      } catch (e) {
+        console.warn('MongoDB sound load fallback to WebAudio');
+      }
+    }
 
     function syncSessionToCapacitorStorage(driverData) {
       if (!driverData) return;
@@ -673,6 +695,7 @@
         document.getElementById('reg-referral').value = refCode;
         switchAuthTab('signup');
       }
+      loadDynamicSoundFromMongoDB();
     });
 
     async function handleDriverSignup(e) {
@@ -1230,53 +1253,35 @@
       }
     }
 
-    // Singleton AudioContext Engine - Prevents 10-Stream Memory Exhaustion Crash
+    // Dynamic Sound Player - Directly Plays Admin-Uploaded Song from MongoDB Atlas
     function playOfferSiren() {
-      try {
-        if (!globalAudioCtx || globalAudioCtx.state === 'closed') {
-          globalAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (globalAudioCtx.state === 'suspended') {
-          globalAudioCtx.resume();
-        }
-
-        const now = globalAudioCtx.currentTime;
-
-        const osc1 = globalAudioCtx.createOscillator();
-        const gain1 = globalAudioCtx.createGain();
-        osc1.type = 'sawtooth';
-        osc1.frequency.setValueAtTime(880, now);
-        gain1.gain.setValueAtTime(0.3, now);
-        gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
-        osc1.connect(gain1);
-        gain1.connect(globalAudioCtx.destination);
-        osc1.start(now);
-        osc1.stop(now + 0.25);
-
-        const osc2 = globalAudioCtx.createOscillator();
-        const gain2 = globalAudioCtx.createGain();
-        osc2.type = 'sawtooth';
-        osc2.frequency.setValueAtTime(1320, now + 0.26);
-        gain2.gain.setValueAtTime(0.3, now + 0.26);
-        gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
-        osc2.connect(gain2);
-        gain2.connect(globalAudioCtx.destination);
-        osc2.start(now + 0.26);
-        osc2.stop(now + 0.55);
-      } catch (e) {}
+      if (mongoDriverAudio) {
+        mongoDriverAudio.currentTime = 0;
+        mongoDriverAudio.play().catch(e => console.log('Audio autoplay retry'));
+      } else {
+        try {
+          const fallbackAudio = new Audio('/sounds/custom_driver_alert.mp3');
+          fallbackAudio.loop = true;
+          fallbackAudio.play().catch(() => {});
+        } catch (e) {}
+      }
     }
 
     function syncSirenState() {
       if (activeOffersMap.size > 0 && !currentActiveRideId) {
         if (!alertSoundInterval) {
           playOfferSiren();
-          alertSoundInterval = setInterval(playOfferSiren, 1400);
+          alertSoundInterval = setInterval(playOfferSiren, 2000);
           if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200]);
         }
       } else {
         if (alertSoundInterval) {
           clearInterval(alertSoundInterval);
           alertSoundInterval = null;
+        }
+        if (mongoDriverAudio) {
+          mongoDriverAudio.pause();
+          mongoDriverAudio.currentTime = 0;
         }
       }
     }
@@ -1339,7 +1344,7 @@
       const timer = setTimeout(() => {
         removeOffer(offer.rideId);
         offerExpireTimers.delete(offer.rideId);
-      }, 35000); // 35s offer timer
+      }, 35000);
       offerExpireTimers.set(offer.rideId, timer);
     }
 
@@ -1376,12 +1381,10 @@
         acceptedRide = null;
         activeOffersMap.clear();
 
-        // UI Reset
         document.getElementById('active-ride-card').classList.add('hidden');
         document.getElementById('waiting-radar').classList.remove('hidden');
         document.getElementById('offers-container').innerHTML = '';
         
-        // Instant radar re-registration
         if (isDriverOnline && currentDriver?.status === 'APPROVED') {
           registerDriver();
         }
