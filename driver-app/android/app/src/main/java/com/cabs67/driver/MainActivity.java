@@ -57,6 +57,13 @@ public class MainActivity extends BridgeActivity {
             }
         }
 
+        // Android 14+ (API 34/35/36) Foreground Location Type Permission
+        if (Build.VERSION.SDK_INT >= 34) {
+            if (ContextCompat.checkSelfPermission(this, "android.permission.FOREGROUND_SERVICE_LOCATION") != PackageManager.PERMISSION_GRANTED) {
+                neededPermissions.add("android.permission.FOREGROUND_SERVICE_LOCATION");
+            }
+        }
+
         if (!neededPermissions.isEmpty()) {
             ActivityCompat.requestPermissions(this, neededPermissions.toArray(new String[0]), PERMISSION_REQ_CODE);
         } else {

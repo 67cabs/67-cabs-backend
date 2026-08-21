@@ -9,6 +9,7 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.ServiceInfo;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -31,8 +32,8 @@ import io.socket.client.Socket;
 
 public class LocationService extends Service {
 
-    private static final String CHANNEL_ID = "DriverLocationChannel_v6";
-    private static final String ALERT_CHANNEL_ID = "DriverIncomingRideAlertChannel_v6";
+    private static final String CHANNEL_ID = "DriverLocationChannel_v8";
+    private static final String ALERT_CHANNEL_ID = "DriverIncomingRideAlertChannel_v8";
     private static final int ALERT_NOTIFICATION_ID = 6705;
 
     private LocationManager locationManager;
@@ -92,7 +93,13 @@ public class LocationService extends Service {
                 .setOngoing(true)
                 .build();
 
-        startForeground(1, notification);
+        // Strict Android 14+ (API 34/35/36) Foreground Location Type Enforcement
+        if (Build.VERSION.SDK_INT >= 34) {
+            startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
+        } else {
+            startForeground(1, notification);
+        }
+
         startLocationUpdates();
 
         return START_STICKY;
