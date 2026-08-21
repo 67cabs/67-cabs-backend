@@ -247,7 +247,7 @@
   <div id="map" class="flex-1 h-full w-full"></div>
 
   <!-- ========================================== -->
-  <!-- MODAL: RIDER SETTINGS DRAWER               -->
+  <!-- MODAL: RIDER SETTINGS DRAWER                -->
   <!-- ========================================== -->
   <div id="rider-settings-modal" class="fixed inset-0 bg-black/80 z-[99999] flex items-center justify-center p-4 hidden backdrop-blur-sm">
     <div class="bg-slate-900 text-white rounded-3xl p-5 max-w-sm w-full shadow-2xl border border-slate-800 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
@@ -563,6 +563,8 @@
     let totalTripDurationMins = 0;
     let currentNearbyDrivers = [];
     let liveDriverMarker = null;
+    let nearbyDriverMarkers = [];
+    let autoRefreshInterval = null;
     let tripPhase = 'TO_PICKUP';
     let activeRideId = null;
     let currentUser = null;
@@ -725,13 +727,19 @@
     }
 
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible' && currentUser) {
-        checkAndRestoreRiderActiveRide();
+      if (document.visibilityState === 'visible') {
+        if (currentUser) checkAndRestoreRiderActiveRide();
+        if (pickupCoords && !activeRideId && !document.getElementById('step-2-cab-selection').classList.contains('hidden')) {
+          fetchAndRenderNearbyDrivers();
+        }
       }
     });
 
     socket.on('connect', () => {
       if (currentUser) checkAndRestoreRiderActiveRide();
+      if (pickupCoords && !activeRideId && !document.getElementById('step-2-cab-selection').classList.contains('hidden')) {
+        fetchAndRenderNearbyDrivers();
+      }
     });
 
     function handleAuthOrSettingsClick() {
@@ -985,6 +993,13 @@
           document.getElementById('summary-distance-text').innerText = `${totalTripDistanceKm} km • ~${totalTripDurationMins} mins (${validStops.length} Stops)`;
 
           fetchAndRenderNearbyDrivers();
+
+          if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+          autoRefreshInterval = setInterval(() => {
+            if (!activeRideId && !document.getElementById('step-2-cab-selection').classList.contains('hidden')) {
+              fetchAndRenderNearbyDrivers();
+            }
+          }, 4000);
         }
       } catch (e) {
         alert("Failed to calculate route. Please try again.");
@@ -992,8 +1007,18 @@
     }
 
     function backToRouteBuilder() {
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+      }
+      clearNearbyMapMarkers();
       document.getElementById('step-2-cab-selection').classList.add('hidden');
       document.getElementById('step-1-route-builder').classList.remove('hidden');
+    }
+
+    function clearNearbyMapMarkers() {
+      nearbyDriverMarkers.forEach(m => map.removeLayer(m));
+      nearbyDriverMarkers = [];
     }
 
     function switchCategory(category) {
@@ -1018,9 +1043,7 @@
     }
 
     async function fetchAndRenderNearbyDrivers() {
-      const listEl = document.getElementById('proximity-drivers-list');
-      listEl.innerHTML = '<div class="text-center p-3 text-xs text-slate-400">Scanning Jaipur radar for online drivers...</div>';
-
+      if (!pickupCoords) return;
       try {
         const res = await fetch(`/api/cabs/nearby-all?lat=${pickupCoords[0]}&lng=${pickupCoords[1]}`);
         const data = await res.json();
@@ -1034,8 +1057,10 @@
 
     function renderProximityCards() {
       const listEl = document.getElementById('proximity-drivers-list');
+      clearNearbyMapMarkers();
+
       const filtered = currentNearbyDrivers
-        .filter(d => d.category === selectedCategory)
+        .filter(d => d.category === selectedCategory && d.lat && d.lng)
         .map(d => {
           const distMeters = map.distance([d.lat, d.lng], pickupCoords);
           const pickupKm = parseFloat((distMeters / 1000).toFixed(1));
@@ -1047,6 +1072,11 @@
         .slice(0, 5);
 
       document.getElementById('cabs-count-tag').innerText = `${filtered.length} Nearby`;
+
+      filtered.forEach(drv => {
+        const m = L.marker([drv.lat, drv.lng], { icon: cabCarIcon }).addTo(map);
+        nearbyDriverMarkers.push(m);
+      });
 
       if (filtered.length === 0) {
         listEl.innerHTML = `
@@ -1166,6 +1196,12 @@
         clearInterval(dispatchTimer);
         dispatchTimer = null;
       }
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+      }
+      clearNearbyMapMarkers();
+
       activeTargetDriverId = null;
       activeRideId = rideId || activeRideId;
       tripPhase = 'TO_PICKUP';
@@ -1308,6 +1344,7 @@
       
       if (routePolyline) map.removeLayer(routePolyline);
       if (liveDriverMarker) map.removeLayer(liveDriverMarker);
+      clearNearbyMapMarkers();
       activeRideId = null;
       window.location.reload();
     }

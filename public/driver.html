@@ -457,7 +457,7 @@
           <div id="coupon-applied-status" class="hidden bg-green-950/40 border border-green-700/60 p-2.5 rounded-xl flex items-center justify-between text-xs mt-2">
             <div>
               <div class="font-black text-green-400 flex items-center gap-1">
-                <span>🎉</span> <span id="applied-coupon-tag">CODE APPLIED</span>
+                <span>🎉</span> <span id="applied-coupon-tag">COUPON APPLIED</span>
               </div>
               <div class="text-[10px] text-slate-300">Discount: <b class="text-green-300" id="applied-discount-text">-₹0</b> | Payable: <b class="text-white font-mono" id="applied-payable-text">₹0</b></div>
             </div>
@@ -1142,9 +1142,18 @@
     document.addEventListener('visibilitychange', async () => {
       if (document.visibilityState === 'visible' && currentDriver?.status === 'APPROVED') {
         await requestWakeLock();
-        registerDriver();
+        if (isDriverOnline) {
+          registerDriver();
+        }
         checkAndRestoreActiveRide();
         handleUrlDeepLink();
+      }
+    });
+
+    // Send instant offline update before closing page
+    window.addEventListener('beforeunload', () => {
+      if (currentDriver?.driverId && !currentActiveRideId) {
+        socket.emit('driver:toggle_online', { driverId: currentDriver.driverId, isOnline: false });
       }
     });
 
@@ -1162,7 +1171,7 @@
       });
     }
     socket.on('connect', () => {
-      registerDriver();
+      if (isDriverOnline) registerDriver();
       checkAndRestoreActiveRide();
       handleUrlDeepLink();
     });
@@ -1233,10 +1242,9 @@
       
       if (isDriverOnline) {
         document.getElementById('gps-status-indicator').innerHTML = `● ONLINE • ${currentDriver.cabType} <span class="text-green-400">(${latitude.toFixed(4)}, ${longitude.toFixed(4)})</span>`;
+        registerDriver();
       }
       
-      registerDriver();
-
       if (currentActiveRideId) {
         socket.emit('driver:location_update', {
           rideId: currentActiveRideId,
@@ -1545,7 +1553,7 @@
       acceptedRide = null;
       activeOffersMap.clear();
       
-      registerDriver();
+      if (isDriverOnline) registerDriver();
       window.location.reload();
     }
 
