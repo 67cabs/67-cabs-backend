@@ -1366,7 +1366,7 @@ app.post('/api/fare/estimate', (req, res) => {
   }
 });
 
-// Real-Time Driver Radar (STRICTLY ACTIVE SOCKET & ONLINE DRIVERS ONLY)
+// Real-Time Driver Radar (STRICTLY ACTIVE SOCKET & ONLINE DRIVERS ONLY - WITHOUT PUBLIC VEHICLE NUMBER)
 app.get('/api/cabs/nearby-all', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   try {
@@ -1379,7 +1379,6 @@ app.get('/api/cabs/nearby-all', async (req, res) => {
           id: d.driverId,
           name: d.name,
           category: (d.cabType || 'HATCHBACK').toUpperCase(),
-          vehicleNo: d.vehicleNo,
           lat: d.location.lat,
           lng: d.location.lng
         });
