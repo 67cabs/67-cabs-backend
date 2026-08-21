@@ -22,8 +22,13 @@
     }
   </script>
   <style>
-    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar { 
+      width: 4px; 
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb { 
+      background: #94a3b8; 
+      border-radius: 4px; 
+    }
     .radar-pulse {
       box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
       animation: pulse-ring 2s infinite cubic-bezier(0.45, 0, 0, 1);
@@ -114,8 +119,8 @@
       </div>
 
       <div>
-        <label class="text-[11px] font-bold text-slate-400 uppercase">UPI ID for Fare Settlement</label>
-        <input type="text" id="reg-upi" placeholder="yourname@upi (Default: 67cabs@upi)" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-3 text-xs outline-none focus:border-amber-400 mt-1 font-mono" />
+        <label class="text-[11px] font-bold text-slate-400 uppercase">Your Personal UPI ID (To Receive Fares)</label>
+        <input type="text" id="reg-upi" placeholder="yourname@upi" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-3 text-xs outline-none focus:border-amber-400 mt-1 font-mono" />
       </div>
 
       <div>
@@ -249,35 +254,36 @@
   <!-- ================= 4. ULTRA-CLEAN MODERN DRIVER DASHBOARD ================= -->
   <div id="main-driver-dashboard" class="hidden w-full max-w-md pb-6 space-y-4">
     
-    <!-- Top Sleek Bar: Driver Info + On/Off Duty Switch + Hamburger Menu -->
+    <!-- Top Sleek Bar: ☰ Hamburger on LEFT, Driver Info in Middle, On/Off Duty Switch on RIGHT -->
     <div id="dashboard-header-card" class="bg-slate-900 border border-slate-800 p-4 rounded-3xl shadow-2xl flex items-center justify-between transition-colors">
       <div class="flex items-center gap-3">
-        <div class="relative">
-          <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center text-xl text-slate-950 font-black shadow-lg shadow-amber-500/20">
-            🚖
-          </div>
-          <span id="duty-status-dot" class="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-green-500 border-2 border-slate-900 animate-pulse"></span>
-        </div>
-        <div>
-          <div class="flex items-center gap-1.5">
-            <h2 id="driver-header-name" class="text-sm font-black truncate max-w-[170px]">Partner Name</h2>
-            <span id="badge-vehicle-no" class="text-[10px] font-mono font-black px-2 py-0.5 rounded-lg border bg-slate-800 text-amber-400 border-slate-700">RJ 14</span>
-          </div>
-          <p id="gps-status-indicator" class="text-[10px] text-green-500 font-bold tracking-tight">● ONLINE • Ready for Rides</p>
-        </div>
-      </div>
-
-      <!-- Actions: Duty Toggle & ☰ Hamburger Menu -->
-      <div class="flex items-center gap-3">
-        <label class="relative inline-flex items-center cursor-pointer" title="Toggle On/Off Duty">
-          <input type="checkbox" id="driver-duty-toggle" checked onchange="toggleDriverDutyState(this.checked)" class="sr-only peer">
-          <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600 shadow-inner"></div>
-        </label>
-
-        <button onclick="openSettingsModal()" id="btn-hamburger" class="w-10 h-10 rounded-2xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-amber-400 flex items-center justify-center text-xl transition shadow-md active:scale-95">
+        <!-- ☰ Hamburger Button on Left -->
+        <button onclick="openSettingsModal()" id="btn-hamburger" class="w-11 h-11 rounded-2xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-amber-400 flex items-center justify-center text-xl transition shadow-md active:scale-95">
           ☰
         </button>
+
+        <div class="flex items-center gap-2.5">
+          <div class="relative">
+            <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center text-lg text-slate-950 font-black shadow-md shadow-amber-500/20">
+              🚖
+            </div>
+            <span id="duty-status-dot" class="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-green-500 border-2 border-slate-900 animate-pulse"></span>
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <h2 id="driver-header-name" class="text-xs sm:text-sm font-black truncate max-w-[130px] sm:max-w-[160px]">Partner Name</h2>
+              <span id="badge-vehicle-no" class="text-[9px] sm:text-[10px] font-mono font-black px-1.5 py-0.5 rounded-lg border bg-slate-800 text-amber-400 border-slate-700">RJ 14</span>
+            </div>
+            <p id="gps-status-indicator" class="text-[10px] text-green-500 font-bold tracking-tight">● ONLINE • Ready for Rides</p>
+          </div>
+        </div>
       </div>
+
+      <!-- Right: Duty Toggle Switch -->
+      <label class="relative inline-flex items-center cursor-pointer" title="Toggle On/Off Duty">
+        <input type="checkbox" id="driver-duty-toggle" checked onchange="toggleDriverDutyState(this.checked)" class="sr-only peer">
+        <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600 shadow-inner"></div>
+      </label>
     </div>
 
     <!-- ================= ACTIVE RIDE SCREEN (STRICTLY HIDDEN UNTIL ACCEPTED) ================= -->
@@ -347,7 +353,7 @@
     <!-- Multi-Offers Feed Container -->
     <div id="offers-container" class="space-y-4"></div>
 
-    <!-- Clean Looking Waiting Radar (DEFAULT SCREEN) -->
+    <!-- Clean Looking Waiting Radar (Light/Dark Ultra-Clear Contrast) -->
     <div id="waiting-radar" class="text-center py-20 rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 flex flex-col items-center justify-center space-y-4 shadow-xl transition-colors">
       <div class="relative">
         <div class="w-20 h-20 rounded-full bg-amber-500/10 flex items-center justify-center radar-pulse">
@@ -358,15 +364,15 @@
       </div>
       <div>
         <p class="text-sm font-black text-slate-200" id="radar-title">Radar Active • Searching Rides</p>
-        <p class="text-[11px] text-slate-400 mt-0.5">Booking aate hi aapki tone apne aap bajegi</p>
+        <p class="text-[11px] text-slate-400 mt-0.5" id="radar-subtitle">Booking aate hi aapki tone apne aap bajegi</p>
       </div>
     </div>
 
   </div>
 
-  <!-- ================= 5. MASTER SLIDE-IN SIDEBAR / SETTINGS DRAWER ================= -->
-  <div id="settings-modal" class="fixed inset-0 bg-black/80 z-[99999] flex justify-end hidden backdrop-blur-sm transition-opacity">
-    <div id="drawer-container" class="bg-slate-900 text-white w-full max-w-sm h-full shadow-2xl border-l border-slate-800 p-5 space-y-5 overflow-y-auto custom-scrollbar flex flex-col justify-between transition-colors">
+  <!-- ================= 5. MASTER SLIDE-IN SIDEBAR / SETTINGS DRAWER (LEFT SLIDE ANIMATION) ================= -->
+  <div id="settings-modal" class="fixed inset-0 bg-black/80 z-[99999] hidden backdrop-blur-sm transition-opacity duration-300">
+    <div id="drawer-container" class="bg-slate-900 text-white w-full max-w-sm h-full shadow-2xl border-r border-slate-800 p-5 space-y-5 overflow-y-auto custom-scrollbar flex flex-col justify-between transform -translate-x-full transition-transform duration-300 ease-in-out">
       
       <div class="space-y-4">
         <!-- Top Drawer Header -->
@@ -397,15 +403,17 @@
           </button>
         </div>
 
-        <!-- Wallet & Free Rides Quick Overview Cards inside Drawer -->
+        <!-- Dual Overview: Govt Tax Wallet & Ride Pass Validity -->
         <div class="grid grid-cols-2 gap-2.5">
           <div id="drawer-wallet-card" class="bg-slate-950 p-3 rounded-2xl border border-slate-800">
-            <span class="text-[9px] font-bold text-slate-400 uppercase">Wallet Balance</span>
-            <div id="modal-wallet-balance" class="text-xl font-black text-green-500 mt-0.5">₹0.00</div>
+            <span class="text-[9px] font-bold text-slate-400 uppercase">Govt Tax Wallet</span>
+            <div id="modal-wallet-balance" class="text-base sm:text-lg font-black text-green-500 mt-0.5">₹0.00</div>
+            <span class="text-[8px] text-slate-500">For Govt Tax Dues</span>
           </div>
           <div id="drawer-bonus-card" class="bg-slate-950 p-3 rounded-2xl border border-slate-800">
-            <span class="text-[9px] font-bold text-slate-400 uppercase">Reward Pool</span>
-            <div id="modal-bonus-rides" class="text-sm font-black text-amber-500 mt-1">0 Free Rides</div>
+            <span class="text-[9px] font-bold text-slate-400 uppercase">Ride Pass / Pool</span>
+            <div id="modal-bonus-rides" class="text-base sm:text-lg font-black text-amber-500 mt-0.5">0 Active Passes</div>
+            <span class="text-[8px] text-slate-500">For Ride Requests</span>
           </div>
         </div>
 
@@ -415,7 +423,7 @@
             Profile Details
           </button>
           <button onclick="switchSettingsTab('account')" id="tab-setting-account" class="w-1/2 py-2 text-xs font-bold rounded-lg text-slate-400 transition">
-            Wallet & Coupons
+            Recharge & Wallet
           </button>
         </div>
 
@@ -435,7 +443,7 @@
               <span id="set-profile-category" class="font-bold text-slate-300">-</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-slate-400">UPI Settlement:</span>
+              <span class="text-slate-400">Receiving UPI ID:</span>
               <span id="set-profile-upi" class="font-bold text-green-500 font-mono">-</span>
             </div>
           </div>
@@ -462,33 +470,39 @@
           </div>
         </div>
 
-        <!-- TAB 2: RECHARGE & COUPONS -->
+        <!-- TAB 2: RECHARGE PASS & TAX TOP-UP VIA ADMIN UPI -->
         <div id="setting-pane-account" class="hidden space-y-4">
-          <div class="space-y-2 text-xs">
-            <label class="font-bold text-slate-400 uppercase text-[10px]">Recharge Amount (₹)</label>
-            <div class="grid grid-cols-3 gap-2">
-              <button onclick="setRechargeAmount(100)" class="recharge-btn bg-slate-950 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400">₹100</button>
-              <button onclick="setRechargeAmount(250)" class="recharge-btn bg-slate-950 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400">₹250</button>
-              <button onclick="setRechargeAmount(500)" class="recharge-btn bg-slate-950 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400">₹500</button>
+          
+          <!-- Section A: Ride Validity Recharge Pass -->
+          <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-2 text-xs">
+            <div class="font-bold text-amber-400 uppercase text-[10px] flex justify-between">
+              <span>🎟️ Ride Request Recharge Pass</span>
+              <span class="text-slate-400">Validity & Access</span>
             </div>
-            <input type="number" id="custom-recharge-amt" oninput="handleRechargeAmountChange()" placeholder="Enter custom amount" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 outline-none focus:border-amber-400 font-mono mt-1 text-white" />
+            <p class="text-[9px] text-slate-400">Recharge pass se aapko naye ride requests lene ki validity milti hai.</p>
+            <div class="grid grid-cols-3 gap-2">
+              <button onclick="setRechargeAmount(100)" class="recharge-btn bg-slate-900 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400 text-amber-300">₹100 (7 Days)</button>
+              <button onclick="setRechargeAmount(250)" class="recharge-btn bg-slate-900 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400 text-amber-300">₹250 (30 Days)</button>
+              <button onclick="setRechargeAmount(500)" class="recharge-btn bg-slate-900 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400 text-amber-300">₹500 (VIP Pass)</button>
+            </div>
+            <input type="number" id="custom-recharge-amt" oninput="handleRechargeAmountChange()" placeholder="Enter custom pass amount (₹)" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 outline-none focus:border-amber-400 font-mono mt-1 text-white text-xs" />
           </div>
 
-          <!-- Coupon Promo Code Section -->
+          <!-- Section B: Coupon Promo Code for Recharge -->
           <div class="space-y-1.5 text-xs">
             <label class="font-bold text-slate-400 uppercase text-[10px]">Apply Promo Coupon</label>
             <div class="flex gap-2">
-              <input type="text" id="coupon-code-input" placeholder="e.g. WELCOME100" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 outline-none focus:border-amber-400 font-mono uppercase text-white" />
+              <input type="text" id="coupon-code-input" placeholder="e.g. WELCOME100" class="w-full border rounded-xl p-2.5 outline-none focus:border-amber-400 font-mono uppercase bg-slate-950 border-slate-700 text-white text-xs" />
               <button id="btn-apply-coupon" onclick="applyCouponCode()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 rounded-xl font-bold transition">Apply</button>
             </div>
 
-            <!-- Live Applied Coupon Discount Indicator -->
+            <!-- Applied Coupon Status -->
             <div id="coupon-applied-status" class="hidden bg-green-500/10 border border-green-500/40 p-2.5 rounded-xl flex items-center justify-between text-xs mt-2">
               <div>
                 <div class="font-black text-green-400 flex items-center gap-1">
                   <span>🎉</span> <span id="applied-coupon-tag">COUPON APPLIED</span>
                 </div>
-                <div class="text-[10px] text-slate-400">Discount: <b class="text-green-400" id="applied-discount-text">-₹0</b> | Payable: <b class="font-mono text-white" id="applied-payable-text">₹0</b></div>
+                <div class="text-[10px] text-slate-400">Discount: <b class="text-green-400" id="applied-discount-text">-₹0</b> | Payable to Admin: <b class="font-mono text-white" id="applied-payable-text">₹0</b></div>
               </div>
               <button onclick="removeAppliedCoupon()" class="text-slate-400 hover:text-red-400 text-xs font-bold ml-2">✕ Remove</button>
             </div>
@@ -505,8 +519,9 @@
             </div>
           </div>
 
-          <button id="btn-execute-recharge" onclick="executeWalletRecharge()" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3 rounded-xl text-xs transition shadow-lg flex items-center justify-center gap-1.5">
-            <span>⚡ Pay & Recharge via UPI</span>
+          <!-- Section C: Direct UPI Pay to Admin Button -->
+          <button id="btn-execute-recharge" onclick="executeDirectUpiToAdmin()" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3.5 rounded-xl text-xs transition shadow-lg flex items-center justify-center gap-1.5">
+            <span>⚡ Pay Direct via UPI App</span>
             <span id="recharge-btn-amount" class="text-amber-300 font-mono"></span>
           </button>
         </div>
@@ -610,18 +625,16 @@
     let isDriverOnline = (localStorage.getItem('67_driver_duty') !== 'false');
 
     let offerExpireTimers = new Map();
-
     let driverMediaRecorder = null;
     let driverAudioChunks = [];
     let isDriverRecording = false;
-
-    // MongoDB Atlas Dynamic Audio Player Instance
     let mongoDriverAudio = null;
-
-    // Active Applied Coupon State
     let appliedCouponData = null;
 
-    // PULL TO REFRESH IMPLEMENTATION (SWIPE DOWN GESTURE)
+    // Configurable Admin Receiving UPI ID
+    let ADMIN_RECEIVING_UPI = '67cabs@upi';
+
+    // PULL TO REFRESH IMPLEMENTATION
     let touchStartY = 0;
     let isPulling = false;
 
@@ -642,20 +655,17 @@
       }
     }, { passive: true });
 
-    window.addEventListener('touchend', async (e) => {
+    window.addEventListener('touchend', async () => {
       if (!isPulling) return;
       isPulling = false;
       const indicator = document.getElementById('ptr-indicator');
       if (indicator && !indicator.classList.contains('hidden')) {
         await executeLiveRefresh();
-        setTimeout(() => {
-          indicator.classList.add('hidden');
-        }, 600);
+        setTimeout(() => indicator.classList.add('hidden'), 600);
       }
     }, { passive: true });
 
     async function executeLiveRefresh() {
-      console.log("🔄 Pull-to-refresh: Syncing Driver App with MongoDB...");
       await Promise.all([
         fetchLiveFareRatesForDriver(),
         loadDynamicSoundFromMongoDB(),
@@ -688,14 +698,15 @@
       }
 
       document.body.className = isLight 
-        ? "bg-slate-100 text-slate-800 min-h-screen p-3 md:p-6 flex flex-col items-center select-none font-sans relative transition-colors duration-300"
+        ? "bg-slate-100 text-slate-900 min-h-screen p-3 md:p-6 flex flex-col items-center select-none font-sans relative transition-colors duration-300"
         : "bg-slate-950 text-slate-100 min-h-screen p-3 md:p-6 flex flex-col items-center select-none font-sans relative transition-colors duration-300";
 
-      // Updating colors without breaking hidden state
       const headerCard = document.getElementById('dashboard-header-card');
       const badgeVehicle = document.getElementById('badge-vehicle-no');
       const btnHamburger = document.getElementById('btn-hamburger');
       const radarBox = document.getElementById('waiting-radar');
+      const radarTitle = document.getElementById('radar-title');
+      const radarSubtitle = document.getElementById('radar-subtitle');
       const drawerContainer = document.getElementById('drawer-container');
       const drawerHeader = document.getElementById('drawer-header');
       const themeSwitchCard = document.getElementById('theme-switch-card');
@@ -713,10 +724,15 @@
 
       if (isLight) {
         if (headerCard) headerCard.className = "bg-white border border-slate-200 p-4 rounded-3xl shadow-xl flex items-center justify-between transition-colors";
-        if (badgeVehicle) badgeVehicle.className = "text-[10px] font-mono font-black px-2 py-0.5 rounded-lg border bg-amber-50 text-amber-700 border-amber-200";
-        if (btnHamburger) btnHamburger.className = "w-10 h-10 rounded-2xl border bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200 flex items-center justify-center text-xl transition shadow-md active:scale-95";
-        if (radarBox) radarBox.className = "text-center py-20 rounded-3xl border border-dashed border-slate-300 bg-white/70 flex flex-col items-center justify-center space-y-4 shadow-sm transition-colors";
-        if (drawerContainer) drawerContainer.className = "bg-white text-slate-800 w-full max-w-sm h-full shadow-2xl border-l border-slate-200 p-5 space-y-5 overflow-y-auto custom-scrollbar flex flex-col justify-between transition-colors";
+        if (badgeVehicle) badgeVehicle.className = "text-[9px] sm:text-[10px] font-mono font-black px-1.5 py-0.5 rounded-lg border bg-amber-50 text-amber-700 border-amber-200";
+        if (btnHamburger) btnHamburger.className = "w-11 h-11 rounded-2xl border bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200 flex items-center justify-center text-xl transition shadow-md active:scale-95";
+        
+        // High contrast for Radar in Light Mode
+        if (radarBox) radarBox.className = "text-center py-20 rounded-3xl border border-dashed border-slate-300 bg-white shadow-sm flex flex-col items-center justify-center space-y-4 transition-colors";
+        if (radarTitle) radarTitle.className = "text-sm font-black text-slate-900";
+        if (radarSubtitle) radarSubtitle.className = "text-[11px] text-slate-600 font-semibold mt-0.5";
+
+        if (drawerContainer) drawerContainer.className = "bg-white text-slate-900 w-full max-w-sm h-full shadow-2xl border-r border-slate-200 p-5 space-y-5 overflow-y-auto custom-scrollbar flex flex-col justify-between transform -translate-x-full transition-transform duration-300 ease-in-out";
         if (drawerHeader) drawerHeader.className = "flex justify-between items-center border-b border-slate-200 pb-3";
         if (themeSwitchCard) themeSwitchCard.className = "bg-slate-50 p-3.5 rounded-2xl border border-slate-200 flex items-center justify-between";
         if (drawerWalletCard) drawerWalletCard.className = "bg-slate-50 p-3 rounded-2xl border border-slate-200";
@@ -735,10 +751,14 @@
         if (activeRideBox) activeRideBox.className = "space-y-2 text-xs bg-slate-50 p-3.5 rounded-2xl border border-slate-200 text-slate-800";
       } else {
         if (headerCard) headerCard.className = "bg-slate-900 border border-slate-800 p-4 rounded-3xl shadow-2xl flex items-center justify-between transition-colors";
-        if (badgeVehicle) badgeVehicle.className = "text-[10px] font-mono font-black px-2 py-0.5 rounded-lg border bg-slate-800 text-amber-400 border-slate-700";
-        if (btnHamburger) btnHamburger.className = "w-10 h-10 rounded-2xl border bg-slate-800 hover:bg-slate-700 text-amber-400 border-slate-700 flex items-center justify-center text-xl transition shadow-md active:scale-95";
+        if (badgeVehicle) badgeVehicle.className = "text-[9px] sm:text-[10px] font-mono font-black px-2 py-0.5 rounded-lg border bg-slate-800 text-amber-400 border-slate-700";
+        if (btnHamburger) btnHamburger.className = "w-11 h-11 rounded-2xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-amber-400 flex items-center justify-center text-xl transition shadow-md active:scale-95";
+        
         if (radarBox) radarBox.className = "text-center py-20 rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 flex flex-col items-center justify-center space-y-4 shadow-xl transition-colors";
-        if (drawerContainer) drawerContainer.className = "bg-slate-900 text-white w-full max-w-sm h-full shadow-2xl border-l border-slate-800 p-5 space-y-5 overflow-y-auto custom-scrollbar flex flex-col justify-between transition-colors";
+        if (radarTitle) radarTitle.className = "text-sm font-black text-slate-200";
+        if (radarSubtitle) radarSubtitle.className = "text-[11px] text-slate-400 mt-0.5";
+
+        if (drawerContainer) drawerContainer.className = "bg-slate-900 text-white w-full max-w-sm h-full shadow-2xl border-r border-slate-800 p-5 space-y-5 overflow-y-auto custom-scrollbar flex flex-col justify-between transform -translate-x-full transition-transform duration-300 ease-in-out";
         if (drawerHeader) drawerHeader.className = "flex justify-between items-center border-b border-slate-800 pb-3";
         if (themeSwitchCard) themeSwitchCard.className = "bg-slate-950 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between";
         if (drawerWalletCard) drawerWalletCard.className = "bg-slate-950 p-3 rounded-2xl border border-slate-800";
@@ -758,7 +778,6 @@
       }
     }
 
-    // Fetch Live Dynamic Cab Rates from MongoDB Atlas
     async function fetchLiveFareRatesForDriver() {
       try {
         const res = await fetch('/api/fare/public-rates');
@@ -883,7 +902,7 @@
         vehicleNo: document.getElementById('reg-vehicle').value.trim(),
         cabType: document.getElementById('reg-cabtype').value,
         referralCode: document.getElementById('reg-referral').value.trim() || '',
-        upiId: document.getElementById('reg-upi')?.value?.trim() || '67cabs@upi',
+        upiId: document.getElementById('reg-upi')?.value?.trim() || '',
         email: document.getElementById('reg-email')?.value?.trim() || '',
         documents: {}
       };
@@ -1266,7 +1285,7 @@
         document.getElementById('driver-header-name').innerText = driver.name;
         document.getElementById('badge-vehicle-no').innerText = driver.vehicleNo;
         document.getElementById('modal-wallet-balance').innerText = `₹${driver.walletBalance || 0}.00`;
-        document.getElementById('modal-bonus-rides').innerText = `${driver.bonusFreeRides || 0} Free Rides`;
+        document.getElementById('modal-bonus-rides').innerText = `${driver.bonusFreeRides || 0} Free Passes`;
 
         const savedDuty = localStorage.getItem('67_driver_duty');
         isDriverOnline = (savedDuty !== 'false');
@@ -1299,9 +1318,28 @@
       if (elName) elName.innerText = driver.name || '-';
       if (elVehicle) elVehicle.innerText = driver.vehicleNo || '-';
       if (elCat) elCat.innerText = driver.cabType || '-';
-      if (elUpi) elUpi.innerText = driver.upiId || '67cabs@upi';
+      if (elUpi) elUpi.innerText = driver.upiId || 'Not Set';
       if (elWallet) elWallet.innerText = `₹${driver.walletBalance || 0}.00`;
-      if (elBonus) elBonus.innerText = `${driver.bonusFreeRides || 0} Free Rides`;
+      if (elBonus) elBonus.innerText = `${driver.bonusFreeRides || 0} Free Passes`;
+    }
+
+    // Modal Drawer Open / Close Helper Functions
+    function openWalletModal() {
+      openSettingsModal();
+      switchSettingsTab('account');
+    }
+
+    function closeWalletModal() {
+      closeSettingsModal();
+    }
+
+    function openReferralModal() {
+      openSettingsModal();
+      switchSettingsTab('profile');
+    }
+
+    function closeReferralModal() {
+      closeSettingsModal();
     }
 
     window.addEventListener('load', () => {
@@ -1764,10 +1802,19 @@
     }
 
     // ==========================================
-    // ☰ SLIDE-IN SIDEBAR / SETTINGS DRAWER
+    // ☰ LEFT SLIDE-IN SIDEBAR / SETTINGS DRAWER
     // ==========================================
     function openSettingsModal() {
-      document.getElementById('settings-modal').classList.remove('hidden');
+      const modal = document.getElementById('settings-modal');
+      const drawer = document.getElementById('drawer-container');
+      modal.classList.remove('hidden');
+      
+      // Smooth Left-to-Right Slide Animation
+      setTimeout(() => {
+        drawer.classList.remove('-translate-x-full');
+        drawer.classList.add('translate-x-0');
+      }, 20);
+
       if (currentDriver) {
         document.getElementById('display-ref-code').innerText = currentDriver.driverId || 'DRV_67';
         populateSettingsDetails(currentDriver);
@@ -1776,7 +1823,11 @@
     }
 
     function closeSettingsModal() {
-      document.getElementById('settings-modal').classList.add('hidden');
+      const modal = document.getElementById('settings-modal');
+      const drawer = document.getElementById('drawer-container');
+      drawer.classList.remove('translate-x-0');
+      drawer.classList.add('-translate-x-full');
+      setTimeout(() => modal.classList.add('hidden'), 300);
     }
 
     function switchSettingsTab(tab) {
@@ -1809,11 +1860,11 @@
       if (tab === 'rider') {
         btnRider.className = "w-1/2 py-1.5 text-[11px] font-bold rounded-lg bg-amber-500 text-slate-950 transition";
         btnDriver.className = "w-1/2 py-1.5 text-[11px] font-bold rounded-lg text-slate-400 hover:text-white transition";
-        desc.innerText = "Scan to register Rider (Earn 1 Free Ride upon 1st trip)";
+        desc.innerText = "Scan to register Rider (Earn 1 Free Pass upon 1st trip)";
       } else {
         btnDriver.className = "w-1/2 py-1.5 text-[11px] font-bold rounded-lg bg-amber-500 text-slate-950 transition";
         btnRider.className = "w-1/2 py-1.5 text-[11px] font-bold rounded-lg text-slate-400 hover:text-white transition";
-        desc.innerText = "Scan to register Partner Driver (Earn 1 Free Ride upon 1st trip)";
+        desc.innerText = "Scan to register Partner Driver (Earn 1 Free Pass upon 1st trip)";
       }
       renderReferralQR();
     }
@@ -1839,7 +1890,7 @@
     }
 
     // ==========================================
-    // DRIVER WALLET & COUPONS ENGINE
+    // RECHARGE PASS ENGINE & DIRECT UPI TO ADMIN
     // ==========================================
     function setRechargeAmount(amt) { 
       document.getElementById('custom-recharge-amt').value = amt;
@@ -1857,9 +1908,9 @@
       const rawAmt = Number(document.getElementById('custom-recharge-amt').value) || 0;
       const btnSpan = document.getElementById('recharge-btn-amount');
       if (appliedCouponData) {
-        btnSpan.innerText = `(Pay ₹${appliedCouponData.finalAmount} | Save ₹${appliedCouponData.discountAmount})`;
+        btnSpan.innerText = `(Pay ₹${appliedCouponData.finalAmount} to Admin)`;
       } else if (rawAmt > 0) {
-        btnSpan.innerText = `(Pay ₹${rawAmt})`;
+        btnSpan.innerText = `(Pay ₹${rawAmt} to Admin)`;
       } else {
         btnSpan.innerText = '';
       }
@@ -1911,13 +1962,8 @@
       const code = document.getElementById('coupon-code-input').value.trim().toUpperCase();
       const rawAmt = Number(document.getElementById('custom-recharge-amt').value);
 
-      if (!rawAmt || rawAmt <= 0) {
-        return alert("⚠️ Pehle Recharge Amount select ya enter karein.");
-      }
-
-      if (!code) {
-        return alert("⚠️ Kripya coupon code enter karein.");
-      }
+      if (!rawAmt || rawAmt <= 0) return alert("⚠️ Pehle Recharge Amount select ya enter karein.");
+      if (!code) return alert("⚠️ Kripya coupon code enter karein.");
 
       const applyBtn = document.getElementById('btn-apply-coupon');
       applyBtn.disabled = true;
@@ -1940,14 +1986,12 @@
 
         if (data.success && data.data) {
           appliedCouponData = data.data;
-          
           document.getElementById('coupon-applied-status').classList.remove('hidden');
           document.getElementById('applied-coupon-tag').innerText = `COUPON '${data.data.couponCode}' APPLIED`;
           document.getElementById('applied-discount-text').innerText = `-₹${data.data.discountAmount}`;
           document.getElementById('applied-payable-text').innerText = `₹${data.data.finalAmount}`;
-          
           updatePayableButtonDisplay();
-          alert(`🎉 Coupon Applied! Aapko ₹${data.data.discountAmount} ki chhoot mili hai. Payable: ₹${data.data.finalAmount}`);
+          alert(`🎉 Coupon Applied! Payable to Admin: ₹${data.data.finalAmount}`);
         } else {
           removeAppliedCoupon(false);
           alert(`⚠️ ${data.message || 'Coupon apply nahi ho saka.'}`);
@@ -1955,7 +1999,7 @@
       } catch (err) {
         applyBtn.disabled = false;
         applyBtn.innerText = "Apply";
-        alert("Coupon verification server error.");
+        alert("Coupon verification error.");
       }
     }
 
@@ -1966,23 +2010,22 @@
       updatePayableButtonDisplay();
     }
 
+    // Direct UPI Payment to Admin
+    function executeDirectUpiToAdmin() {
+      const rawAmt = Number(document.getElementById('custom-recharge-amt').value);
+      if (!rawAmt || rawAmt < 50) return alert("Minimum recharge amount is ₹50.");
+
+      const finalPayable = appliedCouponData ? appliedCouponData.finalAmount : rawAmt;
+      const driverName = currentDriver?.name || 'Driver';
+      const drvId = currentDriver?.driverId || 'DRV';
+
+      const upiUrl = `upi://pay?pa=${encodeURIComponent(ADMIN_RECEIVING_UPI)}&pn=${encodeURIComponent('67 Cabs Admin')}&am=${encodeURIComponent(finalPayable)}&cu=INR&tn=${encodeURIComponent(`67Cab Pass ${drvId} ${driverName}`)}`;
+
+      window.location.href = upiUrl;
+    }
+
     function executeWalletRecharge() {
-      const amt = Number(document.getElementById('custom-recharge-amt').value);
-      if (!amt || amt < 50) return alert("Minimum recharge amount is ₹50.");
-
-      const payableAmt = appliedCouponData ? appliedCouponData.finalAmount : amt;
-      const creditAmt = amt;
-
-      alert(`⚡ Redirecting to UPI payment for ₹${payableAmt} (Wallet Credit: ₹${creditAmt})...`);
-      
-      if (currentDriver) {
-        currentDriver.walletBalance = (currentDriver.walletBalance || 0) + creditAmt;
-        syncSessionToCapacitorStorage(currentDriver);
-      }
-
-      document.getElementById('modal-wallet-balance').innerText = `₹${currentDriver.walletBalance}.00`;
-      removeAppliedCoupon(true);
-      closeSettingsModal();
+      executeDirectUpiToAdmin();
     }
 
     // Safety Audio Recorder
