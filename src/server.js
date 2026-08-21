@@ -287,9 +287,27 @@ const driverPushSubscriptionSchema = new mongoose.Schema({
 
 const DriverPushSubscription = mongoose.model('DriverPushSubscription', driverPushSubscriptionSchema);
 
+// 8. Admin Global App Settings Schema (Ringtone / Sounds)
+const settingSchema = new mongoose.Schema({
+  key: { type: String, required: true, unique: true },
+  value: { type: mongoose.Schema.Types.Mixed, required: true }
+}, { timestamps: true });
+
+const Setting = mongoose.model('Setting', settingSchema);
+
+// Memory Cache for Active Ringtone
+let globalActiveSound = 'alert_uber';
+(async () => {
+  try {
+    const soundDoc = await Setting.findOne({ key: 'driver_alert_sound' });
+    if (soundDoc && soundDoc.value) {
+      globalActiveSound = soundDoc.value;
+    }
+  } catch (e) {}
+})();
+
 // Web Push Sender Helper Function - COMPLETELY DISABLED
 async function sendDriverPushNotification(driverId, payload) {
-  // Bypassed completely to eliminate Google Chrome browser notifications
   return Promise.resolve();
 }
 
@@ -342,6 +360,35 @@ const handleResetStuckTrips = async (req, res) => {
 
 app.get('/api/admin/reset-stuck-trips', handleResetStuckTrips);
 app.post('/api/admin/reset-stuck-trips', handleResetStuckTrips);
+
+// ---------------- ADMIN SOUND & SETTINGS ROUTES ----------------
+app.get('/api/admin/settings/sound', async (req, res) => {
+  try {
+    const doc = await Setting.findOne({ key: 'driver_alert_sound' });
+    return res.json({ success: true, soundName: doc ? doc.value : globalActiveSound });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+app.post('/api/admin/settings/sound', async (req, res) => {
+  try {
+    const { soundName } = req.body;
+    if (!soundName) return res.status(400).json({ success: false, message: 'Sound name is required.' });
+
+    globalActiveSound = soundName.trim();
+    await Setting.findOneAndUpdate(
+      { key: 'driver_alert_sound' },
+      { value: globalActiveSound },
+      { upsert: true, new: true }
+    );
+
+    console.log(`🔔 Global driver alert sound updated to: ${globalActiveSound}`);
+    return res.json({ success: true, message: 'Alert tone updated successfully.', soundName: globalActiveSound });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: e.message });
+  }
+});
 
 // ---------------- ANDROID BACKGROUND GPS REST API ROUTE ----------------
 app.post('/api/driver/update-location', async (req, res) => {
@@ -1488,7 +1535,7 @@ io.on('connection', (socket) => {
     console.log(`🚪 Driver ${driverId} logged out & purged from active radar.`);
   });
 
-  // 2. Targeted 1-Click Ride Request (15 SECONDS AUTO-CANCEL TIMER + NO DOUBLE POP-UP + NO CHROME NOTIFICATION)
+  // 2. Targeted 1-Click Ride Request (15 SECONDS AUTO-CANCEL TIMER + DYNAMIC SOUND + NO CHROME NOTIFICATION)
   socket.on('ride:request_targeted', async (rideData) => {
     const { rideId, targetDriverId, pickup, stops, cabCategory, totalDistanceKm, totalFare, rider } = rideData;
 
@@ -1504,6 +1551,7 @@ io.on('connection', (socket) => {
       riderSocketId: socket.id,
       targetDriverId,
       status: 'SEARCHING',
+      soundName: globalActiveSound,
       startTime: new Date()
     };
     activeRides.set(rideId, ridePayload);
@@ -1523,7 +1571,7 @@ io.on('connection', (socket) => {
         io.to(sId).emit('ride:new_offer', ridePayload);
       }
 
-      console.log(`🎯 Targeted Ride ${rideId} dispatched to Driver: ${targetDriverId}`);
+      console.log(`🎯 Targeted Ride ${rideId} dispatched to Driver: ${targetDriverId} with sound: ${globalActiveSound}`);
 
       // Clear any prior timer
       if (rideTimeoutTimers.has(rideId)) {
@@ -1588,7 +1636,8 @@ io.on('connection', (socket) => {
       cabType: requestedCabType, 
       rideId, 
       riderSocketId: socket.id, 
-      status: 'SEARCHING', 
+      status: 'SEARCHING',
+      soundName: globalActiveSound,
       startTime: new Date() 
     };
     activeRides.set(rideId, ridePayload);

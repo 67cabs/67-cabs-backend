@@ -21,10 +21,6 @@ import java.util.Map;
 
 public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
-    // Naya Unique Channel ID taaki Android OS purani notification preferences bypass karke Heads-up enforce kare
-    private static final String CHANNEL_ID = "67_driver_urgent_dispatch_v7";
-    private static final int NOTIFICATION_ID = 6707;
-
     @Override
     public void onMessageReceived(@NonNull RemoteMessage remoteMessage) {
         super.onMessageReceived(remoteMessage);
@@ -36,6 +32,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         String pickup = "Jaipur Pickup Point";
         String drop = "Jaipur Destination";
         String fare = "0";
+        String soundName = "alert_uber"; // Admin default sound
 
         // 1. Extract pure data payload safely
         Map<String, String> data = remoteMessage.getData();
@@ -47,6 +44,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             if (data.containsKey("pickup") && data.get("pickup") != null) pickup = data.get("pickup");
             if (data.containsKey("drop") && data.get("drop") != null) drop = data.get("drop");
             if (data.containsKey("fare") && data.get("fare") != null) fare = data.get("fare");
+            if (data.containsKey("soundName") && data.get("soundName") != null) soundName = data.get("soundName");
         }
 
         // 2. Fallback check for notification object
@@ -62,8 +60,8 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         // 3. Acquire strong WakeLock
         acquireScreenWakeLock();
 
-        // 4. Trigger Full-Screen Alert / Overlay
-        showFullScreenRideAlert(title, body, rideId, driverId, pickup, drop, fare);
+        // 4. Trigger Full-Screen Alert / Overlay with Admin Selected Dynamic Tone
+        showFullScreenRideAlert(title, body, rideId, driverId, pickup, drop, fare, soundName);
     }
 
     private void acquireScreenWakeLock() {
@@ -81,15 +79,27 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         } catch (Exception ignored) {}
     }
 
-    private void showFullScreenRideAlert(String title, String body, String rideId, String driverId, String pickup, String drop, String fare) {
+    private void showFullScreenRideAlert(String title, String body, String rideId, String driverId, String pickup, String drop, String fare, String soundName) {
         NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+
+        // Dynamic Sound Resource Resolution (res/raw/<soundName>.mp3)
+        int soundResId = getResources().getIdentifier(soundName, "raw", getPackageName());
+        Uri soundUri;
+        if (soundResId != 0) {
+            soundUri = Uri.parse("android.resource://" + getPackageName() + "/" + soundResId);
+        } else {
+            soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+        }
+
+        // Dedicated dynamic channel per sound to force Android OS sound updates
+        String channelId = "67_alert_ch_" + soundName;
+        int notificationId = 6700 + Math.abs(soundName.hashCode() % 100);
 
         // Android 8.0 (API 26)+ Channel Creation with Forced Heads-up Alert
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID,
-                    "67 Urgent Ride Alert Channel",
+                    channelId,
+                    "67 Urgent Ride Alert (" + soundName + ")",
                     NotificationManager.IMPORTANCE_HIGH
             );
             channel.setDescription("Critical high priority popup channel for incoming rides");
@@ -120,6 +130,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         fullScreenIntent.putExtra("fare", fare);
         fullScreenIntent.putExtra("title", title);
         fullScreenIntent.putExtra("body", body);
+        fullScreenIntent.putExtra("soundName", soundName);
 
         // Flags required to break through background and display above active apps
         fullScreenIntent.addFlags(
@@ -142,7 +153,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 pendingIntentFlags
         );
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelId)
                 .setSmallIcon(android.R.drawable.ic_dialog_alert)
                 .setContentTitle(title)
                 .setContentText("Kiraya: ₹" + fare + " • " + pickup)
@@ -161,7 +172,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         notification.flags |= Notification.FLAG_INSISTENT;
 
         if (manager != null) {
-            manager.notify(NOTIFICATION_ID, notification);
+            manager.notify(notificationId, notification);
         }
 
         // Direct Activity Trigger when device/overlay permits

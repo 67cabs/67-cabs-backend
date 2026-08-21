@@ -35,15 +35,18 @@
     </div>
 
     <!-- Master Tabs Switcher -->
-    <div class="flex bg-slate-900 p-1.5 rounded-2xl border border-slate-800 max-w-lg">
-      <button onclick="switchAdminTab('drivers')" id="tab-btn-drivers" class="w-1/3 py-2.5 text-xs font-black rounded-xl bg-amber-500 text-slate-950 transition shadow">
+    <div class="flex bg-slate-900 p-1.5 rounded-2xl border border-slate-800 max-w-2xl">
+      <button onclick="switchAdminTab('drivers')" id="tab-btn-drivers" class="w-1/4 py-2.5 text-xs font-black rounded-xl bg-amber-500 text-slate-950 transition shadow">
         🚖 Drivers (<span id="count-drivers-badge">0</span>)
       </button>
-      <button onclick="switchAdminTab('riders')" id="tab-btn-riders" class="w-1/3 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition">
+      <button onclick="switchAdminTab('riders')" id="tab-btn-riders" class="w-1/4 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition">
         👤 Riders (<span id="count-riders-badge">0</span>)
       </button>
-      <button onclick="switchAdminTab('coupons')" id="tab-btn-coupons" class="w-1/3 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition">
+      <button onclick="switchAdminTab('coupons')" id="tab-btn-coupons" class="w-1/4 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition">
         🎟️ Coupons (<span id="count-coupons-badge">0</span>)
+      </button>
+      <button onclick="switchAdminTab('sounds')" id="tab-btn-sounds" class="w-1/4 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition">
+        🔔 Sound Control
       </button>
     </div>
 
@@ -212,6 +215,38 @@
         </div>
       </div>
     </div>
+
+    <!-- ================= TAB 4: SOUND & ALERT MANAGER ================= -->
+    <div id="section-sounds-table" class="hidden space-y-6">
+      <div class="bg-slate-900/80 rounded-3xl border border-slate-800 p-6 shadow-2xl backdrop-blur-md max-w-2xl mx-auto space-y-5">
+        <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+          <h2 class="text-sm font-black text-amber-400 uppercase tracking-wider flex items-center gap-2">
+            <span>🔔</span> Driver Incoming Ride Ringtone Manager
+          </h2>
+          <span class="text-[10px] text-slate-400">Live Global Ringtone Switch</span>
+        </div>
+
+        <div class="space-y-4 text-xs">
+          <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
+            <label class="text-[10px] font-bold text-amber-400 uppercase block">Active Dispatch Tone (Plays on all Driver Apps)</label>
+            <select id="global-ringtone-select" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-3 outline-none focus:border-amber-400 text-xs font-bold">
+              <option value="alert_uber">🚕 Uber/Ola High Radar Alert (Recommended)</option>
+              <option value="alert_loud_siren">🚨 Loud Emergency Siren Tone</option>
+              <option value="alert_chime">🔔 Soft Double Bell Chime</option>
+              <option value="alert_modern">⚡ Modern Electronic Pulsar Tone</option>
+            </select>
+            <p class="text-[10px] text-slate-500 mt-1">Jab bhi koi rider booking karega, driver ke background mein yahi select ki gayi ringtone bajegi.</p>
+          </div>
+
+          <div class="flex gap-3">
+            <button onclick="saveGlobalSoundSetting()" id="btn-save-sound" class="flex-1 bg-green-600 hover:bg-green-500 text-white font-black py-3 rounded-xl text-xs transition shadow flex items-center justify-center gap-2">
+              <span>💾 Save & Apply Ringtone</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- ================= MODAL: DRIVER KYC VIEWER & COMPLIANCE ================= -->
@@ -307,28 +342,37 @@
       const btnDrivers = document.getElementById('tab-btn-drivers');
       const btnRiders = document.getElementById('tab-btn-riders');
       const btnCoupons = document.getElementById('tab-btn-coupons');
+      const btnSounds = document.getElementById('tab-btn-sounds');
       const secDrivers = document.getElementById('section-drivers-table');
       const secRiders = document.getElementById('section-riders-table');
       const secCoupons = document.getElementById('section-coupons-table');
+      const secSounds = document.getElementById('section-sounds-table');
 
       // Reset tabs styling
-      btnDrivers.className = "w-1/3 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition";
-      btnRiders.className = "w-1/3 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition";
-      btnCoupons.className = "w-1/3 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition";
+      btnDrivers.className = "w-1/4 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition";
+      btnRiders.className = "w-1/4 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition";
+      btnCoupons.className = "w-1/4 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition";
+      btnSounds.className = "w-1/4 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition";
+      
       secDrivers.classList.add('hidden');
       secRiders.classList.add('hidden');
       secCoupons.classList.add('hidden');
+      secSounds.classList.add('hidden');
 
       if (tab === 'drivers') {
-        btnDrivers.className = "w-1/3 py-2.5 text-xs font-black rounded-xl bg-amber-500 text-slate-950 transition shadow";
+        btnDrivers.className = "w-1/4 py-2.5 text-xs font-black rounded-xl bg-amber-500 text-slate-950 transition shadow";
         secDrivers.classList.remove('hidden');
       } else if (tab === 'riders') {
-        btnRiders.className = "w-1/3 py-2.5 text-xs font-black rounded-xl bg-amber-500 text-slate-950 transition shadow";
+        btnRiders.className = "w-1/4 py-2.5 text-xs font-black rounded-xl bg-amber-500 text-slate-950 transition shadow";
         secRiders.classList.remove('hidden');
       } else if (tab === 'coupons') {
-        btnCoupons.className = "w-1/3 py-2.5 text-xs font-black rounded-xl bg-amber-500 text-slate-950 transition shadow";
+        btnCoupons.className = "w-1/4 py-2.5 text-xs font-black rounded-xl bg-amber-500 text-slate-950 transition shadow";
         secCoupons.classList.remove('hidden');
         fetchCoupons();
+      } else if (tab === 'sounds') {
+        btnSounds.className = "w-1/4 py-2.5 text-xs font-black rounded-xl bg-amber-500 text-slate-950 transition shadow";
+        secSounds.classList.remove('hidden');
+        fetchCurrentSoundSetting();
       }
     }
 
@@ -342,7 +386,7 @@
     }
 
     async function fetchAllData() {
-      await Promise.all([fetchDrivers(), fetchRiders(), fetchCoupons()]);
+      await Promise.all([fetchDrivers(), fetchRiders(), fetchCoupons(), fetchCurrentSoundSetting()]);
     }
 
     // 1. Fetch Drivers
@@ -621,6 +665,49 @@
           }
         } catch (e) {
           alert('Failed to delete coupon');
+        }
+      }
+    }
+
+    // 4. Sound & Alert Settings Handler
+    async function fetchCurrentSoundSetting() {
+      try {
+        const res = await fetch('/api/admin/settings/sound');
+        const data = await res.json();
+        if (data.success && data.soundName) {
+          const select = document.getElementById('global-ringtone-select');
+          if (select) select.value = data.soundName;
+        }
+      } catch (e) {}
+    }
+
+    async function saveGlobalSoundSetting() {
+      const select = document.getElementById('global-ringtone-select');
+      const soundName = select ? select.value : 'alert_uber';
+      const btn = document.getElementById('btn-save-sound');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span>⏳ Updating Sound...</span>';
+      }
+
+      try {
+        const res = await fetch('/api/admin/settings/sound', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ soundName })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(`✅ Ringtone successfully updated to "${soundName}". Driver apps will now play this sound!`);
+        } else {
+          alert(`⚠️ ${data.message || 'Failed to update sound setting.'}`);
+        }
+      } catch (err) {
+        alert('Server connection error while saving sound.');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<span>💾 Save & Apply Ringtone</span>';
         }
       }
     }
