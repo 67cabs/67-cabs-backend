@@ -361,6 +361,56 @@ const handleResetStuckTrips = async (req, res) => {
 app.get('/api/admin/reset-stuck-trips', handleResetStuckTrips);
 app.post('/api/admin/reset-stuck-trips', handleResetStuckTrips);
 
+// ---------------- ANDROID BACKGROUND GPS REST API ROUTE ----------------
+app.post('/api/driver/update-location', async (req, res) => {
+  try {
+    const { latitude, longitude, driverId, rideId } = req.body;
+
+    if (!latitude || !longitude) {
+      return res.status(400).json({ success: false, message: 'Coordinates required' });
+    }
+
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+
+    // 1. Update in-memory driver location
+    if (driverId && activeDrivers.has(driverId)) {
+      const d = activeDrivers.get(driverId);
+      d.location = { lat, lng };
+      d.isOnline = true;
+      activeDrivers.set(driverId, d);
+    }
+
+    // 2. Update database telemetry
+    if (driverId) {
+      await DriverLocation.findOneAndUpdate(
+        { driverId },
+        { 
+          location: { lat, lng },
+          isOnline: true,
+          lastActive: new Date()
+        },
+        { upsert: true }
+      );
+    }
+
+    // 3. If a ride is active, broadcast live position to rider
+    if (rideId) {
+      const telemetryPayload = {
+        lat,
+        lng,
+        heading: 0
+      };
+      io.emit(`driver:location_broadcast:${rideId}`, telemetryPayload);
+    }
+
+    return res.status(200).json({ success: true, message: 'Location updated successfully.' });
+  } catch (err) {
+    console.error('Android GPS update error:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ---------------- WEB PUSH SUBSCRIPTION APIS ----------------
 app.post('/api/driver/push-subscription', async (req, res) => {
   try {
