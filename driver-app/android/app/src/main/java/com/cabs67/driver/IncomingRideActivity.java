@@ -82,8 +82,11 @@ public class IncomingRideActivity extends Activity {
         try {
             PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
             if (pm != null) {
+                if (screenWakeLock != null && screenWakeLock.isHeld()) {
+                    screenWakeLock.release();
+                }
                 screenWakeLock = pm.newWakeLock(
-                        PowerManager.SCREEN_BRIGHT_WAKE_LOCK |
+                        PowerManager.FULL_WAKE_LOCK |
                                 PowerManager.ACQUIRE_CAUSES_WAKEUP |
                                 PowerManager.ON_AFTER_RELEASE,
                         "67Cabs:IncomingRideOverlayWakeLock"
@@ -101,9 +104,10 @@ public class IncomingRideActivity extends Activity {
     }
 
     private void setupUI() {
-        String pickup = getIntent().getStringExtra("pickup");
-        String drop = getIntent().getStringExtra("drop");
-        String fare = getIntent().getStringExtra("fare");
+        Intent intent = getIntent();
+        String pickup = intent != null ? intent.getStringExtra("pickup") : null;
+        String drop = intent != null ? intent.getStringExtra("drop") : null;
+        String fare = intent != null ? intent.getStringExtra("fare") : null;
 
         TextView tvPickup = findViewById(R.id.tvPickup);
         TextView tvDrop = findViewById(R.id.tvDrop);
@@ -192,7 +196,7 @@ public class IncomingRideActivity extends Activity {
 
     private void openDriverAppDashboard() {
         Intent intent = new Intent(this, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
         intent.putExtra("rideId", currentRideId);
         startActivity(intent);
     }
