@@ -1348,7 +1348,7 @@
       const timer = setTimeout(() => {
         removeOffer(offer.rideId);
         offerExpireTimers.delete(offer.rideId);
-      }, 35000); // Extended from 15s to 35s to match rider timeout
+      }, 35000); // 35s offer timer
       offerExpireTimers.set(offer.rideId, timer);
     }
 
@@ -1376,15 +1376,28 @@
       removeOffer(rideId);
     });
 
+    // ---------------- UPDATED: INSTANT RESET & RE-REGISTER ON CANCEL ----------------
     socket.on('ride:cancelled', ({ rideId }) => {
       removeOffer(rideId);
-      if (currentActiveRideId === rideId) {
+      if (currentActiveRideId === rideId || !currentActiveRideId) {
         if (simInterval) clearInterval(simInterval);
-        alert("⚠️ Rider ne ride cancel kar di hai.");
-        window.location.reload();
+        currentActiveRideId = null;
+        acceptedRide = null;
+        activeOffersMap.clear();
+
+        // UI Reset
+        document.getElementById('active-ride-card').classList.add('hidden');
+        document.getElementById('waiting-radar').classList.remove('hidden');
+        document.getElementById('offers-container').innerHTML = '';
+        
+        // Instant radar re-registration
+        if (isDriverOnline && currentDriver?.status === 'APPROVED') {
+          registerDriver();
+        }
       }
     });
 
+    // ---------------- UPDATED: INSTANT ONGOING SCREEN SWITCH ----------------
     socket.on('driver:ride_confirmed', (rideData) => {
       checkAndRestoreActiveRide();
     });

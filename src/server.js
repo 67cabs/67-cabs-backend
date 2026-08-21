@@ -1562,7 +1562,7 @@ io.on('connection', (socket) => {
           drop: drop?.text || 'Drop Location',
           data: { 
             rideId, 
-            driverId: driver.driverId,
+            driverId: driver.driverId, 
             url: `/driver.html?status=ongoing&id=${rideId}&autoAccept=true` 
           }
         });
@@ -1571,13 +1571,37 @@ io.on('connection', (socket) => {
     io.emit('ride:new_offer', ridePayload);
   });
 
+  // ---------------- UPDATED: CANCEL RIDE WITH INSTANT DRIVER AVAILABILITY ----------------
   socket.on('ride:cancel', async ({ rideId }) => {
     try {
-      await Trip.updateOne({ rideId }, { status: 'CANCELLED' });
+      const existingTrip = await Trip.findOne({ rideId });
+      await Trip.updateOne(
+        { rideId }, 
+        { $set: { status: 'CANCELLED', isRiderDismissed: true, isDriverDismissed: true } }
+      );
+      
+      const memoryRide = activeRides.get(rideId);
+      const assignedDriverId = existingTrip?.driverData?.driverId || memoryRide?.targetDriverId || memoryRide?.driverData?.driverId;
+      
       activeRides.delete(rideId);
+      
+      // Instant unlock & re-register driver in active radar
+      if (assignedDriverId) {
+        if (activeDrivers.has(assignedDriverId)) {
+          const d = activeDrivers.get(assignedDriverId);
+          d.isOnline = true;
+          activeDrivers.set(assignedDriverId, d);
+        }
+        await Driver.updateOne({ driverId: assignedDriverId }, { isOnline: true }).catch(() => {});
+        await DriverLocation.updateOne({ driverId: assignedDriverId }, { isOnline: true, lastActive: new Date() }).catch(() => {});
+        io.to(`driver:${assignedDriverId}`).emit('ride:cancelled', { rideId });
+      }
+
       io.emit('ride:cancelled', { rideId });
       io.emit('ride:taken', { rideId });
-    } catch (e) {}
+    } catch (e) {
+      console.error('Cancel ride error:', e);
+    }
   });
 
   // 3. Driver Accepts Ride (Standard In-App)
