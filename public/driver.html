@@ -295,7 +295,7 @@
       </button>
     </div>
 
-    <!-- Active Ride Screen -->
+    <!-- Active Ride Screen (With Rider Call Button) -->
     <div id="active-ride-card" class="hidden bg-slate-900 p-5 rounded-2xl border border-amber-400 shadow-2xl mb-4 space-y-4">
       <div class="flex justify-between items-center">
         <span id="trip-badge" class="text-xs bg-amber-400 text-slate-950 font-bold px-3 py-1 rounded-full uppercase">
@@ -307,14 +307,22 @@
       <div class="space-y-2 text-xs text-slate-300 bg-slate-950 p-3 rounded-xl border border-slate-800">
         <div>📍 <b>Pickup:</b> <span id="active-pickup">-</span></div>
         <div>🏁 <b>Drop:</b> <span id="active-drop">-</span></div>
+        <div id="rider-info-row" class="pt-1 border-t border-slate-800 text-[11px] flex justify-between items-center text-amber-400">
+          <span>👤 Rider: <b id="active-rider-name" class="text-white">Customer</b></span>
+          <span id="active-rider-phone-display" class="font-mono text-slate-300"></span>
+        </div>
       </div>
 
-      <div class="grid grid-cols-2 gap-2">
+      <div class="grid grid-cols-3 gap-2">
+        <!-- 📞 Direct Call Rider Button -->
+        <a id="btn-call-rider" href="tel:" class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl transition text-xs shadow-md flex items-center justify-center gap-1">
+          📞 Call
+        </a>
         <button id="btn-arrived" onclick="notifyArrived()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition text-xs shadow-md">
-          🔔 I have Arrived
+          🔔 Arrived
         </button>
         <a id="nav-btn" target="_blank" class="block text-center bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition text-xs shadow-md">
-          🗺️ Navigation
+          🗺️ Map
         </a>
       </div>
 
@@ -983,6 +991,17 @@
       document.getElementById('payment-modal').classList.add('flex');
     }
 
+    function setRiderPhoneLink(phone) {
+      const btn = document.getElementById('btn-call-rider');
+      const displaySpan = document.getElementById('active-rider-phone-display');
+      if (btn) {
+        btn.href = phone ? `tel:${phone}` : 'javascript:void(0)';
+      }
+      if (displaySpan) {
+        displaySpan.innerText = phone ? `(${phone})` : '';
+      }
+    }
+
     async function checkAndRestoreActiveRide() {
       if (!currentDriver?.driverId) return;
       try {
@@ -1008,13 +1027,18 @@
           document.getElementById('active-pickup').innerText = trip.pickup?.text || 'Pickup Location';
           document.getElementById('active-drop').innerText = trip.stops?.[0]?.text || trip.drop?.text || 'Drop Destination';
 
+          const riderName = trip.riderData?.name || 'Customer';
+          const riderPhone = trip.riderData?.phone || '';
+          document.getElementById('active-rider-name').innerText = riderName;
+          setRiderPhoneLink(riderPhone);
+
           const destLat = trip.drop?.lat || trip.stops?.[0]?.lat || trip.pickup?.lat;
           const destLng = trip.drop?.lng || trip.stops?.[0]?.lng || trip.pickup?.lng;
           document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}&travelmode=driving`;
 
           if (currentTripPhase === 'ARRIVED') {
             const btn = document.getElementById('btn-arrived');
-            btn.innerText = "✅ Arrived Notified";
+            btn.innerText = "✅ Arrived";
             btn.className = "bg-green-700 text-white font-bold py-3 rounded-xl text-xs";
             document.getElementById('trip-badge').innerText = "Arrived at Pickup";
             document.getElementById('otp-section').classList.remove('hidden');
@@ -1179,6 +1203,7 @@
         driverId: currentDriver.driverId,
         name: currentDriver.name,
         vehicleNo: currentDriver.vehicleNo,
+        phone: currentDriver.phone || '',
         cabType: currentDriver.cabType,
         upiId: currentDriver.upiId,
         status: currentDriver.status,
@@ -1416,8 +1441,14 @@
       }
     });
 
-    // ---------------- INSTANT ONGOING SCREEN SWITCH ----------------
+    // ---------------- INSTANT ONGOING SCREEN SWITCH WITH RIDER PHONE ----------------
     socket.on('driver:ride_confirmed', (rideData) => {
+      if (rideData && rideData.riderPhone) {
+        setRiderPhoneLink(rideData.riderPhone);
+        if (rideData.riderName) {
+          document.getElementById('active-rider-name').innerText = rideData.riderName;
+        }
+      }
       checkAndRestoreActiveRide();
     });
 
@@ -1443,7 +1474,7 @@
           driverId: currentDriver.driverId, 
           name: currentDriver.name, 
           vehicleNo: currentDriver.vehicleNo, 
-          phone: currentDriver.phone, 
+          phone: currentDriver.phone || '', 
           upiId: currentDriver.upiId 
         }
       });
@@ -1456,6 +1487,11 @@
       document.getElementById('active-pickup').innerText = selected.pickupName || 'Pickup Location';
       document.getElementById('active-drop').innerText = selected.dropName || 'Drop Location';
 
+      const rName = selected.riderData?.name || 'Customer';
+      const rPhone = selected.riderData?.phone || '';
+      document.getElementById('active-rider-name').innerText = rName;
+      setRiderPhoneLink(rPhone);
+
       document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${selected.pickup.lat},${selected.pickup.lng}&travelmode=driving`;
 
       if (currentDriver.location) {
@@ -1467,7 +1503,7 @@
       currentTripPhase = 'ARRIVED';
       socket.emit('driver:arrived', { rideId: currentActiveRideId });
       const btn = document.getElementById('btn-arrived');
-      btn.innerText = "✅ Arrived Notified";
+      btn.innerText = "✅ Arrived";
       btn.className = "bg-green-700 text-white font-bold py-3 rounded-xl text-xs";
       document.getElementById('trip-badge').innerText = "Arrived at Pickup";
       document.getElementById('otp-section').classList.remove('hidden');

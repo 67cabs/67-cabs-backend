@@ -329,7 +329,7 @@ const fareConfigSchema = new mongoose.Schema({
   },
   SUV: {
     baseFare: { type: Number, default: 100 },
-    perKm: { type: Number, default: 25 },
+    perKm: { type: Number, default: 30 },
     minFare: { type: Number, default: 100 }
   },
   rates: {
@@ -644,6 +644,7 @@ app.post('/api/ride/accept-bg', async (req, res) => {
 
     const startOtp = trip?.otp || Math.floor(1000 + Math.random() * 9000).toString();
     const finalFare = trip ? trip.totalFare : (memoryRide ? memoryRide.totalFare : 0);
+    const resolvedRiderPhone = trip?.riderData?.phone || memoryRide?.riderData?.phone || '';
 
     const updatedTrip = await Trip.findOneAndUpdate(
       { rideId },
@@ -668,7 +669,8 @@ app.post('/api/ride/accept-bg', async (req, res) => {
           rideId,
           driver: driverPayload,
           otp: startOtp,
-          fare: finalFare
+          fare: finalFare,
+          driverPhone: driverPayload.phone
         });
       }
     }
@@ -677,13 +679,15 @@ app.post('/api/ride/accept-bg', async (req, res) => {
       rideId,
       driver: driverPayload,
       otp: startOtp,
-      fare: finalFare
+      fare: finalFare,
+      driverPhone: driverPayload.phone
     });
     io.emit('ride:accepted', {
       rideId,
       driver: driverPayload,
       otp: startOtp,
-      fare: finalFare
+      fare: finalFare,
+      driverPhone: driverPayload.phone
     });
     io.emit('ride:taken', { rideId });
 
@@ -692,7 +696,9 @@ app.post('/api/ride/accept-bg', async (req, res) => {
         rideId,
         pickup: updatedTrip.pickup,
         drop: updatedTrip.drop || updatedTrip.stops?.[0],
-        totalFare: finalFare
+        totalFare: finalFare,
+        riderName: updatedTrip.riderData?.name || 'Rider',
+        riderPhone: resolvedRiderPhone
       });
     }
 
@@ -1630,6 +1636,7 @@ io.on('connection', (socket) => {
         driverId,
         name: driverData.name,
         vehicleNo: driverData.vehicleNo,
+        phone: driverData.phone || '',
         cabType: normalizedCabType,
         upiId: driverData.upiId || '67cabs@upi',
         status: driverData.status || 'APPROVED',
@@ -1900,16 +1907,25 @@ io.on('connection', (socket) => {
     const startOtp = Math.floor(1000 + Math.random() * 9000).toString();
     let finalTotalFare = ride ? ride.totalFare : 0;
 
+    let dbDriver = null;
+    const targetDrvId = registeredDriver ? registeredDriver.driverId : (driverData?.driverId || 'DRV_DEFAULT');
+    if (targetDrvId) {
+      dbDriver = await Driver.findOne({ driverId: targetDrvId });
+    }
+
+    const resolvedDriverPhone = registeredDriver?.phone || driverData?.phone || dbDriver?.phone || '';
+
     const assignedDriverData = {
-      driverId: registeredDriver ? registeredDriver.driverId : (driverData?.driverId || 'DRV_DEFAULT'),
-      name: registeredDriver ? registeredDriver.name : (driverData?.name || 'Partner Driver'),
-      vehicleNo: registeredDriver ? registeredDriver.vehicleNo : (driverData?.vehicleNo || 'RJ 14 TA 6767'),
-      phone: driverData?.phone || '',
-      upiId: registeredDriver ? registeredDriver.upiId : (driverData?.upiId || '67cabs@upi')
+      driverId: targetDrvId,
+      name: registeredDriver ? registeredDriver.name : (driverData?.name || dbDriver?.name || 'Partner Driver'),
+      vehicleNo: registeredDriver ? registeredDriver.vehicleNo : (driverData?.vehicleNo || dbDriver?.vehicleNo || 'RJ 14 TA 6767'),
+      phone: resolvedDriverPhone,
+      upiId: registeredDriver ? registeredDriver.upiId : (driverData?.upiId || dbDriver?.upiId || '67cabs@upi')
     };
 
+    let tripDoc = null;
     try {
-      const updatedTrip = await Trip.findOneAndUpdate(
+      tripDoc = await Trip.findOneAndUpdate(
         { rideId }, 
         { 
           $set: { 
@@ -1920,8 +1936,11 @@ io.on('connection', (socket) => {
         },
         { new: true, upsert: true }
       );
-      if (updatedTrip) finalTotalFare = updatedTrip.totalFare;
+      if (tripDoc) finalTotalFare = tripDoc.totalFare;
     } catch (e) {}
+
+    const resolvedRiderPhone = ride?.riderData?.phone || tripDoc?.riderData?.phone || '';
+    const resolvedRiderName = ride?.riderData?.name || tripDoc?.riderData?.name || 'Rider';
 
     if (ride) {
       ride.status = 'ACCEPTED';
@@ -1933,9 +1952,10 @@ io.on('connection', (socket) => {
       if (ride.riderSocketId) {
         io.to(ride.riderSocketId).emit('ride:accepted', {
           rideId,
-          driver: ride.driverData,
+          driver: assignedDriverData,
           otp: startOtp,
-          fare: finalTotalFare
+          fare: finalTotalFare,
+          driverPhone: resolvedDriverPhone
         });
       }
     }
@@ -1944,20 +1964,24 @@ io.on('connection', (socket) => {
       rideId,
       driver: assignedDriverData,
       otp: startOtp,
-      fare: finalTotalFare
+      fare: finalTotalFare,
+      driverPhone: resolvedDriverPhone
     });
     io.emit('ride:accepted', {
       rideId,
       driver: assignedDriverData,
       otp: startOtp,
-      fare: finalTotalFare
+      fare: finalTotalFare,
+      driverPhone: resolvedDriverPhone
     });
 
     socket.emit('driver:ride_confirmed', {
       rideId,
       pickup: ride?.pickup,
       drop: ride?.drop || ride?.stops?.[0],
-      totalFare: finalTotalFare
+      totalFare: finalTotalFare,
+      riderName: resolvedRiderName,
+      riderPhone: resolvedRiderPhone
     });
 
     socket.broadcast.emit('ride:taken', { rideId });
