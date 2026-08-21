@@ -277,36 +277,35 @@
   <!-- ================= 4. ULTRA-CLEAN FULL-SCREEN VERTICAL RADAR DASHBOARD ================= -->
   <div id="main-driver-dashboard" class="hidden w-full max-w-md flex-1 flex flex-col space-y-3 pb-6">
     
-    <!-- Top Sleek Bar: ☰ Hamburger on LEFT, Driver Info in Middle, On/Off Duty Switch on RIGHT -->
-    <div id="dashboard-header-card" class="bg-slate-900 border border-slate-800 p-4 rounded-3xl shadow-xl flex items-center justify-between transition-colors shrink-0">
-      <div class="flex items-center gap-3">
-        <!-- ☰ Hamburger Button on Left -->
-        <button onclick="openSettingsModal()" id="btn-hamburger" class="w-11 h-11 rounded-2xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-amber-400 flex items-center justify-center text-xl transition shadow-md active:scale-95">
-          ☰
-        </button>
+    <!-- Top Sleek Bar: [Left: ☰ Menu] --- [Center: inDrive-Style Swipe Switch] --- [Right: Driver Name & Vehicle] -->
+    <div id="dashboard-header-card" class="bg-slate-900 border border-slate-800 p-3 sm:p-3.5 rounded-3xl shadow-xl flex items-center justify-between transition-colors shrink-0 gap-2">
+      
+      <!-- Left: ☰ Menu Button -->
+      <button onclick="openSettingsModal()" id="btn-hamburger" class="w-10 h-10 rounded-2xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-amber-400 flex items-center justify-center text-xl transition shadow-md active:scale-95 shrink-0">
+        ☰
+      </button>
 
-        <div class="flex items-center gap-2.5">
-          <div class="relative">
-            <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center text-lg text-slate-950 font-black shadow-md shadow-amber-500/20">
-              🚖
-            </div>
-            <span id="duty-status-dot" class="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-green-500 border-2 border-slate-900 animate-pulse"></span>
-          </div>
-          <div>
-            <div class="flex items-center gap-1.5">
-              <h2 id="driver-header-name" class="text-xs sm:text-sm font-black truncate max-w-[130px] sm:max-w-[160px]">Partner Name</h2>
-              <span id="badge-vehicle-no" class="text-[9px] sm:text-[10px] font-mono font-black px-1.5 py-0.5 rounded-lg border bg-slate-800 text-amber-400 border-slate-700">RJ 14</span>
-            </div>
-            <p id="gps-status-indicator" class="text-[10px] text-green-500 font-bold tracking-tight">● ONLINE • Ready for Rides</p>
+      <!-- Center: inDrive-Style Interactive Swipe / Toggle Switch -->
+      <div class="flex-1 flex justify-center max-w-[170px]">
+        <div onclick="toggleDriverDutyState(!isDriverOnline)" id="duty-swipe-pill" class="cursor-pointer select-none relative w-full h-9 bg-green-950/80 border border-green-600/70 rounded-full flex items-center justify-between px-2.5 shadow-inner transition-all duration-300">
+          <span id="swipe-txt-off" class="text-[9px] font-black text-slate-500 tracking-wider transition-opacity">OFFLINE</span>
+          <span id="swipe-txt-on" class="text-[9px] font-black text-green-400 tracking-wider transition-opacity">ONLINE</span>
+          
+          <!-- Moving Knob Indicator -->
+          <div id="duty-knob" class="absolute top-[2px] right-[3px] h-7 w-7 rounded-full bg-green-500 text-slate-950 font-black text-[10px] flex items-center justify-center shadow-lg transition-all duration-300">
+            ●
           </div>
         </div>
       </div>
 
-      <!-- Right: Duty Toggle Switch -->
-      <label class="relative inline-flex items-center cursor-pointer" title="Toggle On/Off Duty">
-        <input type="checkbox" id="driver-duty-toggle" checked onchange="toggleDriverDutyState(this.checked)" class="sr-only peer">
-        <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600 shadow-inner"></div>
-      </label>
+      <!-- Right: Driver Name & Vehicle Badge -->
+      <div class="text-right truncate max-w-[125px] sm:max-w-[140px] shrink-0">
+        <h2 id="driver-header-name" class="text-xs sm:text-[13px] font-black truncate text-slate-100">Partner</h2>
+        <span id="badge-vehicle-no" class="text-[9px] font-mono font-black px-1.5 py-0.5 rounded-md border bg-slate-800 text-amber-400 border-slate-700 inline-block mt-0.5">RJ 14</span>
+      </div>
+      
+      <!-- Hidden Checkbox for Duty Logic Binding -->
+      <input type="checkbox" id="driver-duty-toggle" checked class="hidden" />
     </div>
 
     <!-- ACTIVE RIDE MANAGEMENT CARD -->
@@ -399,7 +398,7 @@
 
   </div>
 
-  <!-- ================= 5. MASTER SLIDE-IN SIDEBAR / SETTINGS DRAWER (HIGH CONTRAST & CLEAR VISIBILITY) ================= -->
+  <!-- ================= 5. MASTER SLIDE-IN SIDEBAR / SETTINGS DRAWER ================= -->
   <div id="settings-modal" class="fixed inset-0 bg-black/60 z-[99999] hidden transition-opacity duration-200" onclick="handleBackdropClick(event)">
     <div id="drawer-container" class="bg-slate-900 text-white w-full max-w-md h-full shadow-2xl border-r border-slate-800 p-6 space-y-5 overflow-y-auto custom-scrollbar flex flex-col justify-between transform -translate-x-full transition-transform duration-200 ease-in-out">
       
@@ -720,7 +719,44 @@
       }
     }, 3000);
 
-    // Theme Switcher Engine with Full Contrast Injection
+    // inDrive-Style Swipe/Toggle Duty Switch Functionality
+    function toggleDriverDutyState(targetOnline) {
+      if (currentActiveRideId) {
+        alert("⚠️ Active ride ongoing hai. Aap trip ke dauraan offline nahi ja sakte.");
+        return;
+      }
+
+      isDriverOnline = (targetOnline === true);
+      localStorage.setItem('67_driver_duty', isDriverOnline ? 'true' : 'false');
+      
+      const swipePill = document.getElementById('duty-swipe-pill');
+      const knob = document.getElementById('duty-knob');
+      const txtOff = document.getElementById('swipe-txt-off');
+      const txtOn = document.getElementById('swipe-txt-on');
+      const hiddenCheck = document.getElementById('driver-duty-toggle');
+      if (hiddenCheck) hiddenCheck.checked = isDriverOnline;
+
+      if (isDriverOnline) {
+        // Online State (Green theme, knob to right)
+        swipePill.className = "cursor-pointer select-none relative w-full h-9 bg-green-950/80 border border-green-600/70 rounded-full flex items-center justify-between px-2.5 shadow-inner transition-all duration-300";
+        knob.className = "absolute top-[2px] right-[3px] h-7 w-7 rounded-full bg-green-500 text-slate-950 font-black text-[10px] flex items-center justify-center shadow-lg transition-all duration-300";
+        txtOn.className = "text-[9px] font-black text-green-400 tracking-wider transition-opacity";
+        txtOff.className = "text-[9px] font-black text-slate-500 tracking-wider transition-opacity";
+        registerDriver();
+      } else {
+        // Offline State (Red theme, knob to left)
+        swipePill.className = "cursor-pointer select-none relative w-full h-9 bg-red-950/80 border border-red-600/70 rounded-full flex items-center justify-between px-2.5 shadow-inner transition-all duration-300";
+        knob.className = "absolute top-[2px] left-[3px] h-7 w-7 rounded-full bg-red-500 text-white font-black text-[10px] flex items-center justify-center shadow-lg transition-all duration-300";
+        txtOff.className = "text-[9px] font-black text-red-400 tracking-wider transition-opacity";
+        txtOn.className = "text-[9px] font-black text-slate-500 tracking-wider transition-opacity";
+      }
+
+      if (currentDriver?.driverId) {
+        socket.emit('driver:toggle_online', { driverId: currentDriver.driverId, isOnline: isDriverOnline });
+      }
+    }
+
+    // Theme Switcher Engine with Muted Soft Light Background
     function initDriverTheme() {
       const savedTheme = localStorage.getItem('67_driver_theme') || 'dark';
       applyDriverTheme(savedTheme);
@@ -743,8 +779,9 @@
         htmlEl.classList.add('dark');
       }
 
+      // Slightly Muted, Soft-toned Eye Friendly Light Theme
       document.body.className = isLight 
-        ? "bg-slate-100 text-slate-900 min-h-screen p-3 md:p-6 flex flex-col items-center select-none font-sans relative transition-colors duration-200"
+        ? "bg-slate-200/60 text-slate-900 min-h-screen p-3 md:p-6 flex flex-col items-center select-none font-sans relative transition-colors duration-200"
         : "bg-slate-950 text-slate-100 min-h-screen p-3 md:p-6 flex flex-col items-center select-none font-sans relative transition-colors duration-200";
 
       const headerCard = document.getElementById('dashboard-header-card');
@@ -772,11 +809,13 @@
       const plansBox = document.getElementById('recharge-plans-box');
       const customRechargeInput = document.getElementById('custom-recharge-amt');
       const couponInput = document.getElementById('coupon-code-input');
+      const driverHeaderName = document.getElementById('driver-header-name');
 
       if (isLight) {
-        if (headerCard) headerCard.className = "bg-white border border-slate-300 p-4 rounded-3xl shadow-xl flex items-center justify-between transition-colors shrink-0";
-        if (badgeVehicle) badgeVehicle.className = "text-[9px] sm:text-[10px] font-mono font-black px-1.5 py-0.5 rounded-lg border bg-amber-100 text-amber-800 border-amber-300";
-        if (btnHamburger) btnHamburger.className = "w-11 h-11 rounded-2xl border bg-slate-100 hover:bg-slate-200 text-slate-900 border-slate-300 flex items-center justify-center text-xl transition shadow-md active:scale-95";
+        if (headerCard) headerCard.className = "bg-white border border-slate-300 p-3 sm:p-3.5 rounded-3xl shadow-xl flex items-center justify-between transition-colors shrink-0 gap-2";
+        if (driverHeaderName) driverHeaderName.className = "text-xs sm:text-[13px] font-black truncate text-slate-900";
+        if (badgeVehicle) badgeVehicle.className = "text-[9px] font-mono font-black px-1.5 py-0.5 rounded-md border bg-amber-100 text-amber-900 border-amber-300 inline-block mt-0.5";
+        if (btnHamburger) btnHamburger.className = "w-10 h-10 rounded-2xl border bg-slate-100 hover:bg-slate-200 text-slate-900 border-slate-300 flex items-center justify-center text-xl transition shadow-md active:scale-95 shrink-0";
         
         if (radarBox) radarBox.className = "flex-1 w-full min-h-[calc(100vh-140px)] rounded-3xl border border-dashed border-slate-300 bg-white shadow-sm flex flex-col items-center justify-center space-y-8 transition-colors relative overflow-hidden my-auto";
         if (radarTitle) radarTitle.className = "text-lg font-black text-slate-900 tracking-tight";
@@ -808,9 +847,10 @@
         }
         if (activeRideBox) activeRideBox.className = "space-y-2 text-xs bg-slate-100 p-3.5 rounded-2xl border border-slate-300 text-slate-900";
       } else {
-        if (headerCard) headerCard.className = "bg-slate-900 border border-slate-800 p-4 rounded-3xl shadow-2xl flex items-center justify-between transition-colors shrink-0";
-        if (badgeVehicle) badgeVehicle.className = "text-[9px] sm:text-[10px] font-mono font-black px-1.5 py-0.5 rounded-lg border bg-slate-800 text-amber-400 border-slate-700";
-        if (btnHamburger) btnHamburger.className = "w-11 h-11 rounded-2xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-amber-400 flex items-center justify-center text-xl transition shadow-md active:scale-95";
+        if (headerCard) headerCard.className = "bg-slate-900 border border-slate-800 p-3 sm:p-3.5 rounded-3xl shadow-2xl flex items-center justify-between transition-colors shrink-0 gap-2";
+        if (driverHeaderName) driverHeaderName.className = "text-xs sm:text-[13px] font-black truncate text-slate-100";
+        if (badgeVehicle) badgeVehicle.className = "text-[9px] font-mono font-black px-1.5 py-0.5 rounded-md border bg-slate-800 text-amber-400 border-slate-700 inline-block mt-0.5";
+        if (btnHamburger) btnHamburger.className = "w-10 h-10 rounded-2xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-amber-400 flex items-center justify-center text-xl transition shadow-md active:scale-95 shrink-0";
         
         if (radarBox) radarBox.className = "flex-1 w-full min-h-[calc(100vh-140px)] rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 flex flex-col items-center justify-center space-y-8 shadow-xl transition-colors relative overflow-hidden my-auto";
         if (radarTitle) radarTitle.className = "text-lg font-black text-slate-100 tracking-tight";
@@ -842,6 +882,9 @@
         }
         if (activeRideBox) activeRideBox.className = "space-y-2 text-xs bg-slate-950 p-3.5 rounded-2xl border border-slate-800 text-slate-300";
       }
+
+      // Maintain active inDrive switch view state
+      toggleDriverDutyState(isDriverOnline);
     }
 
     // Dynamic Recharge Plans Fetcher
@@ -1126,33 +1169,6 @@
       window.location.reload();
     }
 
-    function toggleDriverDutyState(checked) {
-      if (currentActiveRideId) {
-        alert("⚠️ Active ride ongoing hai. Aap trip ke dauraan offline nahi ja sakte.");
-        document.getElementById('driver-duty-toggle').checked = true;
-        return;
-      }
-
-      isDriverOnline = checked;
-      localStorage.setItem('67_driver_duty', isDriverOnline ? 'true' : 'false');
-      
-      const dot = document.getElementById('duty-status-dot');
-      const gpsIndicator = document.getElementById('gps-status-indicator');
-
-      if (isDriverOnline) {
-        dot.className = "absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-green-500 border-2 border-slate-900 animate-pulse";
-        gpsIndicator.innerHTML = `● ONLINE • Ready for Rides`;
-        registerDriver();
-      } else {
-        dot.className = "absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-red-500 border-2 border-slate-900";
-        gpsIndicator.innerHTML = `● <span class="text-slate-400">OFFLINE</span>`;
-      }
-
-      if (currentDriver?.driverId) {
-        socket.emit('driver:toggle_online', { driverId: currentDriver.driverId, isOnline: isDriverOnline });
-      }
-    }
-
     async function deleteAccountDriver() {
       if (!currentDriver) return;
       if (confirm("⚠️ Kya aap apna driver account permanently delete karna chahte hain? Aapka sara data remove ho jayega.")) {
@@ -1375,14 +1391,7 @@
 
         const savedDuty = localStorage.getItem('67_driver_duty');
         isDriverOnline = (savedDuty !== 'false');
-        document.getElementById('driver-duty-toggle').checked = isDriverOnline;
-        
-        const dot = document.getElementById('duty-status-dot');
-        if (isDriverOnline) {
-          dot.className = "absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-green-500 border-2 border-slate-900 animate-pulse";
-        } else {
-          dot.className = "absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-red-500 border-2 border-slate-900";
-        }
+        toggleDriverDutyState(isDriverOnline);
 
         populateSettingsDetails(driver);
         registerDriver();
@@ -1495,7 +1504,6 @@
 
     function initDriverGPS() {
       if (!navigator.geolocation) {
-        document.getElementById('gps-status-indicator').innerHTML = `● <span class="text-red-400">GPS Off</span>`;
         return;
       }
 
@@ -1539,7 +1547,6 @@
       currentDriver.location = { lat: latitude, lng: longitude };
       
       if (isDriverOnline) {
-        document.getElementById('gps-status-indicator').innerHTML = `● ONLINE • Ready for Rides`;
         registerDriver();
       }
       
