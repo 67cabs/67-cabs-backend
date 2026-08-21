@@ -145,7 +145,7 @@
         <div id="dispatch-waiting-banner" class="hidden bg-amber-50 border border-amber-300 p-4 rounded-2xl text-center space-y-2">
           <div class="text-2xl animate-spin">⏳</div>
           <div class="text-xs font-black text-amber-950">Offering Ride to Selected Driver...</div>
-          <p class="text-[10px] text-amber-800" id="dispatch-timer-text">Awaiting driver response (Auto-timeout in 15s)</p>
+          <p class="text-[10px] text-amber-800" id="dispatch-timer-text">Awaiting driver response (Auto-timeout in 35s)</p>
           <button onclick="cancelRideSearch()" class="text-xs text-red-600 font-bold underline mt-1">Cancel Offer & Pick Another</button>
         </div>
 
@@ -570,10 +570,10 @@
     let currentUser = null;
     let currentSelectedRating = 5;
 
-    // 15-Sec Single-Offer Dispatch Timer & State
+    // 35-Sec Extended Dispatch Timer & State
     let activeTargetDriverId = null;
     let dispatchTimer = null;
-    let dispatchCountdown = 15;
+    let dispatchCountdown = 35;
 
     let mediaRecorder = null;
     let audioChunks = [];
@@ -667,6 +667,11 @@
         if (data.success && data.hasActiveRide && data.trip) {
           const trip = data.trip;
           activeRideId = trip.rideId;
+
+          if (dispatchTimer) {
+            clearInterval(dispatchTimer);
+            dispatchTimer = null;
+          }
 
           if (trip.status === 'COMPLETED' && !trip.isRiderDismissed) {
             showSettlementUI(trip.finalFare || trip.totalFare, trip.driverData?.upiId);
@@ -1135,6 +1140,9 @@
       
       renderProximityCards();
 
+      // Dynamic listener for this exact rideId
+      socket.on(`ride:accepted:${activeRideId}`, handleRideAcceptedEvent);
+
       socket.emit('ride:request_targeted', {
         rideId: activeRideId,
         targetDriverId: targetDriverId,
@@ -1148,7 +1156,7 @@
 
       document.getElementById('dispatch-waiting-banner').classList.remove('hidden');
 
-      dispatchCountdown = 15;
+      dispatchCountdown = 35; // 35 seconds extended time
       document.getElementById('dispatch-timer-text').innerText = `Awaiting driver response (Auto-timeout in ${dispatchCountdown}s)`;
 
       if (dispatchTimer) clearInterval(dispatchTimer);
@@ -1160,6 +1168,7 @@
           clearInterval(dispatchTimer);
           dispatchTimer = null;
           cancelRideSearchSilent();
+          alert("⚠️ Driver was unavailable or did not respond in time. Button is active again.");
         }
       }, 1000);
     }
@@ -1167,6 +1176,7 @@
     function cancelRideSearchSilent() {
       if (activeRideId) {
         socket.emit('ride:cancel', { rideId: activeRideId });
+        socket.off(`ride:accepted:${activeRideId}`);
       }
       activeRideId = null;
       activeTargetDriverId = null;
@@ -1196,7 +1206,7 @@
       alert("⚠️ Driver was unavailable or busy. Button is active again to re-offer or pick another cab.");
     });
 
-    socket.on('ride:accepted', ({ rideId, driver, otp, fare }) => {
+    function handleRideAcceptedEvent({ rideId, driver, otp, fare }) {
       if (dispatchTimer) {
         clearInterval(dispatchTimer);
         dispatchTimer = null;
@@ -1215,9 +1225,9 @@
       document.getElementById('step-1-route-builder').classList.add('hidden');
       document.getElementById('step-2-cab-selection').classList.add('hidden');
 
-      document.getElementById('assigned-driver-name').innerText = driver.name;
-      document.getElementById('assigned-vehicle-no').innerText = driver.vehicleNo || driver.cabNumber || 'RJ 14 TA 6767';
-      document.getElementById('display-otp').innerText = otp;
+      document.getElementById('assigned-driver-name').innerText = driver?.name || 'Driver';
+      document.getElementById('assigned-vehicle-no').innerText = driver?.vehicleNo || driver?.cabNumber || 'RJ 14 TA 6767';
+      document.getElementById('display-otp').innerText = otp || '----';
       document.getElementById('otp-container-box').classList.remove('hidden');
       document.getElementById('ride-status-badge').innerText = 'Driver Assigned & En Route';
       document.getElementById('ride-status-badge').className = 'text-[10px] text-green-400 font-bold uppercase tracking-wider';
@@ -1227,10 +1237,12 @@
       document.getElementById('btn-cancel-ride').classList.remove('hidden');
       document.getElementById('btn-early-drop').className = 'flex-1 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 font-bold py-2.5 rounded-xl text-xs transition';
 
-      document.getElementById('verify-driver-name').innerText = driver.name;
-      document.getElementById('verify-plate-no').innerText = driver.vehicleNo || 'RJ 14 TA 6767';
-      document.getElementById('verify-otp-display').innerText = otp;
-    });
+      document.getElementById('verify-driver-name').innerText = driver?.name || 'Driver';
+      document.getElementById('verify-plate-no').innerText = driver?.vehicleNo || 'RJ 14 TA 6767';
+      document.getElementById('verify-otp-display').innerText = otp || '----';
+    }
+
+    socket.on('ride:accepted', handleRideAcceptedEvent);
 
     function handleDriverArrivalUI() {
       tripPhase = 'ARRIVED';
