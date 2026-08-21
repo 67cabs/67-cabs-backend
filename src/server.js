@@ -72,6 +72,7 @@ if (MONGO_URI) {
       await Driver.updateMany({}, { $set: { isOnline: false } });
       await DriverLocation.updateMany({}, { $set: { isOnline: false } });
       await refreshFareConfigCache();
+      await initDefaultPlans();
     } catch (e) {}
   })
   .catch((err) => {
@@ -341,6 +342,39 @@ const fareConfigSchema = new mongoose.Schema({
 
 const FareConfig = mongoose.model('FareConfig', fareConfigSchema);
 
+// 10. Dynamic Driver Recharge Plans Schema (MongoDB Atlas Driven)
+const rechargePlanSchema = new mongoose.Schema({
+  key: { type: String, default: 'global_recharge_plans', unique: true },
+  adminUpiId: { type: String, default: '67cabs@upi' },
+  plans: [{
+    planId: String,
+    title: String,
+    amount: Number,
+    validityDays: Number,
+    ridesLimit: Number,
+    isPopular: Boolean
+  }]
+}, { timestamps: true });
+
+const RechargePlan = mongoose.model('RechargePlan', rechargePlanSchema);
+
+async function initDefaultPlans() {
+  try {
+    const existing = await RechargePlan.findOne({ key: 'global_recharge_plans' });
+    if (!existing) {
+      await RechargePlan.create({
+        key: 'global_recharge_plans',
+        adminUpiId: '67cabs@upi',
+        plans: [
+          { planId: 'p_100', title: '7 Days Pass', amount: 100, validityDays: 7, ridesLimit: 50, isPopular: false },
+          { planId: 'p_250', title: '30 Days Pass', amount: 250, validityDays: 30, ridesLimit: 200, isPopular: true },
+          { planId: 'p_500', title: 'VIP Unlimited', amount: 500, validityDays: 60, ridesLimit: 9999, isPopular: false }
+        ]
+      });
+    }
+  } catch (e) {}
+}
+
 // Fast In-Memory Fare Rules Cache
 let cachedFareConfig = null;
 async function refreshFareConfigCache() {
@@ -469,6 +503,34 @@ app.get('/api/fare/public-rates', async (req, res) => {
       success: true,
       rates: { HATCHBACK: 16, SEDAN: 20, SUV: 25 }
     });
+  }
+});
+
+// ---------------- DYNAMIC RECHARGE PLANS API (MONGODB DRIVEN) ----------------
+app.get('/api/driver/recharge-plans', async (req, res) => {
+  try {
+    let doc = await RechargePlan.findOne({ key: 'global_recharge_plans' });
+    if (!doc) {
+      await initDefaultPlans();
+      doc = await RechargePlan.findOne({ key: 'global_recharge_plans' });
+    }
+    return res.json({ success: true, data: doc });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+app.post('/api/admin/recharge-plans', async (req, res) => {
+  try {
+    const { adminUpiId, plans } = req.body;
+    const updated = await RechargePlan.findOneAndUpdate(
+      { key: 'global_recharge_plans' },
+      { adminUpiId: adminUpiId ? adminUpiId.trim() : '67cabs@upi', plans: plans || [] },
+      { new: true, upsert: true }
+    );
+    return res.json({ success: true, message: 'Recharge plans updated in MongoDB!', data: updated });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: e.message });
   }
 });
 
@@ -852,7 +914,7 @@ app.post('/api/rider/upload-kyc', async (req, res) => {
     const updated = await Rider.findOneAndUpdate(
       {
         $or: [
-          { phone: cleanPhone },
+          { cleanPhone },
           { phone: phone.trim() },
           { phone: { $regex: cleanPhone + '$' } }
         ]
