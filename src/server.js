@@ -369,6 +369,90 @@ app.post('/api/driver/push-subscription', async (req, res) => {
   }
 });
 
+// ---------------- BACKGROUND ACTION HANDLERS FOR PUSH NOTIFICATIONS ----------------
+app.post('/api/ride/accept-bg', async (req, res) => {
+  try {
+    const { rideId, driverId } = req.body;
+    if (!rideId || !driverId) {
+      return res.status(400).json({ success: false, message: 'Ride ID and Driver ID required.' });
+    }
+
+    const driver = await Driver.findOne({ driverId, status: 'APPROVED' });
+    if (!driver) {
+      return res.status(403).json({ success: false, message: 'Driver not found or not approved.' });
+    }
+
+    const startOtp = Math.floor(1000 + Math.random() * 9000).toString();
+    const updatedTrip = await Trip.findOneAndUpdate(
+      { rideId, status: 'SEARCHING' },
+      {
+        status: 'ACCEPTED',
+        driverData: {
+          driverId: driver.driverId,
+          name: driver.name,
+          vehicleNo: driver.vehicleNo,
+          phone: driver.phone,
+          upiId: driver.upiId
+        },
+        otp: startOtp
+      },
+      { new: true }
+    );
+
+    if (!updatedTrip) {
+      return res.status(400).json({ success: false, message: 'Ride already accepted or cancelled.' });
+    }
+
+    const ride = activeRides.get(rideId);
+    if (ride) {
+      ride.status = 'ACCEPTED';
+      ride.driverData = updatedTrip.driverData;
+      ride.otp = startOtp;
+      activeRides.set(rideId, ride);
+
+      if (ride.riderSocketId) {
+        io.to(ride.riderSocketId).emit('ride:accepted', {
+          rideId,
+          driver: ride.driverData,
+          otp: startOtp,
+          fare: updatedTrip.totalFare
+        });
+      }
+    }
+
+    io.emit(`ride:accepted:${rideId}`, {
+      rideId,
+      driver: updatedTrip.driverData,
+      otp: startOtp,
+      fare: updatedTrip.totalFare
+    });
+
+    io.emit('ride:taken', { rideId });
+
+    return res.json({ success: true, trip: updatedTrip });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/ride/decline', async (req, res) => {
+  try {
+    const { rideId } = req.body;
+    if (!rideId) return res.status(400).json({ success: false, message: 'Ride ID required.' });
+
+    const ride = activeRides.get(rideId);
+    if (ride && ride.riderSocketId) {
+      io.to(ride.riderSocketId).emit('ride:declined_targeted', { rideId });
+    }
+    io.emit('ride:declined_targeted', { rideId });
+    activeRides.delete(rideId);
+
+    return res.json({ success: true, message: 'Ride declined.' });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ---------------- RIDER AUTH & KYC ROUTES ----------------
 
 app.post('/api/rider/signup', async (req, res) => {
@@ -1242,7 +1326,7 @@ app.get('/api/cabs/nearby-all', async (req, res) => {
 
     return res.json({ success: true, drivers: driversList });
   } catch (e) {
-    return res.status(500).json({ success: false, error: e.message });
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -1272,7 +1356,7 @@ app.get('/api/cabs/nearby', async (req, res) => {
 
     return res.json({ success: false, driverCoords: null });
   } catch (e) {
-    return res.status(500).json({ success: false, error: e.message });
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -1359,7 +1443,7 @@ io.on('connection', (socket) => {
     console.log(`🚪 Driver ${driverId} logged out & purged from active radar.`);
   });
 
-  // 2. Targeted 1-Click Ride Request (Dual Dispatch: Direct Room + Socket Map + Web Push)
+  // 2. Targeted 1-Click Ride Request (Dual Dispatch: Direct Room + Socket Map + Rich Web Push)
   socket.on('ride:request_targeted', async (rideData) => {
     const { rideId, targetDriverId, pickup, stops, cabCategory, totalDistanceKm, totalFare, rider } = rideData;
 
@@ -1400,11 +1484,15 @@ io.on('connection', (socket) => {
         io.to(sId).emit('ride:new_offer', ridePayload);
       }
 
-      // Web Push Notification Trigger
+      // Rich Actionable Web Push Notification Payload
       sendDriverPushNotification(targetDriverId, {
         title: '🚖 Nayi Direct Ride Request!',
-        body: `Kiraya: ₹${ridePayload.totalFare} | Pickup location check karein.`,
-        data: { rideId: ridePayload.rideId, url: '/driver.html' }
+        body: `Kiraya: ₹${ridePayload.totalFare}`,
+        rideId: ridePayload.rideId,
+        fare: ridePayload.totalFare,
+        pickup: pickup?.text || 'Pickup Location',
+        drop: stops?.[0]?.text || 'Drop Location',
+        data: { rideId: ridePayload.rideId, url: `/driver.html?status=ongoing&id=${ridePayload.rideId}&autoAccept=true` }
       });
 
       console.log(`🎯 Targeted Ride ${rideId} dispatched to Driver Room: driver:${targetDriverId}`);
@@ -1459,11 +1547,15 @@ io.on('connection', (socket) => {
       if (driver.status === 'APPROVED' && driver.isOnline !== false && (driver.cabType === requestedCabType || requestedCabType === 'ALL')) {
         io.to(`driver:${driver.driverId}`).emit('ride:new_offer', ridePayload);
 
-        // Web Push Notification Trigger to all matching drivers
+        // Rich Actionable Web Push Notification Payload to all matching drivers
         sendDriverPushNotification(driver.driverId, {
           title: '🚖 Nayi Ride Request!',
           body: `Category: ${requestedCabType} | Kiraya: ₹${totalFare}`,
-          data: { rideId, url: '/driver.html' }
+          rideId: rideId,
+          fare: totalFare,
+          pickup: pickup?.text || 'Pickup Location',
+          drop: drop?.text || 'Drop Location',
+          data: { rideId, url: `/driver.html?status=ongoing&id=${rideId}&autoAccept=true` }
         });
       }
     });

@@ -1011,6 +1011,32 @@
       } catch (e) {}
     }
 
+    async function handleUrlDeepLink() {
+      const params = new URLSearchParams(window.location.search);
+      const targetRideId = params.get('id');
+      const autoAccept = params.get('autoAccept');
+
+      if (targetRideId && autoAccept === 'true' && currentDriver) {
+        try {
+          const res = await fetch('/api/ride/accept-bg', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              rideId: targetRideId,
+              driverId: currentDriver.driverId
+            })
+          });
+          const data = await res.json();
+          if (data.success) {
+            window.history.replaceState({}, document.title, "/driver.html");
+            await checkAndRestoreActiveRide();
+          }
+        } catch (e) {
+          console.warn("Auto-accept failed:", e.message);
+        }
+      }
+    }
+
     function initDriverSession(driver) {
       if (!driver) return;
       currentDriver = driver;
@@ -1073,6 +1099,7 @@
         registerDriver();
         initDriverGPS();
         checkAndRestoreActiveRide();
+        handleUrlDeepLink();
         initDriverPushSubscription(driver.driverId);
       }
     }
@@ -1117,6 +1144,7 @@
         await requestWakeLock();
         registerDriver();
         checkAndRestoreActiveRide();
+        handleUrlDeepLink();
       }
     });
 
@@ -1136,6 +1164,7 @@
     socket.on('connect', () => {
       registerDriver();
       checkAndRestoreActiveRide();
+      handleUrlDeepLink();
     });
 
     setInterval(() => {
