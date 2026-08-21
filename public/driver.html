@@ -1014,9 +1014,8 @@
     async function handleUrlDeepLink() {
       const params = new URLSearchParams(window.location.search);
       const targetRideId = params.get('id');
-      const autoAccept = params.get('autoAccept');
 
-      if (targetRideId && autoAccept === 'true' && currentDriver) {
+      if (targetRideId && currentDriver) {
         try {
           const res = await fetch('/api/ride/accept-bg', {
             method: 'POST',
@@ -1150,7 +1149,6 @@
       }
     });
 
-    // Send instant offline update before closing page
     window.addEventListener('beforeunload', () => {
       if (currentDriver?.driverId && !currentActiveRideId) {
         socket.emit('driver:toggle_online', { driverId: currentDriver.driverId, isOnline: false });
@@ -1170,6 +1168,7 @@
         location: currentDriver.location || null
       });
     }
+    
     socket.on('connect', () => {
       if (isDriverOnline) registerDriver();
       checkAndRestoreActiveRide();
@@ -1349,7 +1348,7 @@
       const timer = setTimeout(() => {
         removeOffer(offer.rideId);
         offerExpireTimers.delete(offer.rideId);
-      }, 15000);
+      }, 35000); // Extended from 15s to 35s to match rider timeout
       offerExpireTimers.set(offer.rideId, timer);
     }
 
@@ -1386,6 +1385,10 @@
       }
     });
 
+    socket.on('driver:ride_confirmed', (rideData) => {
+      checkAndRestoreActiveRide();
+    });
+
     // ==========================================
     // RIDE ACCEPTANCE & AUTO-DECLINE QUEUE
     // ==========================================
@@ -1405,9 +1408,10 @@
       socket.emit('ride:accept', {
         rideId: selected.rideId,
         driverData: { 
+          driverId: currentDriver.driverId,
           name: currentDriver.name, 
           vehicleNo: currentDriver.vehicleNo, 
-          phone: currentDriver.phone,
+          phone: currentDriver.phone, 
           upiId: currentDriver.upiId
         }
       });
@@ -1683,7 +1687,6 @@
       }
     }
 
-    // Fetch Eligible coupons from MongoDB for logged in Driver
     async function fetchDriverEligibleCoupons() {
       if (!currentDriver?.driverId) return;
       const listContainer = document.getElementById('driver-eligible-coupons-list');
@@ -1790,7 +1793,7 @@
       if (!amt || amt < 50) return alert("Minimum recharge amount is ₹50.");
 
       const payableAmt = appliedCouponData ? appliedCouponData.finalAmount : amt;
-      const creditAmt = amt; // Driver ko wallet me pura recharge amount milega
+      const creditAmt = amt;
 
       alert(`⚡ Redirecting to UPI payment for ₹${payableAmt} (Wallet Credit: ₹${creditAmt})...`);
       
