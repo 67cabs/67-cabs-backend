@@ -1,11 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Location & Network Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
+    <!-- Foreground Service Permissions (Background GPS Tracking for YouTube/App Minimize) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
     <!-- Overlay & Full-Screen Ride Alert Permissions (Ola/Uber Style) -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -46,6 +51,7 @@
             android:launchMode="singleTask"
             android:showOnLockScreen="true"
             android:turnScreenOn="true"
+            tools:targetApi="o_mr1"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
 
         <!-- FCM Background Receiver Service -->
@@ -57,6 +63,13 @@
             </intent-filter>
         </service>
 
+        <!-- Foreground Location Tracking Service (Background GPS) -->
+        <service
+            android:name=".LocationService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -64,8 +77,9 @@
             android:grantUriPermissions="true">
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths"></meta-data>
+                android:resource="@xml/file_paths" />
         </provider>
+
     </application>
 
 </manifest>
