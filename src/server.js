@@ -487,7 +487,7 @@ app.post('/api/driver/support-ticket', async (req, res) => {
       status: 'OPEN'
     });
 
-    // Real-time broadcast to Admin
+    // Real-time broadcast to Admin Dashboard
     io.emit('admin:new_support_ticket', ticket);
 
     return res.status(201).json({ success: true, message: 'Aapka message admin tak pahuch gaya hai. Ham jald hi aapse contact karenge.', ticket });
@@ -1926,7 +1926,7 @@ io.on('connection', (socket) => {
       cabType: requestedCabType, 
       rideId, 
       riderSocketId: socket.id, 
-      status: 'SEARCHING',
+      status: 'SEARCHING', 
       soundName: globalActiveSound,
       startTime: new Date() 
     };
@@ -2266,9 +2266,9 @@ io.on('connection', (socket) => {
           status: 'COMPLETED', 
           finalFare: finalAmount, 
           isEarlyDrop, 
-          earlyDropReason: settlementReason,
-          isRiderDismissed: false,
-          isDriverDismissed: false,
+          earlyDropReason: settlementReason, 
+          isRiderDismissed: false, 
+          isDriverDismissed: false, 
           endTime: new Date() 
         },
         { new: true }

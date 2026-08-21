@@ -404,7 +404,7 @@
         <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-4 text-xs mt-6">
           <div class="flex justify-between items-center border-b border-slate-800 pb-2">
             <div class="font-black text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-              <span>💳</span> Admin Receiving UPI ID & Recharge Plans Controller
+              <span>💳</span> Admin Receiving UPI ID & Dynamic Recharge Passes Engine
             </div>
             <span class="text-[9px] text-slate-400">Live in MongoDB</span>
           </div>
@@ -416,9 +416,16 @@
             </div>
           </div>
 
-          <div class="space-y-2">
-            <label class="text-[10px] font-bold text-slate-400 uppercase block">Configured Driver Recharge Passes (Amount & Validity Days)</label>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <!-- Dynamic Add/Remove Plan Items Container -->
+          <div class="space-y-3 pt-2">
+            <div class="flex justify-between items-center">
+              <label class="text-[10px] font-bold text-slate-400 uppercase block">Configured Driver Recharge Passes (Amount & Validity Days)</label>
+              <button onclick="addNewPlanField()" type="button" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow">
+                <span>➕ Add New Recharge Plan</span>
+              </button>
+            </div>
+            
+            <div id="dynamic-admin-plans-container" class="grid grid-cols-1 md:grid-cols-3 gap-3">
               <!-- Plan 1 -->
               <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-2">
                 <span class="text-[10px] font-bold text-amber-300 block">Plan 1 (Starter)</span>
@@ -546,6 +553,7 @@
     let ridersData = [];
     let couponsData = [];
     let supportTicketsData = [];
+    let currentAdminPlans = [];
     let selectedDriverId = null;
     let selectedRiderPhone = null;
 
@@ -1214,36 +1222,74 @@
       } catch (e) {}
     }
 
+    function addNewPlanField() {
+      const container = document.getElementById('dynamic-admin-plans-container');
+      if (!container) return;
+      const count = container.children.length + 1;
+      const newPlanDiv = document.createElement('div');
+      newPlanDiv.className = "bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-2";
+      newPlanDiv.innerHTML = `
+        <div class="flex justify-between items-center">
+          <span class="text-[10px] font-bold text-amber-300 block">Plan ${count}</span>
+          <button type="button" onclick="this.parentElement.parentElement.remove()" class="text-red-400 text-[10px] font-bold">✕ Remove</button>
+        </div>
+        <input type="text" placeholder="Plan Title" value="Special Pass" class="dynamic-plan-title w-full bg-slate-950 border border-slate-700 text-white rounded-lg p-1.5 text-[11px]" />
+        <div class="flex gap-2">
+          <input type="number" placeholder="₹ Amount" value="300" class="dynamic-plan-amt w-1/2 bg-slate-950 border border-slate-700 text-green-400 font-mono rounded-lg p-1.5 text-[11px]" />
+          <input type="number" placeholder="Days" value="15" class="dynamic-plan-days w-1/2 bg-slate-950 border border-slate-700 text-white rounded-lg p-1.5 text-[11px]" />
+        </div>
+      `;
+      container.appendChild(newPlanDiv);
+    }
+
     async function saveAdminRechargePlans() {
       const upiId = document.getElementById('admin-receiving-upi-input').value.trim();
       if (!upiId) return alert('Please enter Admin UPI ID.');
 
-      const plans = [
-        {
-          planId: 'p_100',
-          title: document.getElementById('plan1-title').value.trim() || '7 Days Pass',
-          amount: Number(document.getElementById('plan1-amt').value) || 100,
-          validityDays: Number(document.getElementById('plan1-days').value) || 7,
-          ridesLimit: 50,
-          isPopular: false
-        },
-        {
-          planId: 'p_250',
-          title: document.getElementById('plan2-title').value.trim() || '30 Days Pass',
-          amount: Number(document.getElementById('plan2-amt').value) || 250,
-          validityDays: Number(document.getElementById('plan2-days').value) || 30,
-          ridesLimit: 200,
-          isPopular: true
-        },
-        {
-          planId: 'p_500',
-          title: document.getElementById('plan3-title').value.trim() || 'VIP Unlimited',
-          amount: Number(document.getElementById('plan3-amt').value) || 500,
-          validityDays: Number(document.getElementById('plan3-days').value) || 60,
-          ridesLimit: 9999,
-          isPopular: false
+      const plans = [];
+
+      // Base fixed plan inputs
+      const p1Title = document.getElementById('plan1-title')?.value.trim();
+      const p1Amt = Number(document.getElementById('plan1-amt')?.value);
+      const p1Days = Number(document.getElementById('plan1-days')?.value);
+      if (p1Title && p1Amt) {
+        plans.push({ planId: 'p_100', title: p1Title, amount: p1Amt, validityDays: p1Days || 7, ridesLimit: 50, isPopular: false });
+      }
+
+      const p2Title = document.getElementById('plan2-title')?.value.trim();
+      const p2Amt = Number(document.getElementById('plan2-amt')?.value);
+      const p2Days = Number(document.getElementById('plan2-days')?.value);
+      if (p2Title && p2Amt) {
+        plans.push({ planId: 'p_250', title: p2Title, amount: p2Amt, validityDays: p2Days || 30, ridesLimit: 200, isPopular: true });
+      }
+
+      const p3Title = document.getElementById('plan3-title')?.value.trim();
+      const p3Amt = Number(document.getElementById('plan3-amt')?.value);
+      const p3Days = Number(document.getElementById('plan3-days')?.value);
+      if (p3Title && p3Amt) {
+        plans.push({ planId: 'p_500', title: p3Title, amount: p3Amt, validityDays: p3Days || 60, ridesLimit: 9999, isPopular: false });
+      }
+
+      // Additional dynamic plans added via + Add button
+      const titles = document.querySelectorAll('.dynamic-plan-title');
+      const amounts = document.querySelectorAll('.dynamic-plan-amt');
+      const days = document.querySelectorAll('.dynamic-plan-days');
+
+      titles.forEach((el, index) => {
+        const title = el.value.trim();
+        const amount = Number(amounts[index]?.value);
+        const validityDays = Number(days[index]?.value);
+        if (title && amount) {
+          plans.push({
+            planId: `p_dyn_${Date.now()}_${index}`,
+            title,
+            amount,
+            validityDays: validityDays || 1,
+            ridesLimit: 9999,
+            isPopular: false
+          });
         }
-      ];
+      });
 
       try {
         const res = await fetch('/api/admin/recharge-plans', {
