@@ -12,6 +12,9 @@ import android.content.SharedPreferences;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.media.AudioAttributes;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -29,17 +32,34 @@ import io.socket.client.Socket;
 public class LocationService extends Service {
 
     private static final String CHANNEL_ID = "DriverLocationChannel";
-    private static final String ALERT_CHANNEL_ID = "DriverIncomingRideAlertChannel";
+    private static final String ALERT_CHANNEL_ID = "DriverIncomingRideAlertChannel_v4";
+    private static final int ALERT_NOTIFICATION_ID = 6705;
+
     private LocationManager locationManager;
     private LocationListener locationListener;
     private Socket mSocket;
     private PowerManager.WakeLock wakeLock;
+    private String cachedDriverId = "";
 
     @Override
     public void onCreate() {
         super.onCreate();
+        loadCachedDriverId();
         createNotificationChannels();
         initNativeBackgroundSocket();
+    }
+
+    private void loadCachedDriverId() {
+        try {
+            SharedPreferences prefs = getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE);
+            String driverSessionJson = prefs.getString("67_driver_session", null);
+            if (driverSessionJson != null) {
+                JSONObject driver = new JSONObject(driverSessionJson);
+                cachedDriverId = driver.optString("driverId", "");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -63,28 +83,20 @@ public class LocationService extends Service {
             IO.Options opts = new IO.Options();
             opts.transports = new String[]{"websocket", "polling"};
             opts.reconnection = true;
-            opts.reconnectionAttempts = 50;
+            opts.reconnectionAttempts = 100;
             opts.reconnectionDelay = 1000;
 
             mSocket = IO.socket("https://137.23.57.23.sslip.io", opts);
 
             mSocket.on(Socket.EVENT_CONNECT, args -> {
-                SharedPreferences prefs = getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE);
-                String driverSessionJson = prefs.getString("67_driver_session", null);
-                if (driverSessionJson != null) {
+                loadCachedDriverId();
+                if (!cachedDriverId.isEmpty()) {
                     try {
-                        JSONObject driver = new JSONObject(driverSessionJson);
-                        String driverId = driver.optString("driverId", "");
-                        if (!driverId.isEmpty()) {
-                            JSONObject regData = new JSONObject();
-                            regData.put("driverId", driverId);
-                            regData.put("name", driver.optString("name", ""));
-                            regData.put("vehicleNo", driver.optString("vehicleNo", ""));
-                            regData.put("cabType", driver.optString("cabType", "HATCHBACK"));
-                            regData.put("status", "APPROVED");
-                            regData.put("isOnline", true);
-                            mSocket.emit("driver:register", regData);
-                        }
+                        JSONObject regData = new JSONObject();
+                        regData.put("driverId", cachedDriverId);
+                        regData.put("status", "APPROVED");
+                        regData.put("isOnline", true);
+                        mSocket.emit("driver:register", regData);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -108,31 +120,49 @@ public class LocationService extends Service {
         try {
             String rideId = offer.optString("rideId", "");
             String fare = offer.optString("totalFare", "0");
+            String driverId = offer.optString("targetDriverId", cachedDriverId);
             String pickup = "Jaipur Pickup Point";
             String drop = "Drop Destination";
 
             if (offer.has("pickupName")) {
                 pickup = offer.optString("pickupName");
             } else if (offer.has("pickup")) {
-                pickup = offer.optJSONObject("pickup").optString("text", "Jaipur Pickup Point");
+                JSONObject pObj = offer.optJSONObject("pickup");
+                if (pObj != null) pickup = pObj.optString("text", "Jaipur Pickup Point");
             }
 
             if (offer.has("dropName")) {
                 drop = offer.optString("dropName");
-            } else if (offer.has("stops") && offer.optJSONArray("stops").length() > 0) {
-                drop = offer.optJSONArray("stops").optJSONObject(0).optString("text", "Drop Destination");
+            } else if (offer.has("stops") && offer.optJSONArray("stops") != null && offer.optJSONArray("stops").length() > 0) {
+                JSONObject sObj = offer.optJSONArray("stops").optJSONObject(0);
+                if (sObj != null) drop = sObj.optString("text", "Drop Destination");
             }
 
-            // Wake up Screen (Even if phone locked/screen off)
+            // 1. Instant Hardware Screen Wakeup
             PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-            if (pm != null && (wakeLock == null || !wakeLock.isHeld())) {
-                wakeLock = pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP | PowerManager.ON_AFTER_RELEASE, "67Cabs:RideWakeLock");
+            if (pm != null) {
+                if (wakeLock != null && wakeLock.isHeld()) {
+                    wakeLock.release();
+                }
+                wakeLock = pm.newWakeLock(
+                        PowerManager.FULL_WAKE_LOCK |
+                                PowerManager.ACQUIRE_CAUSES_WAKEUP |
+                                PowerManager.ON_AFTER_RELEASE,
+                        "67Cabs:LocationServiceRideWakeLock"
+                );
                 wakeLock.acquire(15000);
             }
 
+            // 2. Setup Full Screen Intent
             Intent fullScreenIntent = new Intent(this, IncomingRideActivity.class);
-            fullScreenIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            fullScreenIntent.addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK |
+                            Intent.FLAG_ACTIVITY_CLEAR_TOP |
+                            Intent.FLAG_ACTIVITY_SINGLE_TOP |
+                            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+            );
             fullScreenIntent.putExtra("rideId", rideId);
+            fullScreenIntent.putExtra("driverId", driverId);
             fullScreenIntent.putExtra("fare", fare);
             fullScreenIntent.putExtra("pickup", pickup);
             fullScreenIntent.putExtra("drop", drop);
@@ -144,23 +174,33 @@ public class LocationService extends Service {
                     PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0)
             );
 
+            Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+
             Notification alertNotification = new NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
                     .setSmallIcon(android.R.drawable.ic_dialog_alert)
                     .setContentTitle("🚖 NEW RIDE REQUEST!")
                     .setContentText("₹" + fare + " • " + pickup + " ➔ " + drop)
                     .setPriority(NotificationCompat.PRIORITY_MAX)
                     .setCategory(NotificationCompat.CATEGORY_CALL)
+                    .setSound(soundUri)
                     .setFullScreenIntent(pendingIntent, true)
                     .setContentIntent(pendingIntent)
                     .setAutoCancel(true)
+                    .setOngoing(true)
                     .build();
+
+            alertNotification.flags |= Notification.FLAG_INSISTENT;
 
             NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             if (manager != null) {
-                manager.notify(6705, alertNotification);
+                manager.notify(ALERT_NOTIFICATION_ID, alertNotification);
             }
 
-            startActivity(fullScreenIntent);
+            // Direct Overlay Launch
+            try {
+                startActivity(fullScreenIntent);
+            } catch (Exception ignored) {}
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -210,6 +250,9 @@ public class LocationService extends Service {
                 JSONObject jsonParam = new JSONObject();
                 jsonParam.put("latitude", lat);
                 jsonParam.put("longitude", lng);
+                if (!cachedDriverId.isEmpty()) {
+                    jsonParam.put("driverId", cachedDriverId);
+                }
 
                 OutputStream os = conn.getOutputStream();
                 os.write(jsonParam.toString().getBytes(StandardCharsets.UTF_8));
@@ -226,7 +269,7 @@ public class LocationService extends Service {
 
     private void createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationManager manager = getSystemService(NotificationManager.class);
+            NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             if (manager != null) {
                 NotificationChannel trackChannel = new NotificationChannel(
                         CHANNEL_ID,
@@ -235,13 +278,23 @@ public class LocationService extends Service {
                 );
                 manager.createNotificationChannel(trackChannel);
 
+                Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
                 NotificationChannel alertChannel = new NotificationChannel(
                         ALERT_CHANNEL_ID,
                         "Driver Incoming Ride Full Screen",
                         NotificationManager.IMPORTANCE_HIGH
                 );
+                alertChannel.setDescription("Shows full screen incoming ride requests over any open app");
                 alertChannel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
                 alertChannel.enableVibration(true);
+                alertChannel.setBypassDnd(true);
+
+                AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                        .build();
+                alertChannel.setSound(soundUri, audioAttributes);
+
                 manager.createNotificationChannel(alertChannel);
             }
         }

@@ -4,14 +4,18 @@ import android.app.Activity;
 import android.app.KeyguardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
+import android.media.AudioManager;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.CountDownTimer;
-import android.os.Vibrator;
+import android.os.PowerManager;
 import android.os.VibrationEffect;
+import android.os.Vibrator;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
@@ -26,20 +30,44 @@ public class IncomingRideActivity extends Activity {
     private Ringtone ringtone;
     private Vibrator vibrator;
     private CountDownTimer countDownTimer;
+    private PowerManager.WakeLock screenWakeLock;
+    private AudioManager audioManager;
+    private AudioFocusRequest audioFocusRequest;
+
     private String currentRideId = "";
     private String currentDriverId = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+        // 1. Force Screen ON & Display Over Other Apps / Lockscreen
+        wakeAndUnlockScreen();
 
-        // Turn Screen ON & Show over YouTube / Lockscreen
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_incoming_ride);
+
+        extractIntentData(getIntent());
+        setupUI();
+        startAlertEffects();
+        start15SecondTimer();
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        wakeAndUnlockScreen();
+        extractIntentData(intent);
+        setupUI();
+        start15SecondTimer();
+    }
+
+    private void wakeAndUnlockScreen() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true);
             setTurnScreenOn(true);
-            KeyguardManager keyguardManager = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
-            if (keyguardManager != null) {
-                keyguardManager.requestDismissKeyguard(this, null);
+            KeyguardManager km = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+            if (km != null) {
+                km.requestDismissKeyguard(this, null);
             }
         }
 
@@ -47,13 +75,32 @@ public class IncomingRideActivity extends Activity {
                 WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
                         WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD |
                         WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON |
-                        WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+                        WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON |
+                        WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON
         );
 
-        setContentView(R.layout.activity_incoming_ride);
+        try {
+            PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (pm != null) {
+                screenWakeLock = pm.newWakeLock(
+                        PowerManager.SCREEN_BRIGHT_WAKE_LOCK |
+                                PowerManager.ACQUIRE_CAUSES_WAKEUP |
+                                PowerManager.ON_AFTER_RELEASE,
+                        "67Cabs:IncomingRideOverlayWakeLock"
+                );
+                screenWakeLock.acquire(16000); // 16 seconds
+            }
+        } catch (Exception ignored) {}
+    }
 
-        currentRideId = getIntent().getStringExtra("rideId");
-        currentDriverId = getIntent().getStringExtra("driverId");
+    private void extractIntentData(Intent intent) {
+        if (intent != null) {
+            currentRideId = intent.getStringExtra("rideId");
+            currentDriverId = intent.getStringExtra("driverId");
+        }
+    }
+
+    private void setupUI() {
         String pickup = getIntent().getStringExtra("pickup");
         String drop = getIntent().getStringExtra("drop");
         String fare = getIntent().getStringExtra("fare");
@@ -61,13 +108,47 @@ public class IncomingRideActivity extends Activity {
         TextView tvPickup = findViewById(R.id.tvPickup);
         TextView tvDrop = findViewById(R.id.tvDrop);
         TextView tvFare = findViewById(R.id.tvFare);
-        TextView tvTimer = findViewById(R.id.tvTimer);
         Button btnAccept = findViewById(R.id.btnAccept);
         Button btnDecline = findViewById(R.id.btnDecline);
 
-        if (tvPickup != null) tvPickup.setText(pickup != null ? pickup : "Pickup Point");
-        if (tvDrop != null) tvDrop.setText(drop != null ? drop : "Drop Destination");
-        if (tvFare != null) tvFare.setText("₹" + (fare != null ? fare : "0"));
+        if (tvPickup != null) tvPickup.setText(pickup != null && !pickup.isEmpty() ? pickup : "Pickup Location");
+        if (tvDrop != null) tvDrop.setText(drop != null && !drop.isEmpty() ? drop : "Drop Destination");
+        if (tvFare != null) tvFare.setText("₹" + (fare != null && !fare.isEmpty() ? fare : "0"));
+
+        if (btnAccept != null) {
+            btnAccept.setOnClickListener(v -> {
+                sendRideDecisionToServer(true);
+                dismissAlert();
+                openDriverAppDashboard();
+            });
+        }
+
+        if (btnDecline != null) {
+            btnDecline.setOnClickListener(v -> {
+                sendRideDecisionToServer(false);
+                dismissAlert();
+            });
+        }
+    }
+
+    private void startAlertEffects() {
+        // Mute YouTube/Background Audio & Focus on Ride Tone
+        try {
+            audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (audioManager != null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    audioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                            .setAudioAttributes(new AudioAttributes.Builder()
+                                    .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                                    .build())
+                            .build();
+                    audioManager.requestAudioFocus(audioFocusRequest);
+                } else {
+                    audioManager.requestAudioFocus(null, AudioManager.STREAM_RING, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK);
+                }
+            }
+        } catch (Exception ignored) {}
 
         // Sound Alert
         try {
@@ -87,8 +168,13 @@ public class IncomingRideActivity extends Activity {
                 }
             }
         } catch (Exception ignored) {}
+    }
 
-        // FIX: 15 Seconds Countdown Timer
+    private void start15SecondTimer() {
+        TextView tvTimer = findViewById(R.id.tvTimer);
+        if (countDownTimer != null) countDownTimer.cancel();
+
+        // 15 SECONDS STRICT AUTO TIMEOUT
         countDownTimer = new CountDownTimer(15000, 1000) {
             @Override
             public void onTick(long millisUntilFinished) {
@@ -102,21 +188,6 @@ public class IncomingRideActivity extends Activity {
                 dismissAlert();
             }
         }.start();
-
-        if (btnAccept != null) {
-            btnAccept.setOnClickListener(v -> {
-                sendRideDecisionToServer(true);
-                dismissAlert();
-                openDriverAppDashboard();
-            });
-        }
-
-        if (btnDecline != null) {
-            btnDecline.setOnClickListener(v -> {
-                sendRideDecisionToServer(false);
-                dismissAlert();
-            });
-        }
     }
 
     private void openDriverAppDashboard() {
@@ -160,6 +231,15 @@ public class IncomingRideActivity extends Activity {
             if (ringtone != null && ringtone.isPlaying()) ringtone.stop();
             if (vibrator != null) vibrator.cancel();
             if (countDownTimer != null) countDownTimer.cancel();
+            if (screenWakeLock != null && screenWakeLock.isHeld()) screenWakeLock.release();
+
+            if (audioManager != null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && audioFocusRequest != null) {
+                    audioManager.abandonAudioFocusRequest(audioFocusRequest);
+                } else {
+                    audioManager.abandonAudioFocus(null);
+                }
+            }
         } catch (Exception ignored) {}
         finish();
     }

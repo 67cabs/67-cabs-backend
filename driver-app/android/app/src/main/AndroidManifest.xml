@@ -6,19 +6,26 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission
+        android:name="android.permission.ACCESS_BACKGROUND_LOCATION"
+        tools:ignore="BackgroundLocationAccess" />
 
-    <!-- Foreground Service Permissions -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- Foreground Service Permissions for Driver Live GPS -->
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE"
+        tools:ignore="ForegroundServicePermission" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
-    <!-- Overlay & Full-Screen Ride Alert Permissions (Ola/Uber Style) -->
+    <!-- Overlay & Full-Screen Ride Alert Permissions (Ola/Uber Screen Pop) -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission
+        android:name="android.permission.USE_FULL_SCREEN_INTENT"
+        tools:ignore="FullScreenIntentBanner" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.REORDER_TASKS" />
 
     <application
         android:allowBackup="true"
@@ -49,12 +56,15 @@
             android:name=".IncomingRideActivity"
             android:excludeFromRecents="true"
             android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:noHistory="true"
             android:exported="true"
             android:showWhenLocked="true"
             android:turnScreenOn="true"
             android:showOnLockScreen="true"
             android:inheritShowWhenLocked="true"
-            tools:targetApi="o_mr1"
+            android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize|screenLayout"
+            tools:targetApi="q"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
 
         <!-- FCM Background Receiver Service -->
@@ -77,7 +87,8 @@
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
             android:exported="false"
-            android:grantUriPermissions="true">
+            android:grantUriPermissions="true"
+            tools:ignore="SpellCheckingInspection">
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
