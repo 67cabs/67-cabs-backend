@@ -25,7 +25,6 @@
     .custom-scrollbar::-webkit-scrollbar { width: 4px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
     
-    /* 3-Level Glowing Radar Waves */
     .radar-pulse-1 {
       animation: pulse-ring 2.4s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
     }
@@ -36,21 +35,11 @@
       animation: pulse-ring 2.4s infinite cubic-bezier(0.215, 0.61, 0.355, 1) 1.6s;
     }
     @keyframes pulse-ring {
-      0% {
-        transform: scale(0.6);
-        opacity: 0.9;
-      }
-      80% {
-        transform: scale(2.8);
-        opacity: 0;
-      }
-      100% {
-        transform: scale(3.2);
-        opacity: 0;
-      }
+      0% { transform: scale(0.6); opacity: 0.9; }
+      80% { transform: scale(2.8); opacity: 0; }
+      100% { transform: scale(3.2); opacity: 0; }
     }
 
-    /* Native Pull to Refresh Spinner */
     #ptr-spinner-container {
       transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s ease;
       transform: translateY(-80px);
@@ -409,10 +398,10 @@
             <span class="text-2xl text-amber-500">⚙️</span>
             <div>
               <h3 class="text-base font-black text-amber-600 dark:text-amber-400 leading-tight" id="drawer-main-title">Partner Settings</h3>
-              <p class="text-xs font-semibold text-slate-700 dark:text-slate-300" id="drawer-sub-title">Account & Preference Controls</p>
+              <p class="text-xs font-black text-slate-900 dark:text-slate-300" id="drawer-sub-title">Account & Preference Controls</p>
             </div>
           </div>
-          <button onclick="closeSettingsModal()" class="w-8 h-8 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:text-amber-500 flex items-center justify-center text-sm font-bold">
+          <button onclick="closeSettingsModal()" class="w-8 h-8 rounded-xl border border-slate-400 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-200 hover:text-amber-500 flex items-center justify-center text-sm font-black">
             ✕
           </button>
         </div>
@@ -422,11 +411,11 @@
           <div class="flex items-center gap-3">
             <span id="theme-icon" class="text-xl">🌙</span>
             <div>
-              <div class="text-xs font-bold text-slate-900 dark:text-white" id="theme-title">Appearance Theme</div>
-              <div id="theme-text" class="text-xs font-semibold text-slate-700 dark:text-slate-300">Dark Mode Active</div>
+              <div class="text-xs font-black text-slate-900 dark:text-white" id="theme-title">Appearance Theme</div>
+              <div id="theme-text" class="text-xs font-bold text-slate-800 dark:text-slate-300">Dark Mode Active</div>
             </div>
           </div>
-          <button onclick="toggleDriverTheme()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3.5 py-1.5 rounded-xl text-xs font-bold text-amber-400 transition shadow">
+          <button onclick="toggleDriverTheme()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3.5 py-1.5 rounded-xl text-xs font-black text-amber-400 transition shadow">
             Switch
           </button>
         </div>
@@ -434,14 +423,14 @@
         <!-- Dual Overview: Govt Tax Wallet & Ride Pass Validity -->
         <div class="grid grid-cols-2 gap-3">
           <div id="drawer-wallet-card" class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-0.5">
-            <span class="text-xs font-extrabold text-slate-800 dark:text-slate-300 uppercase tracking-wider block" id="lbl-wallet">Govt Tax Wallet</span>
+            <span class="text-xs font-black text-slate-900 dark:text-slate-300 uppercase tracking-wider block" id="lbl-wallet">Govt Tax Wallet</span>
             <div id="modal-wallet-balance" class="text-lg font-black text-amber-600 dark:text-amber-400">₹0.00</div>
-            <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block" id="sub-wallet">For Govt Tax Dues</span>
+            <span class="text-[11px] font-bold text-slate-800 dark:text-slate-400 block" id="sub-wallet">For Govt Tax Dues</span>
           </div>
           <div id="drawer-bonus-card" class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-0.5">
-            <span class="text-xs font-extrabold text-slate-800 dark:text-slate-300 uppercase tracking-wider block" id="lbl-pass">Ride Pass / Pool</span>
+            <span class="text-xs font-black text-slate-900 dark:text-slate-300 uppercase tracking-wider block" id="lbl-pass">Ride Pass / Pool</span>
             <div id="modal-bonus-rides" class="text-lg font-black text-amber-600 dark:text-amber-400">0 Active Passes</div>
-            <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block" id="sub-pass">For Ride Requests</span>
+            <span class="text-[11px] font-bold text-slate-800 dark:text-slate-400 block" id="sub-pass">For Ride Requests</span>
           </div>
         </div>
 
@@ -450,7 +439,7 @@
           <button onclick="switchSettingsTab('profile')" id="tab-setting-profile" class="w-1/2 py-2.5 text-xs font-black rounded-xl bg-amber-500 text-slate-950 transition shadow-sm">
             Profile Details
           </button>
-          <button onclick="switchSettingsTab('account')" id="tab-setting-account" class="w-1/2 py-2.5 text-xs font-black rounded-xl text-slate-800 dark:text-slate-300 hover:text-amber-600 transition">
+          <button onclick="switchSettingsTab('account')" id="tab-setting-account" class="w-1/2 py-2.5 text-xs font-black rounded-xl text-slate-900 dark:text-slate-300 hover:text-amber-600 transition">
             Recharge & Wallet
           </button>
         </div>
@@ -459,19 +448,19 @@
         <div id="setting-pane-profile" class="space-y-4">
           <div id="profile-details-card" class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2.5 text-xs">
             <div class="flex justify-between items-center">
-              <span class="text-slate-800 dark:text-slate-300 font-bold" id="lbl-p-name">Driver Name:</span>
+              <span class="text-slate-900 dark:text-slate-300 font-bold" id="lbl-p-name">Driver Name:</span>
               <span id="set-profile-name" class="font-black text-slate-900 dark:text-white">-</span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-slate-800 dark:text-slate-300 font-bold" id="lbl-p-veh">Vehicle Number:</span>
+              <span class="text-slate-900 dark:text-slate-300 font-bold" id="lbl-p-veh">Vehicle Number:</span>
               <span id="set-profile-vehicle" class="font-black text-amber-600 dark:text-amber-400 font-mono">-</span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-slate-800 dark:text-slate-300 font-bold" id="lbl-p-cat">Cab Category:</span>
+              <span class="text-slate-900 dark:text-slate-300 font-bold" id="lbl-p-cat">Cab Category:</span>
               <span id="set-profile-category" class="font-black text-slate-900 dark:text-white">-</span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-slate-800 dark:text-slate-300 font-bold" id="lbl-p-upi">Receiving UPI ID:</span>
+              <span class="text-slate-900 dark:text-slate-300 font-bold" id="lbl-p-upi">Receiving UPI ID:</span>
               <span id="set-profile-upi" class="font-black text-amber-600 dark:text-amber-400 font-mono">-</span>
             </div>
           </div>
@@ -484,7 +473,7 @@
               <button onclick="switchQRTab('rider')" id="tab-qr-rider" class="w-1/2 py-1.5 text-xs font-black rounded-lg bg-amber-500 text-slate-950 transition">
                 Rider QR
               </button>
-              <button onclick="switchQRTab('driver')" id="tab-qr-driver" class="w-1/2 py-1.5 text-xs font-black rounded-lg text-slate-800 dark:text-slate-300 hover:text-amber-600 transition">
+              <button onclick="switchQRTab('driver')" id="tab-qr-driver" class="w-1/2 py-1.5 text-xs font-black rounded-lg text-slate-900 dark:text-slate-300 hover:text-amber-600 transition">
                 Driver QR
               </button>
             </div>
@@ -493,8 +482,8 @@
               <div id="referral-qrcode-target" class="flex justify-center"></div>
             </div>
 
-            <p id="qr-desc-text" class="text-xs font-bold text-amber-600 dark:text-amber-400">Scan to register Rider with bonus</p>
-            <p class="text-xs font-semibold text-slate-800 dark:text-slate-300">Your Code: <b id="display-ref-code" class="font-mono text-amber-600 dark:text-amber-400 font-black">-</b></p>
+            <p id="qr-desc-text" class="text-xs font-black text-amber-600 dark:text-amber-400">Scan to register Rider with bonus</p>
+            <p class="text-xs font-bold text-slate-900 dark:text-slate-300">Your Code: <b id="display-ref-code" class="font-mono text-amber-600 dark:text-amber-400 font-black">-</b></p>
           </div>
         </div>
 
@@ -507,7 +496,7 @@
               <span>🎟️ Ride Request Recharge Passes</span>
               <span class="text-[10px] bg-amber-500/15 text-amber-700 dark:text-amber-400 px-2.5 py-0.5 rounded-md font-extrabold border border-amber-500/30" id="plans-sync-badge">Instant Activation</span>
             </div>
-            <p class="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-relaxed" id="lbl-recharge-note">Recharge pass lene se aapko naye ride requests lene ki validity milti hai.</p>
+            <p class="text-xs font-bold text-slate-900 dark:text-slate-300 leading-relaxed" id="lbl-recharge-note">Recharge pass lene se aapko naye ride requests lene ki validity milti hai.</p>
             
             <!-- Dynamic Plans Render Target -->
             <div class="grid grid-cols-3 gap-2 pt-1" id="dynamic-plans-container">
@@ -529,7 +518,7 @@
 
           <!-- Section B: Coupon Promo Code for Recharge -->
           <div class="space-y-1.5 text-xs">
-            <label class="font-extrabold text-slate-800 dark:text-slate-300 uppercase text-xs tracking-wider" id="lbl-coupon">Apply Promo Coupon</label>
+            <label class="font-black text-slate-900 dark:text-slate-300 uppercase text-xs tracking-wider" id="lbl-coupon">Apply Promo Coupon</label>
             <div class="flex gap-2">
               <input type="text" id="coupon-code-input" placeholder="e.g. WELCOME100" class="w-full border rounded-xl p-2.5 outline-none focus:border-amber-400 font-mono uppercase bg-slate-950 border-slate-700 text-white text-xs font-bold" />
               <button id="btn-apply-coupon" onclick="applyCouponCode()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-4 rounded-xl transition">Apply</button>
@@ -541,9 +530,9 @@
                 <div class="font-black text-amber-600 dark:text-amber-400 flex items-center gap-1">
                   <span>🎉</span> <span id="applied-coupon-tag">COUPON APPLIED</span>
                 </div>
-                <div class="text-[11px] font-bold text-slate-700 dark:text-slate-300">Discount: <b class="text-amber-600 dark:text-amber-400" id="applied-discount-text">-₹0</b> | Payable: <b class="font-mono text-slate-900 dark:text-white" id="applied-payable-text">₹0</b></div>
+                <div class="text-[11px] font-black text-slate-900 dark:text-slate-300">Discount: <b class="text-amber-600 dark:text-amber-400" id="applied-discount-text">-₹0</b> | Payable: <b class="font-mono text-slate-900 dark:text-white" id="applied-payable-text">₹0</b></div>
               </div>
-              <button onclick="removeAppliedCoupon()" class="text-slate-600 hover:text-red-500 text-xs font-bold ml-2">✕ Remove</button>
+              <button onclick="removeAppliedCoupon()" class="text-slate-900 dark:text-slate-300 hover:text-red-500 text-xs font-black ml-2">✕ Remove</button>
             </div>
           </div>
 
@@ -555,8 +544,13 @@
         </div>
       </div>
 
-      <!-- Drawer Bottom: Logout & Delete Account -->
+      <!-- Drawer Bottom: Support Desk + Logout & Delete Account -->
       <div class="pt-3 border-t border-slate-800 space-y-2" id="drawer-footer-sec">
+        <!-- 💬 Driver Contact Admin Support Button -->
+        <button onclick="openSupportModal()" class="w-full bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-700 dark:text-amber-400 font-black py-3 rounded-2xl text-xs transition flex items-center justify-center gap-2 shadow-sm">
+          <span>💬</span> <span>Help & Contact Admin Support</span>
+        </button>
+
         <button onclick="logoutDriver()" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-extrabold py-3 rounded-2xl text-xs transition flex items-center justify-center gap-1.5 shadow" id="btn-drawer-logout">
           🚪 Logout Account
         </button>
@@ -565,6 +559,36 @@
         </button>
       </div>
 
+    </div>
+  </div>
+
+  <!-- ================= MODAL: DRIVER SUPPORT & QUERY WINDOW ================= -->
+  <div id="driver-support-modal" class="fixed inset-0 bg-black/80 z-[999999] hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 text-white rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-xl text-amber-400">💬</span>
+          <div>
+            <h3 class="text-sm font-black text-amber-400">Contact Admin Support</h3>
+            <p class="text-[10px] text-slate-400">Apni query ya samasya yahan likhein</p>
+          </div>
+        </div>
+        <button onclick="closeSupportModal()" class="text-slate-400 hover:text-white text-base font-bold">✕</button>
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Write your message / query *</label>
+        <textarea id="driver-support-msg-input" rows="4" placeholder="Namaste Admin, mujhe yeh samasya aa rahi hai..." class="w-full bg-slate-950 border border-slate-700 rounded-2xl p-3 text-xs text-white outline-none focus:border-amber-400 custom-scrollbar leading-relaxed"></textarea>
+      </div>
+
+      <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-[10px] text-slate-400 flex justify-between">
+        <span>Submitting as: <b id="support-drv-name" class="text-white">-</b></span>
+        <span id="support-drv-phone" class="font-mono text-amber-400">-</span>
+      </div>
+
+      <button id="btn-send-support-ticket" onclick="submitDriverSupportMessage()" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3.5 rounded-2xl text-xs transition shadow-lg flex items-center justify-center gap-1.5 uppercase tracking-wider">
+        <span>🚀 Send Message to Admin</span>
+      </button>
     </div>
   </div>
 
@@ -668,6 +692,66 @@
       }
     }
 
+    // Support Modal Handlers
+    function openSupportModal() {
+      const modal = document.getElementById('driver-support-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        if (currentDriver) {
+          document.getElementById('support-drv-name').innerText = currentDriver.name || 'Driver';
+          document.getElementById('support-drv-phone').innerText = currentDriver.phone || '';
+        }
+      }
+    }
+
+    function closeSupportModal() {
+      const modal = document.getElementById('driver-support-modal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    async function submitDriverSupportMessage() {
+      const input = document.getElementById('driver-support-msg-input');
+      const msg = input?.value?.trim();
+      if (!msg) return alert("Kripya apna message likhein.");
+
+      const btn = document.getElementById('btn-send-support-ticket');
+      btn.disabled = true;
+      btn.innerHTML = `<span>⏳ Sending Message...</span>`;
+
+      try {
+        const res = await fetch('/api/driver/support-ticket', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            driverId: currentDriver?.driverId || 'DRV_UNKWN',
+            name: currentDriver?.name || 'Driver',
+            phone: currentDriver?.phone || '',
+            email: currentDriver?.email || '',
+            vehicleNo: currentDriver?.vehicleNo || '',
+            message: msg
+          })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          alert("✅ Aapka message admin ko mil gaya hai. Ham jald hi aapse contact karenge.");
+          input.value = '';
+          closeSupportModal();
+        } else {
+          alert(`⚠️ ${data.message}`);
+        }
+      } catch (e) {
+        alert("Failed to send message. Please check internet connection.");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<span>🚀 Send Message to Admin</span>`;
+      }
+    }
+
     // NATIVE PULL TO REFRESH LOGIC
     let touchStartY = 0;
     let isPulling = false;
@@ -737,14 +821,12 @@
       if (hiddenCheck) hiddenCheck.checked = isDriverOnline;
 
       if (isDriverOnline) {
-        // Online State (Green theme, knob to right)
         swipePill.className = "cursor-pointer select-none relative w-full h-9 bg-green-950/80 border border-green-600/70 rounded-full flex items-center justify-between px-2.5 shadow-inner transition-all duration-300";
         knob.className = "absolute top-[2px] right-[3px] h-7 w-7 rounded-full bg-green-500 text-slate-950 font-black text-[10px] flex items-center justify-center shadow-lg transition-all duration-300";
         txtOn.className = "text-[9px] font-black text-green-400 tracking-wider transition-opacity";
         txtOff.className = "text-[9px] font-black text-slate-500 tracking-wider transition-opacity";
         registerDriver();
       } else {
-        // Offline State (Red theme, knob to left)
         swipePill.className = "cursor-pointer select-none relative w-full h-9 bg-red-950/80 border border-red-600/70 rounded-full flex items-center justify-between px-2.5 shadow-inner transition-all duration-300";
         knob.className = "absolute top-[2px] left-[3px] h-7 w-7 rounded-full bg-red-500 text-white font-black text-[10px] flex items-center justify-center shadow-lg transition-all duration-300";
         txtOff.className = "text-[9px] font-black text-red-400 tracking-wider transition-opacity";
@@ -779,7 +861,6 @@
         htmlEl.classList.add('dark');
       }
 
-      // Slightly Muted, Soft-toned Eye Friendly Light Theme
       document.body.className = isLight 
         ? "bg-slate-200/60 text-slate-900 min-h-screen p-3 md:p-6 flex flex-col items-center select-none font-sans relative transition-colors duration-200"
         : "bg-slate-950 text-slate-100 min-h-screen p-3 md:p-6 flex flex-col items-center select-none font-sans relative transition-colors duration-200";
@@ -819,7 +900,7 @@
         
         if (radarBox) radarBox.className = "flex-1 w-full min-h-[calc(100vh-140px)] rounded-3xl border border-dashed border-slate-300 bg-white shadow-sm flex flex-col items-center justify-center space-y-8 transition-colors relative overflow-hidden my-auto";
         if (radarTitle) radarTitle.className = "text-lg font-black text-slate-900 tracking-tight";
-        if (radarSubtitle) radarSubtitle.className = "text-xs text-slate-700 font-bold mt-1";
+        if (radarSubtitle) radarSubtitle.className = "text-xs text-slate-900 font-black mt-1";
 
         if (drawerContainer) drawerContainer.className = "bg-white text-slate-900 w-full max-w-md h-full shadow-2xl border-r border-slate-300 p-6 space-y-5 overflow-y-auto custom-scrollbar flex flex-col justify-between transform -translate-x-full transition-transform duration-200 ease-in-out";
         if (drawerHeader) drawerHeader.className = "flex justify-between items-center border-b border-slate-300 pb-3";
@@ -883,7 +964,6 @@
         if (activeRideBox) activeRideBox.className = "space-y-2 text-xs bg-slate-950 p-3.5 rounded-2xl border border-slate-800 text-slate-300";
       }
 
-      // Maintain active inDrive switch view state
       toggleDriverDutyState(isDriverOnline);
     }
 
@@ -900,7 +980,7 @@
             container.innerHTML = data.data.plans.map(p => `
               <button onclick="setRechargeAmount(${p.amount})" class="recharge-btn ${isLight ? 'bg-white border-slate-300 text-amber-700' : 'bg-slate-900 border-slate-700 text-amber-400'} border py-3 rounded-xl font-bold hover:border-amber-500 text-center transition flex flex-col items-center justify-center shadow-sm">
                 <span class="text-xs font-black">₹${p.amount}</span>
-                <span class="text-[10px] ${isLight ? 'text-slate-600' : 'text-slate-400'} font-bold">(${p.validityDays} Days)</span>
+                <span class="text-[10px] ${isLight ? 'text-slate-800 font-bold' : 'text-slate-400 font-semibold'}">(${p.validityDays} Days)</span>
               </button>
             `).join('');
           }

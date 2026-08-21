@@ -170,7 +170,7 @@ const driverAuditSchema = new mongoose.Schema({
 
 const DriverAudit = mongoose.model('DriverAudit', driverAuditSchema);
 
-// 4. Trip History Schema (Ratings, Fares & Settlement Persistence in MongoDB)
+// 4. Trip History Schema
 const tripSchema = new mongoose.Schema({
   rideId: { type: String, required: true, unique: true, index: true },
   cabType: { type: String, required: true },
@@ -315,7 +315,7 @@ const settingSchema = new mongoose.Schema({
 
 const Setting = mongoose.model('Setting', settingSchema);
 
-// 9. Admin Dynamic Fare Rules Schema (MongoDB Atlas Pricing Engine)
+// 9. Admin Dynamic Fare Rules Schema
 const fareConfigSchema = new mongoose.Schema({
   key: { type: String, default: 'global_fare_rules', unique: true },
   HATCHBACK: {
@@ -342,7 +342,7 @@ const fareConfigSchema = new mongoose.Schema({
 
 const FareConfig = mongoose.model('FareConfig', fareConfigSchema);
 
-// 10. Dynamic Driver Recharge Plans Schema (MongoDB Atlas Driven)
+// 10. Dynamic Driver Recharge Plans Schema
 const rechargePlanSchema = new mongoose.Schema({
   key: { type: String, default: 'global_recharge_plans', unique: true },
   adminUpiId: { type: String, default: '67cabs@upi' },
@@ -357,6 +357,19 @@ const rechargePlanSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const RechargePlan = mongoose.model('RechargePlan', rechargePlanSchema);
+
+// 11. Driver Support Query / Ticket Schema (Driver-to-Admin Contact)
+const supportTicketSchema = new mongoose.Schema({
+  driverId: { type: String, required: true, index: true },
+  name: { type: String, required: true },
+  phone: { type: String, required: true },
+  email: { type: String, default: '' },
+  vehicleNo: { type: String, default: '' },
+  message: { type: String, required: true },
+  status: { type: String, enum: ['OPEN', 'RESOLVED'], default: 'OPEN' }
+}, { timestamps: true });
+
+const SupportTicket = mongoose.model('SupportTicket', supportTicketSchema);
 
 async function initDefaultPlans() {
   try {
@@ -430,7 +443,7 @@ let driverSocketMap = new Map();
 let activeRides = new Map();
 let rideTimeoutTimers = new Map();
 
-// ---------------- STUCK TRIPS RESET & PURGE ROUTE (SUPPORTS GET & POST) ----------------
+// ---------------- STUCK TRIPS RESET & PURGE ROUTE ----------------
 const handleResetStuckTrips = async (req, res) => {
   try {
     await Trip.updateMany(
@@ -455,6 +468,63 @@ const handleResetStuckTrips = async (req, res) => {
 
 app.get('/api/admin/reset-stuck-trips', handleResetStuckTrips);
 app.post('/api/admin/reset-stuck-trips', handleResetStuckTrips);
+
+// ---------------- DRIVER SUPPORT TICKETING APIS (DRIVER TO ADMIN CONTACT) ----------------
+app.post('/api/driver/support-ticket', async (req, res) => {
+  try {
+    const { driverId, name, phone, email, vehicleNo, message } = req.body;
+    if (!driverId || !message || !message.trim()) {
+      return res.status(400).json({ success: false, message: 'Message cannot be empty.' });
+    }
+
+    const ticket = await SupportTicket.create({
+      driverId,
+      name: name || 'Partner Driver',
+      phone: phone || '',
+      email: email || '',
+      vehicleNo: vehicleNo || '',
+      message: message.trim(),
+      status: 'OPEN'
+    });
+
+    // Real-time broadcast to Admin
+    io.emit('admin:new_support_ticket', ticket);
+
+    return res.status(201).json({ success: true, message: 'Aapka message admin tak pahuch gaya hai. Ham jald hi aapse contact karenge.', ticket });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/admin/support-tickets', async (req, res) => {
+  try {
+    const tickets = await SupportTicket.find().sort({ createdAt: -1 }).lean();
+    return res.json({ success: true, tickets });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.patch('/api/admin/support-tickets/:id/resolve', async (req, res) => {
+  try {
+    const ticket = await SupportTicket.findById(req.params.id);
+    if (!ticket) return res.status(404).json({ success: false, message: 'Ticket not found' });
+    ticket.status = ticket.status === 'OPEN' ? 'RESOLVED' : 'OPEN';
+    await ticket.save();
+    return res.json({ success: true, message: `Ticket status updated to ${ticket.status}`, ticket });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/admin/support-tickets/:id', async (req, res) => {
+  try {
+    await SupportTicket.findByIdAndDelete(req.params.id);
+    return res.json({ success: true, message: 'Support ticket deleted.' });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 // ---------------- ADMIN FARE RULES API ROUTES (MONGODB DRIVEN) ----------------
 app.get('/api/admin/fare-rules', async (req, res) => {
@@ -506,7 +576,7 @@ app.get('/api/fare/public-rates', async (req, res) => {
   }
 });
 
-// ---------------- DYNAMIC RECHARGE PLANS API (MONGODB DRIVEN) ----------------
+// ---------------- DYNAMIC RECHARGE PLANS API ----------------
 app.get('/api/driver/recharge-plans', async (req, res) => {
   try {
     let doc = await RechargePlan.findOne({ key: 'global_recharge_plans' });
@@ -534,7 +604,7 @@ app.post('/api/admin/recharge-plans', async (req, res) => {
   }
 });
 
-// ---------------- ADMIN SOUND & SETTINGS ROUTES (MONGODB DRIVEN) ----------------
+// ---------------- ADMIN SOUND & SETTINGS ROUTES ----------------
 app.get('/api/admin/settings/sound', async (req, res) => {
   try {
     const doc = await Setting.findOne({ key: 'driver_alert_sound' });
@@ -565,7 +635,6 @@ app.post('/api/admin/settings/sound', async (req, res) => {
   }
 });
 
-// Custom MP3 Audio Upload Route (Stores Directly into MongoDB as Base64)
 app.post('/api/admin/upload-custom-sound', uploadSound.single('audioFile'), async (req, res) => {
   try {
     if (!req.file) {
@@ -597,7 +666,6 @@ app.post('/api/admin/upload-custom-sound', uploadSound.single('audioFile'), asyn
   }
 });
 
-// Fetch Live Sound Directly from MongoDB for Driver App
 app.get('/api/driver/alert-sound', async (req, res) => {
   try {
     const doc = await Setting.findOne({ key: 'driver_alert_sound_base64' });
@@ -1598,7 +1666,7 @@ app.post('/api/coupons/apply', async (req, res) => {
   }
 });
 
-// ---------------- FARE & PROXIMITY RADAR ROUTES (DYNAMIC MONGODB RULES) ----------------
+// ---------------- FARE & PROXIMITY RADAR ROUTES ----------------
 app.post('/api/fare/estimate', async (req, res) => {
   try {
     const { tripDistanceKm, tripTrafficMins, pickupDistanceKm, pickupTrafficMins, cabType } = req.body;
@@ -1628,7 +1696,6 @@ app.post('/api/fare/estimate', async (req, res) => {
   }
 });
 
-// Real-Time Driver Radar (STRICTLY ACTIVE SOCKET & ONLINE DRIVERS ONLY - WITHOUT PUBLIC VEHICLE NUMBER)
 app.get('/api/cabs/nearby-all', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   try {
@@ -1729,7 +1796,6 @@ io.on('connection', (socket) => {
     } catch (e) {}
   });
 
-  // 1.1 Driver Toggle Online/Offline State
   socket.on('driver:toggle_online', async ({ driverId, isOnline }) => {
     if (!driverId) return;
     
@@ -1748,7 +1814,6 @@ io.on('connection', (socket) => {
     console.log(`📡 Driver ${driverId} status updated: ${isOnline ? 'ONLINE' : 'OFFLINE'}`);
   });
 
-  // 1.2 Driver Instant Logout Cleanup
   socket.on('driver:logout', async ({ driverId }) => {
     if (!driverId) return;
     activeDrivers.delete(driverId);
@@ -1763,7 +1828,7 @@ io.on('connection', (socket) => {
     console.log(`🚪 Driver ${driverId} logged out & purged from active radar.`);
   });
 
-  // 2. Targeted 1-Click Ride Request (15 SECONDS AUTO-CANCEL TIMER + DYNAMIC MONGODB SOUND)
+  // 2. Targeted 1-Click Ride Request
   socket.on('ride:request_targeted', async (rideData) => {
     const { rideId, targetDriverId, pickup, stops, cabCategory, totalDistanceKm, totalFare, rider } = rideData;
 
@@ -1829,7 +1894,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Decline Targeted Ride
   socket.on('ride:decline_targeted', ({ rideId }) => {
     if (rideTimeoutTimers.has(rideId)) {
       clearTimeout(rideTimeoutTimers.get(rideId));
@@ -1909,7 +1973,6 @@ io.on('connection', (socket) => {
     rideTimeoutTimers.set(rideId, bTimer);
   });
 
-  // ---------------- CANCEL RIDE WITH INSTANT DRIVER AVAILABILITY ----------------
   socket.on('ride:cancel', async ({ rideId }) => {
     try {
       if (rideTimeoutTimers.has(rideId)) {
@@ -1946,7 +2009,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 3. Driver Accepts Ride (Standard In-App)
+  // 3. Driver Accepts Ride
   socket.on('ride:accept', async ({ rideId, driverData }) => {
     if (rideTimeoutTimers.has(rideId)) {
       clearTimeout(rideTimeoutTimers.get(rideId));
@@ -2050,7 +2113,6 @@ io.on('connection', (socket) => {
     io.emit('ride:taken', { rideId });
   });
 
-  // 3.1 Driver Arrived
   socket.on('driver:arrived', async ({ rideId }) => {
     const ride = activeRides.get(rideId);
     if (ride) {
@@ -2074,7 +2136,6 @@ io.on('connection', (socket) => {
     });
   });
 
-  // 3.2 Live Driver GPS Telemetry Stream
   socket.on('driver:location_update', async ({ rideId, lat, lng, phase, heading }) => {
     activeDrivers.forEach((d) => {
       if (d.socketId === socket.id) {
@@ -2095,7 +2156,6 @@ io.on('connection', (socket) => {
     io.emit(`driver:location_broadcast:${rideId}`, telemetryPayload);
   });
 
-  // 4. Driver Verifies OTP to Start Trip
   socket.on('ride:verify_otp', async ({ rideId, enteredOtp }) => {
     const trip = await Trip.findOne({ rideId });
     const ride = activeRides.get(rideId);
@@ -2128,7 +2188,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 4.1 Rider Initiates Early Drop & Generates OTP
   socket.on('ride:early_drop_request', async ({ rideId, earlyOtp }) => {
     const strOtp = earlyOtp ? earlyOtp.toString().trim() : '';
     const ride = activeRides.get(rideId);
@@ -2141,7 +2200,6 @@ io.on('connection', (socket) => {
     } catch (e) {}
   });
 
-  // 4.2 Driver Ends Trip Early with Rider OTP
   socket.on('ride:early_complete_otp', async ({ rideId, enteredOtp }) => {
     const trip = await Trip.findOne({ rideId });
     const ride = activeRides.get(rideId);
@@ -2155,7 +2213,6 @@ io.on('connection', (socket) => {
     completeTripFinal(rideId, fare, false, 'RIDER_REQUESTED_EARLY_DROP');
   });
 
-  // 4.3 Driver Ends Trip Early Due to Emergency/Breakdown
   socket.on('ride:early_complete_emergency', async ({ rideId, reason }) => {
     const ride = activeRides.get(rideId);
     const baseMinFare = 60;
@@ -2164,7 +2221,6 @@ io.on('connection', (socket) => {
     completeTripFinal(rideId, reducedFare, true, reason || 'DRIVER_EMERGENCY');
   });
 
-  // 5. Standard Trip Completion
   socket.on('ride:complete', async ({ rideId }) => {
     const trip = await Trip.findOne({ rideId });
     const ride = activeRides.get(rideId);
@@ -2172,7 +2228,6 @@ io.on('connection', (socket) => {
     completeTripFinal(rideId, totalFare, false, 'STANDARD_DROP');
   });
 
-  // 5.1 Rider Rates Driver Post-Trip
   socket.on('ride:rate_driver', async ({ rideId, rating }) => {
     try {
       const numRating = Math.min(5, Math.max(1, Number(rating) || 5));
@@ -2275,7 +2330,6 @@ io.on('connection', (socket) => {
     activeRides.delete(rideId);
   }
 
-  // Handle Disconnect (PURGES DRIVER FROM RADAR IMMEDIATELY)
   socket.on('disconnect', async () => {
     let disconnectedDriverId = null;
     driverSocketMap.forEach((sId, dId) => {
