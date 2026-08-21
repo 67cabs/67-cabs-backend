@@ -34,6 +34,12 @@
 </head>
 <body class="bg-slate-100 flex flex-col md:flex-row h-screen overflow-hidden font-sans relative">
 
+  <!-- IN-APP ALERT BANNER (REPLACES NATIVE JAVASCRIPT POPUPS) -->
+  <div id="in-app-toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-[999999] hidden max-w-sm w-11/12 bg-slate-900 text-amber-300 border border-amber-500/60 p-3 rounded-2xl shadow-2xl flex items-center gap-2.5 text-xs font-bold transition-all duration-300 transform -translate-y-4 opacity-0">
+    <span class="text-lg" id="toast-icon">🚖</span>
+    <span id="toast-msg" class="flex-1 text-slate-100 font-semibold">Message</span>
+  </div>
+
   <!-- Left Sidebar / Main Flow Panel -->
   <div class="w-full md:w-[420px] bg-white p-5 shadow-2xl flex flex-col justify-between overflow-y-auto z-20 custom-scrollbar border-r border-slate-200">
     <div>
@@ -137,7 +143,7 @@
       </div>
 
       <!-- ========================================== -->
-      <!-- STEP 2: CAB SELECTION & PROXIMITY CARDS   -->
+      <!-- STEP 2: CAB SELECTION & PROXIMITY CARDS    -->
       <!-- ========================================== -->
       <div id="step-2-cab-selection" class="hidden space-y-3">
         
@@ -145,7 +151,7 @@
         <div id="dispatch-waiting-banner" class="hidden bg-amber-50 border border-amber-300 p-4 rounded-2xl text-center space-y-2">
           <div class="text-2xl animate-spin">⏳</div>
           <div class="text-xs font-black text-amber-950">Offering Ride to Selected Driver...</div>
-          <p class="text-[10px] text-amber-800" id="dispatch-timer-text">Awaiting driver response (Auto-timeout in 35s)</p>
+          <p class="text-[10px] text-amber-800" id="dispatch-timer-text">Awaiting driver response (Auto-timeout in 15s)</p>
           <button onclick="cancelRideSearch()" class="text-xs text-red-600 font-bold underline mt-1">Cancel Offer & Pick Another</button>
         </div>
 
@@ -401,11 +407,11 @@
         </div>
         <div>
           <label class="font-bold text-slate-600">ID Photo (Front Side) *</label>
-          <input id="kyc-doc-front" type="file" accept="image/*" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 mt-1" />
+          <input id="kyc-doc-front" type="file" accept="image/*" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 mt-1" />
         </div>
         <div>
           <label class="font-bold text-slate-600">ID Photo (Back Side) *</label>
-          <input id="kyc-doc-back" type="file" accept="image/*" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 mt-1" />
+          <input id="kyc-doc-back" type="file" accept="image/*" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 mt-1" />
         </div>
         <button id="btn-upload-kyc" onclick="uploadCompressedKYC()" class="w-full bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold py-2.5 rounded-xl transition">
           📤 Upload & Save to Database
@@ -525,6 +531,29 @@
       navigator.serviceWorker.register('/sw.js', { scope: '/' });
     }
 
+    // Modern In-App Banner Toast Function
+    function showInAppToast(msg, icon = '🚖', duration = 3500) {
+      const toast = document.getElementById('in-app-toast');
+      const toastMsg = document.getElementById('toast-msg');
+      const toastIcon = document.getElementById('toast-icon');
+      if (!toast || !toastMsg) return;
+
+      toastMsg.innerText = msg;
+      toastIcon.innerText = icon;
+      toast.classList.remove('hidden');
+      
+      setTimeout(() => {
+        toast.classList.remove('-translate-y-4', 'opacity-0');
+        toast.classList.add('translate-y-0', 'opacity-100');
+      }, 10);
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('-translate-y-4', 'opacity-0');
+        setTimeout(() => toast.classList.add('hidden'), 300);
+      }, duration);
+    }
+
     let deferredPrompt;
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -570,10 +599,10 @@
     let currentUser = null;
     let currentSelectedRating = 5;
 
-    // 35-Sec Extended Dispatch Timer & State
+    // 15-Sec Dispatch Timer & State
     let activeTargetDriverId = null;
     let dispatchTimer = null;
-    let dispatchCountdown = 35;
+    let dispatchCountdown = 15;
 
     let mediaRecorder = null;
     let audioChunks = [];
@@ -777,7 +806,7 @@
     function addExtraStopRow() {
       const index = dropStops.length;
       if (index >= 4) {
-        alert("Maximum 4 drop points allowed.");
+        showInAppToast("Maximum 4 drop points allowed.", "⚠️");
         return;
       }
       dropStops.push({ lat: null, lng: null, text: '' });
@@ -815,7 +844,7 @@
 
     function setPickup(lat, lng, labelText = null) {
       if (!isWithinJaipur(lat, lng)) {
-        alert("⚠️ 67 Cabs operates only within Jaipur. Selected pickup location is outside service boundary.");
+        showInAppToast("67 Cabs operates only within Jaipur.", "⚠️");
         return;
       }
       pickupCoords = [lat, lng];
@@ -828,7 +857,7 @@
 
     function setStopLocation(index, lat, lng, labelText = null) {
       if (!isWithinJaipur(lat, lng)) {
-        alert("⚠️ 67 Cabs operates only within Jaipur. Location is outside service boundary.");
+        showInAppToast("Location is outside Jaipur boundary.", "⚠️");
         return;
       }
       dropStops[index] = { lat, lng, text: labelText || `${lat.toFixed(4)}, ${lng.toFixed(4)}` };
@@ -851,37 +880,57 @@
       return `📍 GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     }
 
+    // ROBUST LOCATION FETCHER (WEBVIEW & GPS FALLBACK)
     function fetchPreciseGPS() {
       const btn = document.getElementById('btn-gps');
       btn.innerText = '⏳';
 
-      if (!navigator.geolocation) {
-        alert("Geolocation is not supported by your browser.");
+      const handleSuccess = async (pos) => {
+        const { latitude, longitude } = pos.coords;
         btn.innerText = '🎯';
-        return;
-      }
+        if (!isWithinJaipur(latitude, longitude)) {
+          showInAppToast(`Location outside Jaipur (${latitude.toFixed(3)}, ${longitude.toFixed(3)})`, "⚠️");
+          return;
+        }
+        const address = await reverseGeocode(latitude, longitude);
+        setPickup(latitude, longitude, address);
+        map.setView([latitude, longitude], 15);
+        showInAppToast("GPS Location Fetched!", "📍");
+      };
 
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
+      const handleFallback = () => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            handleSuccess,
+            () => {
+              btn.innerText = '🎯';
+              // Default to central Jaipur if completely blocked
+              if (!pickupCoords) {
+                setPickup(26.9124, 75.7873, "Jaipur City Centre");
+                map.setView([26.9124, 75.7873], 14);
+                showInAppToast("GPS permission denied. Set to Jaipur centre.", "📍");
+              }
+            },
+            { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+          );
+        } else {
           btn.innerText = '🎯';
-          if (!isWithinJaipur(latitude, longitude)) {
-            alert(`⚠️ Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)}) Jaipur service boundary ke bahar hai.`);
-            return;
-          }
-          const address = await reverseGeocode(latitude, longitude);
-          setPickup(latitude, longitude, address);
-          map.setView([latitude, longitude], 15);
-        },
-        (err) => {
-          btn.innerText = '🎯';
-          console.warn("GPS lookup error:", err.message);
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
+        }
+      };
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          handleSuccess,
+          handleFallback,
+          { enableHighAccuracy: true, timeout: 7000, maximumAge: 0 }
+        );
+      } else {
+        handleFallback();
+      }
     }
+    
     document.getElementById('btn-gps').addEventListener('click', fetchPreciseGPS);
-    window.addEventListener('load', () => setTimeout(fetchPreciseGPS, 800));
+    window.addEventListener('load', () => setTimeout(fetchPreciseGPS, 500));
 
     function setupAutocomplete(inputId, resultsId, isPickup, stopIdx = 0) {
       const input = document.getElementById(inputId);
@@ -960,12 +1009,12 @@
     // ==========================================
     async function confirmRouteAndProceed() {
       if (!pickupCoords) {
-        alert("Please select a Jaipur pickup point.");
+        showInAppToast("Please select a Jaipur pickup point.", "📍");
         return;
       }
       const validStops = dropStops.filter(s => s.lat !== null && s.lng !== null);
       if (validStops.length === 0) {
-        alert("Please set at least 1 destination drop point.");
+        showInAppToast("Please set at least 1 destination drop point.", "🏁");
         return;
       }
 
@@ -985,7 +1034,7 @@
           totalTripDurationMins = Math.round(route.duration / 60);
 
           if (totalTripDistanceKm > MAX_TRIP_DISTANCE_KM) {
-            alert(`⚠️ Trip distance (${totalTripDistanceKm} km) exceeds maximum limit of ${MAX_TRIP_DISTANCE_KM} km.`);
+            showInAppToast(`Trip exceeds ${MAX_TRIP_DISTANCE_KM} km limit.`, "⚠️");
             return;
           }
 
@@ -1007,7 +1056,7 @@
           }, 4000);
         }
       } catch (e) {
-        alert("Failed to calculate route. Please try again.");
+        showInAppToast("Failed to calculate route. Try again.", "⚠️");
       }
     }
 
@@ -1139,7 +1188,8 @@
       
       renderProximityCards();
 
-      // Dynamic listener for this exact rideId
+      // Clean listener registration
+      socket.off(`ride:accepted:${activeRideId}`);
       socket.on(`ride:accepted:${activeRideId}`, handleRideAcceptedEvent);
 
       socket.emit('ride:request_targeted', {
@@ -1155,7 +1205,8 @@
 
       document.getElementById('dispatch-waiting-banner').classList.remove('hidden');
 
-      dispatchCountdown = 35; // 35 seconds extended time
+      // EXACT 15 SECONDS TIMER
+      dispatchCountdown = 15;
       document.getElementById('dispatch-timer-text').innerText = `Awaiting driver response (Auto-timeout in ${dispatchCountdown}s)`;
 
       if (dispatchTimer) clearInterval(dispatchTimer);
@@ -1167,7 +1218,7 @@
           clearInterval(dispatchTimer);
           dispatchTimer = null;
           cancelRideSearchSilent();
-          alert("⚠️ Driver was unavailable or did not respond in time. Button is active again.");
+          showInAppToast("Driver did not respond in 15s. Please pick another.", "⏱️");
         }
       }, 1000);
     }
@@ -1189,6 +1240,7 @@
 
     function cancelRideSearch() {
       cancelRideSearchSilent();
+      showInAppToast("Offer cancelled. You can choose another cab.", "ℹ️");
     }
 
     function cancelRide() {
@@ -1200,9 +1252,12 @@
       }
     }
 
-    socket.on('ride:declined_targeted', () => {
+    // SINGLE CLEAN DECLINE LISTENER WITHOUT DUPLICATE POPUP ALERTS
+    socket.off('ride:declined_targeted');
+    socket.on('ride:declined_targeted', (payload) => {
       cancelRideSearchSilent();
-      alert("⚠️ Driver was unavailable or busy. Button is active again to re-offer or pick another cab.");
+      const msg = payload?.message || "Driver was unavailable or busy.";
+      showInAppToast(msg, "⚠️");
     });
 
     function handleRideAcceptedEvent({ rideId, driver, otp, fare }) {
@@ -1239,8 +1294,11 @@
       document.getElementById('verify-driver-name').innerText = driver?.name || 'Driver';
       document.getElementById('verify-plate-no').innerText = driver?.vehicleNo || 'RJ 14 TA 6767';
       document.getElementById('verify-otp-display').innerText = otp || '----';
+
+      showInAppToast("Ride Accepted! Driver is arriving.", "✅");
     }
 
+    socket.off('ride:accepted');
     socket.on('ride:accepted', handleRideAcceptedEvent);
 
     function handleDriverArrivalUI() {
@@ -1263,8 +1321,8 @@
       }
     }
 
+    socket.off('ride:driver_arrived');
     socket.on('ride:driver_arrived', handleDriverArrivalUI);
-    socket.on(`ride:driver_arrived:${activeRideId}`, handleDriverArrivalUI);
 
     socket.on('driver:location_broadcast', ({ lat, lng, phase }) => {
       if (phase === 'ARRIVED' || tripPhase === 'ARRIVED') {
@@ -1311,9 +1369,10 @@
       const statusEl = document.getElementById('trip-live-status');
       statusEl.className = "text-center text-xs text-slate-300 bg-slate-800/80 p-2.5 rounded-xl border border-slate-700";
       statusEl.innerHTML = "🟢 <b class='text-green-400'>Trip Ongoing</b> (Navigating to Drop Location)";
+      showInAppToast("Trip Started! Have a safe ride.", "🟢");
     });
 
-    // GUARANTEED INSTANT SETTLEMENT SCREEN OPENER
+    socket.off('ride:completed');
     socket.on('ride:completed', ({ finalFare, driverUpiId }) => {
       showSettlementUI(finalFare, driverUpiId);
     });
@@ -1421,12 +1480,12 @@
           });
           const data = await res.json();
           if (data.success) {
-            alert("✅ Aapka account permanently delete ho chuka hai.");
+            showInAppToast("Account deleted.", "🗑️");
             localStorage.removeItem('67_rider_user');
-            window.location.reload();
+            setTimeout(() => window.location.reload(), 1000);
           }
         } catch (e) {
-          alert("Delete failed.");
+          showInAppToast("Delete failed.", "⚠️");
         }
       }
     }
@@ -1459,13 +1518,13 @@
       const referral = document.getElementById('auth-referral').value.trim();
 
       if (!name || phone.length < 10 || !password) {
-        alert("Please enter Name, 10-digit Mobile and Password.");
+        showInAppToast("Enter Name, 10-digit Mobile & Password.", "⚠️");
         return;
       }
 
       const submitBtn = document.getElementById('btn-submit-signup');
       submitBtn.disabled = true;
-      submitBtn.innerText = '⏳ Creating Account in Database...';
+      submitBtn.innerText = '⏳ Creating Account...';
 
       try {
         const res = await fetch('/api/rider/signup', {
@@ -1482,12 +1541,12 @@
           if (!currentUser.isKycDone) {
             document.getElementById('kyc-prompt-banner').classList.remove('hidden');
           }
-          alert("✅ Registered successfully & saved in MongoDB!");
+          showInAppToast("Registered successfully!", "✅");
         } else {
-          alert(`⚠️ ${data.message}`);
+          showInAppToast(data.message || "Signup failed.", "⚠️");
         }
       } catch (err) {
-        alert("Signup failed. Check connection.");
+        showInAppToast("Signup failed. Check connection.", "⚠️");
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerText = '🚀 Instant 5-Second Signup';
@@ -1500,7 +1559,7 @@
       const password = document.getElementById('login-rider-password').value.trim();
 
       if (phone.length < 10 || !password) {
-        alert("Please enter 10-digit Mobile number and Password.");
+        showInAppToast("Enter 10-digit Phone and Password.", "⚠️");
         return;
       }
 
@@ -1524,12 +1583,12 @@
             document.getElementById('kyc-prompt-banner').classList.remove('hidden');
           }
           checkAndRestoreRiderActiveRide();
-          alert("✅ Welcome back! Logged in successfully.");
+          showInAppToast(`Welcome back, ${currentUser.name}!`, "✅");
         } else {
-          alert(`⚠️ ${data.message}`);
+          showInAppToast(data.message || "Login failed.", "⚠️");
         }
       } catch (err) {
-        alert("Login failed. Check server connection.");
+        showInAppToast("Login failed. Check connection.", "⚠️");
       } finally {
         btn.disabled = false;
         btn.innerText = 'LOGIN TO RIDER ACCOUNT';
@@ -1574,17 +1633,17 @@
       const backFile = document.getElementById('kyc-doc-back').files[0];
 
       if (!govIdNumber) {
-        alert("Please enter your Govt ID Card Number.");
+        showInAppToast("Please enter Govt ID Number.", "⚠️");
         return;
       }
       if (!frontFile) {
-        alert("Please select Front Side photo.");
+        showInAppToast("Please select Front Side photo.", "⚠️");
         return;
       }
 
       const btn = document.getElementById('btn-upload-kyc');
       btn.disabled = true;
-      btn.innerText = '⏳ Compressing & Uploading to MongoDB...';
+      btn.innerText = '⏳ Uploading to MongoDB...';
 
       try {
         const frontBase64 = await compressImageFile(frontFile);
@@ -1609,12 +1668,12 @@
           }
           document.getElementById('kyc-prompt-banner').classList.add('hidden');
           closeKYCModal();
-          alert("✅ Govt ID KYC verified and updated in MongoDB database!");
+          showInAppToast("Govt ID verified and stored!", "✅");
         } else {
-          alert(`⚠️ ${data.message}`);
+          showInAppToast(data.message || "KYC upload failed.", "⚠️");
         }
       } catch (e) {
-        alert("KYC upload failed.");
+        showInAppToast("KYC upload failed.", "⚠️");
       } finally {
         btn.disabled = false;
         btn.innerText = '📤 Upload & Save to Database';
@@ -1645,7 +1704,7 @@
               document.body.removeChild(a);
               window.URL.revokeObjectURL(audioUrl);
             }, 100);
-            alert("🔒 Safety audio saved locally in your phone storage as evidence.");
+            showInAppToast("Safety audio saved locally.", "🔒");
           };
 
           mediaRecorder.start();
@@ -1653,7 +1712,7 @@
           document.getElementById('record-btn-text').innerText = "Stop & Save Audio";
           document.getElementById('btn-audio-record').className = "bg-red-600 text-white font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 animate-pulse";
         } catch (err) {
-          alert("Microphone permission denied or unsupported.");
+          showInAppToast("Microphone permission denied.", "⚠️");
         }
       } else {
         stopSafetyAudioRecording();

@@ -337,6 +337,7 @@ function isWithinJaipur(lat, lng) {
 let activeDrivers = new Map();
 let driverSocketMap = new Map();
 let activeRides = new Map();
+let rideTimeoutTimers = new Map(); // Tracker for exact 15 seconds timer
 
 // ---------------- STUCK TRIPS RESET & PURGE ROUTE (SUPPORTS GET & POST) ----------------
 const handleResetStuckTrips = async (req, res) => {
@@ -346,6 +347,9 @@ const handleResetStuckTrips = async (req, res) => {
       { $set: { status: 'CANCELLED', isRiderDismissed: true, isDriverDismissed: true } }
     );
     activeRides.clear();
+    rideTimeoutTimers.forEach(timer => clearTimeout(timer));
+    rideTimeoutTimers.clear();
+
     return res.send(`
       <div style="font-family:sans-serif; text-align:center; padding:40px; background:#0f172a; color:#f59e0b; min-height:100vh;">
         <h1 style="font-size:32px;">✅ All Stuck Trips Purged Successfully!</h1>
@@ -441,6 +445,12 @@ app.post('/api/ride/accept-bg', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Ride ID required.' });
     }
 
+    // Clear 15-second timer on acceptance
+    if (rideTimeoutTimers.has(rideId)) {
+      clearTimeout(rideTimeoutTimers.get(rideId));
+      rideTimeoutTimers.delete(rideId);
+    }
+
     let trip = await Trip.findOne({ rideId });
     const memoryRide = activeRides.get(rideId);
 
@@ -529,12 +539,27 @@ app.post('/api/ride/decline', async (req, res) => {
     const { rideId } = req.body;
     if (!rideId) return res.status(400).json({ success: false, message: 'Ride ID required.' });
 
+    // Clear active timer
+    if (rideTimeoutTimers.has(rideId)) {
+      clearTimeout(rideTimeoutTimers.get(rideId));
+      rideTimeoutTimers.delete(rideId);
+    }
+
     const ride = activeRides.get(rideId);
     if (ride && ride.riderSocketId) {
-      io.to(ride.riderSocketId).emit('ride:declined_targeted', { rideId });
+      io.to(ride.riderSocketId).emit('ride:declined_targeted', { 
+        rideId,
+        message: 'Driver is currently unavailable.' 
+      });
+    } else {
+      io.emit(`ride:declined_targeted:${rideId}`, { 
+        rideId,
+        message: 'Driver is currently unavailable.' 
+      });
     }
-    io.emit('ride:declined_targeted', { rideId });
+    
     activeRides.delete(rideId);
+    await Trip.updateOne({ rideId }, { status: 'CANCELLED' }).catch(() => {});
 
     return res.json({ success: true, message: 'Ride declined.' });
   } catch (err) {
@@ -1500,7 +1525,7 @@ io.on('connection', (socket) => {
     console.log(`🚪 Driver ${driverId} logged out & purged from active radar.`);
   });
 
-  // 2. Targeted 1-Click Ride Request (CHECK BOTH MEMORY & DB TO PREVENT FALSE UNAVAILABLE)
+  // 2. Targeted 1-Click Ride Request (FIXED: 15 SECONDS AUTO-CANCEL TIMER + NO DOUBLE POP-UP)
   socket.on('ride:request_targeted', async (rideData) => {
     const { rideId, targetDriverId, pickup, stops, cabCategory, totalDistanceKm, totalFare, rider } = rideData;
 
@@ -1540,28 +1565,63 @@ io.on('connection', (socket) => {
         body: `Kiraya: ₹${ridePayload.totalFare}`,
         rideId: ridePayload.rideId,
         driverId: targetDriverId,
-        fare: ridePayload.totalFare,
+        fare: String(ridePayload.totalFare),
         pickup: pickup?.text || 'Pickup Location',
         drop: stops?.[0]?.text || 'Drop Location',
         data: { 
           rideId: ridePayload.rideId, 
-          driverId: targetDriverId,
+          driverId: targetDriverId, 
           url: `/driver.html?status=ongoing&id=${ridePayload.rideId}&autoAccept=true` 
         }
       });
 
       console.log(`🎯 Targeted Ride ${rideId} dispatched to Driver: ${targetDriverId}`);
+
+      // Clear any prior timer
+      if (rideTimeoutTimers.has(rideId)) {
+        clearTimeout(rideTimeoutTimers.get(rideId));
+      }
+
+      // EXACT 15 SECONDS AUTO TIMEOUT TIMER
+      const timer = setTimeout(async () => {
+        const currentRide = activeRides.get(rideId);
+        if (currentRide && currentRide.status === 'SEARCHING') {
+          console.log(`⏱️ Targeted Ride ${rideId} timed out after 15 seconds.`);
+          if (currentRide.riderSocketId) {
+            io.to(currentRide.riderSocketId).emit('ride:declined_targeted', { 
+              rideId,
+              message: 'Driver did not respond within 15 seconds.'
+            });
+          }
+          activeRides.delete(rideId);
+          rideTimeoutTimers.delete(rideId);
+          await Trip.updateOne({ rideId }, { status: 'CANCELLED' }).catch(() => {});
+        }
+      }, 15000);
+
+      rideTimeoutTimers.set(rideId, timer);
+
     } else {
-      socket.emit('ride:declined_targeted', { rideId });
+      // Single targeted emit to prevent double pop-ups
+      socket.emit('ride:declined_targeted', { rideId, message: 'Driver is currently offline.' });
+      activeRides.delete(rideId);
     }
   });
 
+  // Decline Targeted Ride (Single Emit to prevent duplicate alerts)
   socket.on('ride:decline_targeted', ({ rideId }) => {
+    if (rideTimeoutTimers.has(rideId)) {
+      clearTimeout(rideTimeoutTimers.get(rideId));
+      rideTimeoutTimers.delete(rideId);
+    }
+
     const ride = activeRides.get(rideId);
     if (ride && ride.riderSocketId) {
-      io.to(ride.riderSocketId).emit('ride:declined_targeted', { rideId });
+      io.to(ride.riderSocketId).emit('ride:declined_targeted', { 
+        rideId, 
+        message: 'Driver declined the ride request.' 
+      });
     }
-    io.emit('ride:declined_targeted', { rideId });
     activeRides.delete(rideId);
   });
 
@@ -1578,11 +1638,11 @@ io.on('connection', (socket) => {
     const rideId = rideData.rideId || `RIDE_${Date.now()}`;
     const ridePayload = { 
       ...rideData, 
-      cabType: requestedCabType,
+      cabType: requestedCabType, 
       rideId, 
       riderSocketId: socket.id, 
-      status: 'SEARCHING',
-      startTime: new Date()
+      status: 'SEARCHING', 
+      startTime: new Date() 
     };
     activeRides.set(rideId, ridePayload);
 
@@ -1607,7 +1667,7 @@ io.on('connection', (socket) => {
           body: `Category: ${requestedCabType} | Kiraya: ₹${totalFare}`,
           rideId: rideId,
           driverId: driver.driverId,
-          fare: totalFare,
+          fare: String(totalFare),
           pickup: pickup?.text || 'Pickup Location',
           drop: drop?.text || 'Drop Location',
           data: { 
@@ -1619,11 +1679,38 @@ io.on('connection', (socket) => {
       }
     });
     io.emit('ride:new_offer', ridePayload);
+
+    // 15 Seconds Timer for general broadcast request
+    if (rideTimeoutTimers.has(rideId)) {
+      clearTimeout(rideTimeoutTimers.get(rideId));
+    }
+
+    const bTimer = setTimeout(async () => {
+      const currentRide = activeRides.get(rideId);
+      if (currentRide && currentRide.status === 'SEARCHING') {
+        if (currentRide.riderSocketId) {
+          io.to(currentRide.riderSocketId).emit('ride:declined_targeted', { 
+            rideId,
+            message: 'No nearby driver accepted the ride in 15 seconds.' 
+          });
+        }
+        activeRides.delete(rideId);
+        rideTimeoutTimers.delete(rideId);
+        await Trip.updateOne({ rideId }, { status: 'CANCELLED' }).catch(() => {});
+      }
+    }, 15000);
+
+    rideTimeoutTimers.set(rideId, bTimer);
   });
 
   // ---------------- CANCEL RIDE WITH INSTANT DRIVER AVAILABILITY ----------------
   socket.on('ride:cancel', async ({ rideId }) => {
     try {
+      if (rideTimeoutTimers.has(rideId)) {
+        clearTimeout(rideTimeoutTimers.get(rideId));
+        rideTimeoutTimers.delete(rideId);
+      }
+
       const existingTrip = await Trip.findOne({ rideId });
       await Trip.updateOne(
         { rideId }, 
@@ -1655,6 +1742,11 @@ io.on('connection', (socket) => {
 
   // 3. Driver Accepts Ride (Standard In-App)
   socket.on('ride:accept', async ({ rideId, driverData }) => {
+    if (rideTimeoutTimers.has(rideId)) {
+      clearTimeout(rideTimeoutTimers.get(rideId));
+      rideTimeoutTimers.delete(rideId);
+    }
+
     const ride = activeRides.get(rideId);
     let registeredDriver = null;
 
@@ -1681,13 +1773,13 @@ io.on('connection', (socket) => {
 
     try {
       const updatedTrip = await Trip.findOneAndUpdate(
-        { rideId },
+        { rideId }, 
         { 
-          $set: {
+          $set: { 
             status: 'ACCEPTED', 
             driverData: assignedDriverData, 
             otp: startOtp 
-          }
+          } 
         },
         { new: true, upsert: true }
       );
@@ -1743,7 +1835,7 @@ io.on('connection', (socket) => {
       activeRides.set(rideId, ride);
       if (ride.riderSocketId) {
         io.to(ride.riderSocketId).emit('ride:driver_arrived', { 
-          rideId,
+          rideId, 
           message: '🚖 Driver has arrived at your pickup location!' 
         });
       }

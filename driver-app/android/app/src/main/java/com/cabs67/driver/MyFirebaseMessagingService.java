@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.media.AudioAttributes;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
@@ -16,7 +17,7 @@ import com.google.firebase.messaging.RemoteMessage;
 
 public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
-    private static final String CHANNEL_ID = "67_driver_offers_channel";
+    private static final String CHANNEL_ID = "67_driver_offers_channel_v2";
 
     @Override
     public void onMessageReceived(@NonNull RemoteMessage remoteMessage) {
@@ -42,6 +43,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
     private void showFullScreenRideAlert(String title, String body, String rideId) {
         NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
@@ -51,19 +53,32 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             );
             channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
             channel.enableVibration(true);
-            if (manager != null) manager.createNotificationChannel(channel);
+            channel.setBypassDnd(true);
+
+            AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                    .build();
+            channel.setSound(soundUri, audioAttributes);
+
+            if (manager != null) {
+                manager.createNotificationChannel(channel);
+            }
         }
 
-        Intent fullScreenIntent = new Intent(this, MainActivity.class);
+        // Fix: Call IncomingRideActivity instead of MainActivity
+        Intent fullScreenIntent = new Intent(this, IncomingRideActivity.class);
         fullScreenIntent.putExtra("rideId", rideId);
-        fullScreenIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        fullScreenIntent.putExtra("title", title);
+        fullScreenIntent.putExtra("body", body);
+        fullScreenIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
 
         PendingIntent pendingIntent = PendingIntent.getActivity(
-                this, 0, fullScreenIntent,
+                this,
+                0,
+                fullScreenIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0)
         );
-
-        Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_dialog_alert)
@@ -79,5 +94,10 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         if (manager != null) {
             manager.notify(6702, builder.build());
         }
+
+        // Direct Foreground Launch fallback for Android 9 and below
+        try {
+            startActivity(fullScreenIntent);
+        } catch (Exception ignored) {}
     }
 }

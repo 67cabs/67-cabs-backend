@@ -1,6 +1,7 @@
 package com.cabs67.driver;
 
 import android.app.Activity;
+import android.app.KeyguardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.media.Ringtone;
@@ -10,10 +11,10 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Vibrator;
+import android.os.VibrationEffect;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
 import org.json.JSONObject;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -32,10 +33,14 @@ public class IncomingRideActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Turn Screen ON and Display over Lockscreen / YouTube
+        // Turn Screen ON & Show over YouTube / Lockscreen
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true);
             setTurnScreenOn(true);
+            KeyguardManager keyguardManager = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+            if (keyguardManager != null) {
+                keyguardManager.requestDismissKeyguard(this, null);
+            }
         }
 
         getWindow().addFlags(
@@ -60,24 +65,31 @@ public class IncomingRideActivity extends Activity {
         Button btnAccept = findViewById(R.id.btnAccept);
         Button btnDecline = findViewById(R.id.btnDecline);
 
-        if (tvPickup != null) tvPickup.setText(pickup != null ? pickup : "Jaipur Pickup Point");
+        if (tvPickup != null) tvPickup.setText(pickup != null ? pickup : "Pickup Point");
         if (tvDrop != null) tvDrop.setText(drop != null ? drop : "Drop Destination");
         if (tvFare != null) tvFare.setText("₹" + (fare != null ? fare : "0"));
 
-        // Sound & Vibration Alert
+        // Sound Alert
         try {
             Uri alertSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
             ringtone = RingtoneManager.getRingtone(getApplicationContext(), alertSound);
             if (ringtone != null) ringtone.play();
-        } catch (Exception e) {}
+        } catch (Exception ignored) {}
 
+        // Vibration Alert
         try {
             vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-            if (vibrator != null) vibrator.vibrate(new long[]{0, 800, 400, 800}, 0);
-        } catch (Exception e) {}
+            if (vibrator != null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    vibrator.vibrate(VibrationEffect.createWaveform(new long[]{0, 800, 400, 800}, 0));
+                } else {
+                    vibrator.vibrate(new long[]{0, 800, 400, 800}, 0);
+                }
+            }
+        } catch (Exception ignored) {}
 
-        // 35 Seconds Timeout matching server dispatch window
-        countDownTimer = new CountDownTimer(35000, 1000) {
+        // FIX: 15 Seconds Countdown Timer
+        countDownTimer = new CountDownTimer(15000, 1000) {
             @Override
             public void onTick(long millisUntilFinished) {
                 if (tvTimer != null) {
@@ -135,7 +147,7 @@ public class IncomingRideActivity extends Activity {
                 os.flush();
                 os.close();
 
-                int code = conn.getResponseCode();
+                conn.getResponseCode();
                 conn.disconnect();
             } catch (Exception e) {
                 e.printStackTrace();
@@ -148,7 +160,7 @@ public class IncomingRideActivity extends Activity {
             if (ringtone != null && ringtone.isPlaying()) ringtone.stop();
             if (vibrator != null) vibrator.cancel();
             if (countDownTimer != null) countDownTimer.cancel();
-        } catch (Exception e) {}
+        } catch (Exception ignored) {}
         finish();
     }
 
