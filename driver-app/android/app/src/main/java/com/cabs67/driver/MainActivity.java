@@ -1,6 +1,8 @@
 package com.cabs67.driver;
 
 import android.Manifest;
+import android.app.NotificationManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -20,6 +22,7 @@ public class MainActivity extends BridgeActivity {
     private static final int PERMISSION_REQ_CODE = 6701;
     private static final int OVERLAY_REQ_CODE = 6702;
     private static final int BG_LOCATION_REQ_CODE = 6703;
+    private static final int FULL_SCREEN_REQ_CODE = 6704;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -86,18 +89,34 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void checkOverlayPermissionAndStart() {
-        // Request "Display over other apps" (Needed for YouTube & Lockscreen Popups)
+        // 1. Request "Display over other apps" (SYSTEM_ALERT_WINDOW)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (!Settings.canDrawOverlays(this)) {
                 Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                         Uri.parse("package:" + getPackageName()));
                 startActivityForResult(intent, OVERLAY_REQ_CODE);
-            } else {
-                startBackgroundLocationServiceSafe();
+                return;
             }
-        } else {
-            startBackgroundLocationServiceSafe();
         }
+
+        // 2. Check Android 14+ Full Screen Intent Permission for Private/Sideloaded APKs
+        checkFullScreenIntentPermission();
+    }
+
+    private void checkFullScreenIntentPermission() {
+        if (Build.VERSION.SDK_INT >= 34) { // Android 14+ (API 34+)
+            NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if (notificationManager != null && !notificationManager.canUseFullScreenIntent()) {
+                try {
+                    Intent intent = new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                            Uri.parse("package:" + getPackageName()));
+                    startActivityForResult(intent, FULL_SCREEN_REQ_CODE);
+                    return;
+                } catch (Exception ignored) {}
+            }
+        }
+
+        startBackgroundLocationServiceSafe();
     }
 
     private void startBackgroundLocationServiceSafe() {
@@ -127,6 +146,8 @@ public class MainActivity extends BridgeActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == OVERLAY_REQ_CODE) {
+            checkFullScreenIntentPermission();
+        } else if (requestCode == FULL_SCREEN_REQ_CODE) {
             startBackgroundLocationServiceSafe();
         }
     }

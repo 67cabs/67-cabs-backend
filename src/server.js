@@ -11,6 +11,8 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 const mongoose = require('mongoose');
 require('dotenv').config();
 
@@ -19,6 +21,22 @@ const { calculateMasterFare } = require('./utils/fareCalculator');
 // ---------------- WEB PUSH VAPID DISABLED (CHROME PUSH COMPLETELY BYPASSED) ----------------
 const app = express();
 const server = http.createServer(app);
+
+// Sounds directory setup (Public MP3 Storage)
+const soundDir = path.join(__dirname, '../public/sounds');
+if (!fs.existsSync(soundDir)) {
+  fs.mkdirSync(soundDir, { recursive: true });
+}
+
+// Multer Storage Configuration for Audio
+const soundStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, soundDir),
+  filename: (req, file, cb) => {
+    const cleanName = 'custom_driver_alert.mp3';
+    cb(null, cleanName);
+  }
+});
+const uploadSound = multer({ storage: soundStorage });
 
 // Socket.io for Real-time Cabs & Alerts (Optimized for HTTPS/Nginx)
 const io = new Server(server, {
@@ -387,6 +405,28 @@ app.post('/api/admin/settings/sound', async (req, res) => {
     return res.json({ success: true, message: 'Alert tone updated successfully.', soundName: globalActiveSound });
   } catch (e) {
     return res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// Custom MP3 Audio Upload Route (Allows any custom song like Ganesh Vandana, Bhakti, etc.)
+app.post('/api/admin/upload-custom-sound', uploadSound.single('audioFile'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Audio file upload failed.' });
+    }
+    const soundUrl = `/sounds/${req.file.filename}?v=${Date.now()}`;
+    globalActiveSound = soundUrl;
+
+    await Setting.findOneAndUpdate(
+      { key: 'driver_alert_sound' },
+      { value: soundUrl },
+      { upsert: true, new: true }
+    );
+
+    console.log(`🎵 Custom driver alert sound updated to: ${soundUrl}`);
+    return res.json({ success: true, message: 'Custom song uploaded & applied!', soundUrl });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 

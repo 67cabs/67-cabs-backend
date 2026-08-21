@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
+import android.media.MediaPlayer;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
@@ -29,6 +30,7 @@ import java.nio.charset.StandardCharsets;
 public class IncomingRideActivity extends Activity {
 
     private Ringtone ringtone;
+    private MediaPlayer customMediaPlayer;
     private Vibrator vibrator;
     private CountDownTimer countDownTimer;
     private PowerManager.WakeLock screenWakeLock;
@@ -37,6 +39,7 @@ public class IncomingRideActivity extends Activity {
 
     private String currentRideId = "";
     private String currentDriverId = "";
+    private String currentSoundName = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -110,6 +113,7 @@ public class IncomingRideActivity extends Activity {
         if (intent != null) {
             currentRideId = intent.getStringExtra("rideId");
             currentDriverId = intent.getStringExtra("driverId");
+            currentSoundName = intent.getStringExtra("soundName");
         }
     }
 
@@ -164,11 +168,39 @@ public class IncomingRideActivity extends Activity {
             }
         } catch (Exception ignored) {}
 
-        // Sound Alert
+        // Sound Alert: Custom Uploaded MP3 Song or Dynamic Resource Audio
         try {
-            Uri alertSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
-            ringtone = RingtoneManager.getRingtone(getApplicationContext(), alertSound);
-            if (ringtone != null) ringtone.play();
+            if (currentSoundName != null && currentSoundName.startsWith("/sounds/")) {
+                String fullAudioUrl = "https://137.23.57.23.sslip.io" + currentSoundName;
+                customMediaPlayer = new MediaPlayer();
+                customMediaPlayer.setAudioAttributes(
+                        new AudioAttributes.Builder()
+                                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                                .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                                .build()
+                );
+                customMediaPlayer.setDataSource(fullAudioUrl);
+                customMediaPlayer.setLooping(true);
+                customMediaPlayer.prepareAsync();
+                customMediaPlayer.setOnPreparedListener(MediaPlayer::start);
+            } else {
+                int soundResId = 0;
+                if (currentSoundName != null && !currentSoundName.isEmpty()) {
+                    soundResId = getResources().getIdentifier(currentSoundName, "raw", getPackageName());
+                }
+
+                Uri alertSound;
+                if (soundResId != 0) {
+                    alertSound = Uri.parse("android.resource://" + getPackageName() + "/" + soundResId);
+                } else {
+                    alertSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+                }
+
+                ringtone = RingtoneManager.getRingtone(getApplicationContext(), alertSound);
+                if (ringtone != null) {
+                    ringtone.play();
+                }
+            }
         } catch (Exception ignored) {}
 
         // Vibration Alert
@@ -242,6 +274,13 @@ public class IncomingRideActivity extends Activity {
 
     private void dismissAlert() {
         try {
+            if (customMediaPlayer != null) {
+                if (customMediaPlayer.isPlaying()) {
+                    customMediaPlayer.stop();
+                }
+                customMediaPlayer.release();
+                customMediaPlayer = null;
+            }
             if (ringtone != null && ringtone.isPlaying()) ringtone.stop();
             if (vibrator != null) vibrator.cancel();
             if (countDownTimer != null) countDownTimer.cancel();

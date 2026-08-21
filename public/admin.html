@@ -223,25 +223,38 @@
           <h2 class="text-sm font-black text-amber-400 uppercase tracking-wider flex items-center gap-2">
             <span>🔔</span> Driver Incoming Ride Ringtone Manager
           </h2>
-          <span class="text-[10px] text-slate-400">Live Global Ringtone Switch</span>
+          <span class="text-[10px] text-slate-400">Live Global Ringtone Switch & Song Upload</span>
         </div>
 
-        <div class="space-y-4 text-xs">
+        <div class="space-y-5 text-xs">
+          <!-- 1. Preset Sounds Dropdown -->
           <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
-            <label class="text-[10px] font-bold text-amber-400 uppercase block">Active Dispatch Tone (Plays on all Driver Apps)</label>
+            <label class="text-[10px] font-bold text-amber-400 uppercase block">Option A: Select from Preset Tones</label>
             <select id="global-ringtone-select" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-3 outline-none focus:border-amber-400 text-xs font-bold">
               <option value="alert_uber">🚕 Uber/Ola High Radar Alert (Recommended)</option>
               <option value="alert_loud_siren">🚨 Loud Emergency Siren Tone</option>
               <option value="alert_chime">🔔 Soft Double Bell Chime</option>
               <option value="alert_modern">⚡ Modern Electronic Pulsar Tone</option>
             </select>
-            <p class="text-[10px] text-slate-500 mt-1">Jab bhi koi rider booking karega, driver ke background mein yahi select ki gayi ringtone bajegi.</p>
+            <button onclick="saveGlobalSoundSetting()" id="btn-save-sound" class="w-full mt-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-400 font-bold py-2.5 rounded-xl text-xs transition shadow flex items-center justify-center gap-2">
+              <span>💾 Apply Selected Preset Tone</span>
+            </button>
           </div>
 
-          <div class="flex gap-3">
-            <button onclick="saveGlobalSoundSetting()" id="btn-save-sound" class="flex-1 bg-green-600 hover:bg-green-500 text-white font-black py-3 rounded-xl text-xs transition shadow flex items-center justify-center gap-2">
-              <span>💾 Save & Apply Ringtone</span>
-            </button>
+          <!-- 2. Custom MP3 File Upload (Jai Jai Deva / Bhakti / Custom Song) -->
+          <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+            <label class="text-[10px] font-bold text-green-400 uppercase block">Option B: Upload Custom Alert MP3 Song (e.g. Jai Deva Ganpati, Bhakti or Song)</label>
+            <p class="text-[10px] text-slate-400">Apne computer/mobile se koi bhi .mp3 song select karke upload karein. Ride aane par yahi gaana sabhi drivers ke phone par bajega.</p>
+            <div class="flex flex-col sm:flex-row gap-3 items-center">
+              <input type="file" id="admin-audio-file-input" accept="audio/mp3,audio/wav,audio/*" class="w-full bg-slate-900 border border-slate-700 text-xs text-slate-300 rounded-xl p-2.5 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950 hover:file:bg-amber-400" />
+              <button onclick="uploadCustomAudioFile()" id="btn-upload-audio" class="w-full sm:w-auto bg-green-600 hover:bg-green-500 text-white font-black px-5 py-2.5 rounded-xl text-xs transition whitespace-nowrap shadow flex items-center justify-center gap-1.5">
+                📤 Upload & Apply Song
+              </button>
+            </div>
+            <div id="box-sound-preview" class="hidden pt-2 border-t border-slate-800/80 space-y-1">
+              <span class="text-[9px] font-bold text-slate-400 uppercase">Current Custom Ringtone Audio Preview:</span>
+              <audio id="sound-preview-player" controls class="w-full h-8 mt-1"></audio>
+            </div>
           </div>
         </div>
       </div>
@@ -676,7 +689,16 @@
         const data = await res.json();
         if (data.success && data.soundName) {
           const select = document.getElementById('global-ringtone-select');
-          if (select) select.value = data.soundName;
+          if (data.soundName.startsWith('/sounds/')) {
+            const previewBox = document.getElementById('box-sound-preview');
+            const player = document.getElementById('sound-preview-player');
+            if (previewBox && player) {
+              player.src = data.soundName;
+              previewBox.classList.remove('hidden');
+            }
+          } else if (select) {
+            select.value = data.soundName;
+          }
         }
       } catch (e) {}
     }
@@ -698,7 +720,8 @@
         });
         const data = await res.json();
         if (data.success) {
-          alert(`✅ Ringtone successfully updated to "${soundName}". Driver apps will now play this sound!`);
+          alert(`✅ Preset ringtone successfully updated to "${soundName}". Driver apps will now play this sound!`);
+          document.getElementById('box-sound-preview').classList.add('hidden');
         } else {
           alert(`⚠️ ${data.message || 'Failed to update sound setting.'}`);
         }
@@ -707,8 +730,47 @@
       } finally {
         if (btn) {
           btn.disabled = false;
-          btn.innerHTML = '<span>💾 Save & Apply Ringtone</span>';
+          btn.innerHTML = '<span>💾 Apply Selected Preset Tone</span>';
         }
+      }
+    }
+
+    async function uploadCustomAudioFile() {
+      const fileInput = document.getElementById('admin-audio-file-input');
+      if (!fileInput.files || fileInput.files.length === 0) {
+        return alert('Kripya ek MP3 audio file select karein!');
+      }
+
+      const formData = new FormData();
+      formData.append('audioFile', fileInput.files[0]);
+
+      const btn = document.getElementById('btn-upload-audio');
+      btn.disabled = true;
+      btn.innerText = '⏳ Uploading Song...';
+
+      try {
+        const res = await fetch('/api/admin/upload-custom-sound', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('✅ Custom ringtone (e.g. Jai Deva Ganpati) successfully upload ho gayi! Sabhi driver phones par yahi bajegi.');
+          const previewBox = document.getElementById('box-sound-preview');
+          const player = document.getElementById('sound-preview-player');
+          if (previewBox && player) {
+            player.src = data.soundUrl;
+            previewBox.classList.remove('hidden');
+            player.play();
+          }
+        } else {
+          alert(`⚠️ ${data.message || 'Audio upload failed.'}`);
+        }
+      } catch (e) {
+        alert('Audio upload failed. Please try again.');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = '📤 Upload & Apply Song';
       }
     }
 
