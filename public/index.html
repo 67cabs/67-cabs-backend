@@ -407,11 +407,11 @@
         </div>
         <div>
           <label class="font-bold text-slate-600">ID Photo (Front Side) *</label>
-          <input id="kyc-doc-front" type="file" accept="image/*" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 mt-1" />
+          <input id="kyc-doc-front" type="file" accept="image/*" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 mt-1" />
         </div>
         <div>
           <label class="font-bold text-slate-600">ID Photo (Back Side) *</label>
-          <input id="kyc-doc-back" type="file" accept="image/*" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 mt-1" />
+          <input id="kyc-doc-back" type="file" accept="image/*" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 mt-1" />
         </div>
         <button id="btn-upload-kyc" onclick="uploadCompressedKYC()" class="w-full bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold py-2.5 rounded-xl transition">
           📤 Upload & Save to Database
@@ -880,53 +880,48 @@
       return `📍 GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     }
 
-    // ROBUST LOCATION FETCHER (WEBVIEW & GPS FALLBACK)
+    // PURE HARDWARE GPS FETCHER - NO STATIC FALLBACK
     function fetchPreciseGPS() {
       const btn = document.getElementById('btn-gps');
-      btn.innerText = '⏳';
+      if (btn) btn.innerText = '⏳';
 
-      const handleSuccess = async (pos) => {
-        const { latitude, longitude } = pos.coords;
-        btn.innerText = '🎯';
-        if (!isWithinJaipur(latitude, longitude)) {
-          showInAppToast(`Location outside Jaipur (${latitude.toFixed(3)}, ${longitude.toFixed(3)})`, "⚠️");
-          return;
-        }
-        const address = await reverseGeocode(latitude, longitude);
-        setPickup(latitude, longitude, address);
-        map.setView([latitude, longitude], 15);
-        showInAppToast("GPS Location Fetched!", "📍");
-      };
-
-      const handleFallback = () => {
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            handleSuccess,
-            () => {
-              btn.innerText = '🎯';
-              // Default to central Jaipur if completely blocked
-              if (!pickupCoords) {
-                setPickup(26.9124, 75.7873, "Jaipur City Centre");
-                map.setView([26.9124, 75.7873], 14);
-                showInAppToast("GPS permission denied. Set to Jaipur centre.", "📍");
-              }
-            },
-            { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
-          );
-        } else {
-          btn.innerText = '🎯';
-        }
-      };
-
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          handleSuccess,
-          handleFallback,
-          { enableHighAccuracy: true, timeout: 7000, maximumAge: 0 }
-        );
-      } else {
-        handleFallback();
+      if (!navigator.geolocation) {
+        showInAppToast("GPS is not supported on this device.", "⚠️");
+        if (btn) btn.innerText = '🎯';
+        return;
       }
+
+      const options = {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
+      };
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          if (btn) btn.innerText = '🎯';
+          const { latitude, longitude, accuracy } = position.coords;
+          
+          console.log(`📡 Exact GPS Position: ${latitude}, ${longitude} (Accuracy: ${accuracy}m)`);
+
+          const address = await reverseGeocode(latitude, longitude);
+          setPickup(latitude, longitude, address);
+          map.setView([latitude, longitude], 16);
+          showInAppToast("Current Location Fetched!", "📍");
+        },
+        (error) => {
+          if (btn) btn.innerText = '🎯';
+          console.warn("GPS Error code:", error.code, error.message);
+          
+          let errorMsg = "Unable to get current location.";
+          if (error.code === 1) errorMsg = "Location permission denied. Please allow GPS access in settings.";
+          if (error.code === 2) errorMsg = "GPS signal weak. Turn on device location.";
+          if (error.code === 3) errorMsg = "Location request timed out. Tap 🎯 again.";
+          
+          showInAppToast(errorMsg, "⚠️");
+        },
+        options
+      );
     }
     
     document.getElementById('btn-gps').addEventListener('click', fetchPreciseGPS);

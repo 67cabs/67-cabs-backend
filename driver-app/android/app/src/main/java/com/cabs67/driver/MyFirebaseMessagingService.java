@@ -14,43 +14,51 @@ import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
+import java.util.Map;
 
 public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
-    private static final String CHANNEL_ID = "67_driver_offers_channel_v2";
+    private static final String CHANNEL_ID = "67_driver_urgent_alerts_v3";
 
     @Override
     public void onMessageReceived(@NonNull RemoteMessage remoteMessage) {
         super.onMessageReceived(remoteMessage);
 
         String title = "🚖 Nayi Ride Request!";
-        String body = "Nayi ride aayi hai, click karke accept karein.";
+        String body = "Nayi ride aayi hai, accept karein.";
         String rideId = "";
+        String driverId = "";
+        String pickup = "";
+        String drop = "";
+        String fare = "";
 
-        if (remoteMessage.getNotification() != null) {
-            title = remoteMessage.getNotification().getTitle();
-            body = remoteMessage.getNotification().getBody();
+        // Extract Data Payload
+        Map<String, String> data = remoteMessage.getData();
+        if (data != null && data.size() > 0) {
+            if (data.containsKey("title")) title = data.get("title");
+            if (data.containsKey("body")) body = data.get("body");
+            if (data.containsKey("rideId")) rideId = data.get("rideId");
+            if (data.containsKey("driverId")) driverId = data.get("driverId");
+            if (data.containsKey("pickup")) pickup = data.get("pickup");
+            if (data.containsKey("drop")) drop = data.get("drop");
+            if (data.containsKey("fare")) fare = data.get("fare");
         }
 
-        if (remoteMessage.getData().size() > 0) {
-            if (remoteMessage.getData().containsKey("title")) title = remoteMessage.getData().get("title");
-            if (remoteMessage.getData().containsKey("body")) body = remoteMessage.getData().get("body");
-            if (remoteMessage.getData().containsKey("rideId")) rideId = remoteMessage.getData().get("rideId");
-        }
-
-        showFullScreenRideAlert(title, body, rideId);
+        showFullScreenRideAlert(title, body, rideId, driverId, pickup, drop, fare);
     }
 
-    private void showFullScreenRideAlert(String title, String body, String rideId) {
+    private void showFullScreenRideAlert(String title, String body, String rideId, String driverId, String pickup, String drop, String fare) {
         NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
 
+        // Android 8.0+ Channel Setup with Highest Urgency
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
-                    "67 Driver Ride Alerts",
+                    "67 Incoming Ride Alerts",
                     NotificationManager.IMPORTANCE_HIGH
             );
+            channel.setDescription("Urgent full screen alert for new incoming rides");
             channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
             channel.enableVibration(true);
             channel.setBypassDnd(true);
@@ -66,16 +74,27 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             }
         }
 
-        // Fix: Call IncomingRideActivity instead of MainActivity
+        // Setup Direct Overlay Intent
         Intent fullScreenIntent = new Intent(this, IncomingRideActivity.class);
         fullScreenIntent.putExtra("rideId", rideId);
+        fullScreenIntent.putExtra("driverId", driverId);
+        fullScreenIntent.putExtra("pickup", pickup);
+        fullScreenIntent.putExtra("drop", drop);
+        fullScreenIntent.putExtra("fare", fare);
         fullScreenIntent.putExtra("title", title);
         fullScreenIntent.putExtra("body", body);
-        fullScreenIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
 
+        fullScreenIntent.setFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK |
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP |
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP |
+                        Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+        );
+
+        int uniqueReqCode = (int) System.currentTimeMillis();
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 this,
-                0,
+                uniqueReqCode,
                 fullScreenIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0)
         );
@@ -88,14 +107,18 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 .setCategory(NotificationCompat.CATEGORY_CALL)
                 .setSound(soundUri)
                 .setAutoCancel(true)
+                .setOngoing(true)
                 .setFullScreenIntent(pendingIntent, true)
                 .setContentIntent(pendingIntent);
 
+        Notification notification = builder.build();
+        notification.flags |= Notification.FLAG_INSISTENT;
+
         if (manager != null) {
-            manager.notify(6702, builder.build());
+            manager.notify(6702, notification);
         }
 
-        // Direct Foreground Launch fallback for Android 9 and below
+        // Direct Activity Trigger fallback
         try {
             startActivity(fullScreenIntent);
         } catch (Exception ignored) {}
