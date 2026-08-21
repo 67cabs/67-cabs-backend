@@ -15,15 +15,24 @@
       theme: {
         extend: {
           colors: {
-            brand: { 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706' }
+            brand: {
+              400: '#fbbf24',
+              500: '#f59e0b',
+              600: '#d97706'
+            }
           }
         }
       }
     }
   </script>
   <style>
-    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #94a3b8;
+      border-radius: 4px;
+    }
     .radar-pulse {
       box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
       animation: pulse-ring 2s infinite cubic-bezier(0.45, 0, 0, 1);
@@ -51,7 +60,7 @@
       <p class="text-xs text-slate-400">Login to your account or Register with Quick KYC</p>
     </div>
 
-    <div class="flex bg-slate-900 dark:bg-slate-900 light-card p-1.5 rounded-2xl border border-slate-800 shadow-xl">
+    <div class="flex bg-slate-900 dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-800 shadow-xl">
       <button onclick="switchAuthTab('login')" id="tab-login-btn" class="w-1/2 py-2.5 text-xs font-black rounded-xl bg-amber-500 text-slate-950 transition shadow-md">
         Login
       </button>
@@ -263,7 +272,6 @@
             <h2 id="driver-header-name" class="text-sm font-black truncate max-w-[170px]">Partner Name</h2>
             <span id="badge-vehicle-no" class="text-[10px] font-mono font-black px-2 py-0.5 rounded-lg border">RJ 14</span>
           </div>
-          <!-- Clean GPS and Mode Status without messy coordinates -->
           <p id="gps-status-indicator" class="text-[10px] text-green-500 font-bold tracking-tight">● ONLINE • Ready for Rides</p>
         </div>
       </div>
@@ -830,7 +838,7 @@
             ctx.drawImage(img, 0, 0, width, height);
             resolve(canvas.toDataURL('image/jpeg', 0.7));
           };
-          img.onerror = () => resolve(event.target.result);
+          img.onerror = () => resolve('');
         };
         reader.onerror = () => resolve('');
       });
