@@ -2,13 +2,29 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>67 Partner - Driver App</title>
   <link rel="manifest" href="/manifest-driver.json" />
   <meta name="theme-color" content="#f59e0b" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              400: '#fbbf24',
+              500: '#f59e0b',
+              600: '#d97706'
+            }
+          }
+        }
+      }
+    }
+  </script>
   <style>
     .custom-scrollbar::-webkit-scrollbar {
       width: 4px;
@@ -17,68 +33,77 @@
       background: #334155;
       border-radius: 4px;
     }
+    .radar-pulse {
+      box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
+      animation: pulse-ring 2s infinite cubic-bezier(0.45, 0, 0, 1);
+    }
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+      70% { box-shadow: 0 0 0 25px rgba(245, 158, 11, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+    }
   </style>
 </head>
-<body class="bg-slate-950 text-white min-h-screen p-4 flex flex-col items-center select-none font-sans relative">
+<body class="bg-slate-950 text-slate-100 min-h-screen p-3 md:p-6 flex flex-col items-center select-none font-sans relative transition-colors duration-300">
 
   <!-- ================= 1. AUTH VIEW ================= -->
   <div id="auth-section" class="w-full max-w-md my-auto space-y-4">
     <div class="text-center space-y-1">
-      <div class="text-4xl">🚖</div>
-      <h1 class="text-2xl font-black text-amber-400">67 Partner Portal</h1>
+      <div class="text-5xl drop-shadow">🚖</div>
+      <h1 class="text-2xl font-black text-amber-400 tracking-tight">67 Partner Portal</h1>
       <p class="text-xs text-slate-400">Login to your account or Register with Quick KYC</p>
     </div>
 
-    <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
-      <button onclick="switchAuthTab('login')" id="tab-login-btn" class="w-1/2 py-2 text-xs font-black rounded-lg bg-amber-500 text-slate-950 transition">
+    <div class="flex bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800 backdrop-blur shadow-xl">
+      <button onclick="switchAuthTab('login')" id="tab-login-btn" class="w-1/2 py-2.5 text-xs font-black rounded-xl bg-amber-500 text-slate-950 transition shadow-md">
         Login
       </button>
-      <button onclick="switchAuthTab('signup')" id="tab-signup-btn" class="w-1/2 py-2 text-xs font-black rounded-lg text-slate-400 hover:text-white transition">
+      <button onclick="switchAuthTab('signup')" id="tab-signup-btn" class="w-1/2 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition">
         Sign Up (5-Sec)
       </button>
     </div>
 
     <!-- Login Form -->
-    <form id="login-form" onsubmit="handleDriverLogin(event)" class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl space-y-3">
+    <form id="login-form" onsubmit="handleDriverLogin(event)" class="bg-slate-900/90 backdrop-blur p-6 rounded-3xl border border-slate-800 shadow-2xl space-y-4">
       <div>
-        <label class="text-[11px] font-bold text-slate-400 uppercase">Mobile Number *</label>
-        <input type="tel" id="login-phone" required placeholder="10-digit Mobile Number" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-3 text-xs outline-none focus:border-amber-400 mt-1 font-mono" />
+        <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Mobile Number *</label>
+        <input type="tel" id="login-phone" required placeholder="10-digit Mobile Number" class="w-full bg-slate-950 border border-slate-700 text-white rounded-2xl p-3.5 text-xs outline-none focus:border-amber-400 mt-1 font-mono transition" />
       </div>
       <div>
-        <label class="text-[11px] font-bold text-slate-400 uppercase">Password *</label>
-        <input type="password" id="login-password" required placeholder="Enter Password" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-3 text-xs outline-none focus:border-amber-400 mt-1" />
+        <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Password *</label>
+        <input type="password" id="login-password" required placeholder="Enter Password" class="w-full bg-slate-950 border border-slate-700 text-white rounded-2xl p-3.5 text-xs outline-none focus:border-amber-400 mt-1 transition" />
       </div>
-      <button type="submit" id="btn-login-submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3.5 rounded-xl text-xs transition shadow-lg mt-2">
+      <button type="submit" id="btn-login-submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-4 rounded-2xl text-xs transition shadow-lg mt-2 tracking-wider uppercase">
         LOGIN TO PARTNER PORTAL
       </button>
     </form>
 
-    <!-- Sign Up Form (Instant 5-Sec Signup) -->
-    <form id="signup-form" onsubmit="handleDriverSignup(event)" class="hidden bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl space-y-3 max-h-[80vh] overflow-y-auto custom-scrollbar">
+    <!-- Sign Up Form -->
+    <form id="signup-form" onsubmit="handleDriverSignup(event)" class="hidden bg-slate-900/90 backdrop-blur p-6 rounded-3xl border border-slate-800 shadow-2xl space-y-3 max-h-[80vh] overflow-y-auto custom-scrollbar">
       <div>
         <label class="text-[11px] font-bold text-slate-400 uppercase">Driver Full Name *</label>
-        <input type="text" id="reg-name" required placeholder="e.g. Ramesh Sharma" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-2.5 text-xs outline-none focus:border-amber-400 mt-1" />
+        <input type="text" id="reg-name" required placeholder="e.g. Ramesh Sharma" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-3 text-xs outline-none focus:border-amber-400 mt-1" />
       </div>
       
-      <div class="grid grid-cols-2 gap-2">
+      <div class="grid grid-cols-2 gap-2.5">
         <div>
           <label class="text-[11px] font-bold text-slate-400 uppercase">Mobile Number *</label>
-          <input type="tel" id="reg-phone" required placeholder="10-digit Phone" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-2.5 text-xs outline-none focus:border-amber-400 mt-1 font-mono" />
+          <input type="tel" id="reg-phone" required placeholder="10-digit Phone" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-3 text-xs outline-none focus:border-amber-400 mt-1 font-mono" />
         </div>
         <div>
           <label class="text-[11px] font-bold text-slate-400 uppercase">Password *</label>
-          <input type="password" id="reg-password" required placeholder="Set Password" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-2.5 text-xs outline-none focus:border-amber-400 mt-1" />
+          <input type="password" id="reg-password" required placeholder="Set Password" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-3 text-xs outline-none focus:border-amber-400 mt-1" />
         </div>
       </div>
 
-      <div class="grid grid-cols-2 gap-2">
+      <div class="grid grid-cols-2 gap-2.5">
         <div>
           <label class="text-[11px] font-bold text-slate-400 uppercase">Vehicle Number *</label>
-          <input type="text" id="reg-vehicle" required placeholder="RJ 14 TA 6767" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-2.5 text-xs outline-none focus:border-amber-400 mt-1 uppercase font-mono" />
+          <input type="text" id="reg-vehicle" required placeholder="RJ 14 TA 6767" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-3 text-xs outline-none focus:border-amber-400 mt-1 uppercase font-mono" />
         </div>
         <div>
           <label class="text-[11px] font-bold text-slate-400 uppercase">Cab Category *</label>
-          <select id="reg-cabtype" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-2.5 text-xs outline-none focus:border-amber-400 mt-1">
+          <select id="reg-cabtype" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-3 text-xs outline-none focus:border-amber-400 mt-1 font-bold">
             <option value="HATCHBACK">Hatchback (₹16/km)</option>
             <option value="SEDAN">Sedan (₹20/km)</option>
             <option value="SUV">SUV (₹30/km)</option>
@@ -88,240 +113,205 @@
 
       <div>
         <label class="text-[11px] font-bold text-slate-400 uppercase">Referral Code (Optional)</label>
-        <input type="text" id="reg-referral" placeholder="Auto-filled via Driver QR" class="w-full bg-slate-950 border border-slate-700 text-amber-400 rounded-xl p-2.5 text-xs outline-none focus:border-amber-400 mt-1 uppercase font-mono" />
+        <input type="text" id="reg-referral" placeholder="Auto-filled via Driver QR" class="w-full bg-slate-950 border border-slate-700 text-amber-400 rounded-xl p-3 text-xs outline-none focus:border-amber-400 mt-1 uppercase font-mono" />
       </div>
 
       <div>
         <label class="text-[11px] font-bold text-slate-400 uppercase">UPI ID for Fare Settlement</label>
-        <input type="text" id="reg-upi" placeholder="yourname@upi (Default: 67cabs@upi)" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-2.5 text-xs outline-none focus:border-amber-400 mt-1" />
+        <input type="text" id="reg-upi" placeholder="yourname@upi (Default: 67cabs@upi)" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-3 text-xs outline-none focus:border-amber-400 mt-1 font-mono" />
       </div>
 
       <div>
         <label class="text-[11px] font-bold text-slate-400 uppercase">Email ID (Optional)</label>
-        <input type="email" id="reg-email" placeholder="Optional email" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-2.5 text-xs outline-none focus:border-amber-400 mt-1" />
+        <input type="email" id="reg-email" placeholder="Optional email" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-3 text-xs outline-none focus:border-amber-400 mt-1" />
       </div>
 
-      <p class="text-[10px] text-slate-500 leading-tight">
-        ℹ️ Instant signup hone ke baad aap documents upload kar sakte hain.
-      </p>
-
-      <button id="submit-signup-btn" type="submit" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3.5 rounded-xl text-xs transition shadow-lg mt-3">
+      <button id="submit-signup-btn" type="submit" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-4 rounded-2xl text-xs transition shadow-lg mt-3 uppercase tracking-wider">
         🚀 INSTANT 5-SECOND SIGNUP
       </button>
     </form>
   </div>
 
   <!-- ================= 2. POST-SIGNUP KYC DOCUMENT UPLOAD SCREEN ================= -->
-  <div id="pending-verification-section" class="hidden w-full max-w-md my-auto text-center bg-slate-900 p-6 rounded-2xl border-2 border-amber-500 shadow-2xl space-y-4">
+  <div id="pending-verification-section" class="hidden w-full max-w-md my-auto text-center bg-slate-900/90 backdrop-blur p-6 rounded-3xl border-2 border-amber-500 shadow-2xl space-y-4">
     <div class="text-4xl animate-bounce">⏳</div>
     <h2 class="text-lg font-black text-amber-400">Account Registered & KYC Center</h2>
     <p class="text-xs text-slate-300 leading-relaxed">
       Aapka account create ho gaya hai. Rides accept karne ke liye apne physical documents upload karein.
     </p>
 
-    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-left space-y-3 max-h-[50vh] overflow-y-auto custom-scrollbar">
+    <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-left space-y-3 max-h-[50vh] overflow-y-auto custom-scrollbar">
       <div class="text-xs font-bold text-amber-400 uppercase border-b border-slate-800 pb-1.5">Upload Verification Documents</div>
 
       <div>
         <label class="text-[11px] font-bold text-slate-300 block mb-1">📸 Driver Profile Photo / Live Selfie *</label>
-        <input type="file" id="doc-selfie" accept="image/*" capture="user" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
+        <input type="file" id="doc-selfie" accept="image/*" capture="user" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
       </div>
 
       <div class="space-y-2 pt-1 border-t border-slate-900">
         <label class="text-[11px] font-bold text-slate-300 block">🪪 Driving License (Front & Back) *</label>
         <div>
           <span class="text-[10px] text-amber-400 font-semibold">Front Side:</span>
-          <input type="file" id="doc-dl-front" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-200" />
+          <input type="file" id="doc-dl-front" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-200" />
         </div>
         <div>
           <span class="text-[10px] text-amber-400 font-semibold">Back Side:</span>
-          <input type="file" id="doc-dl-back" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-200" />
+          <input type="file" id="doc-dl-back" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-200" />
         </div>
       </div>
 
       <div class="pt-1 border-t border-slate-900">
         <label class="text-[11px] font-bold text-slate-300 block mb-1">📄 Vehicle Registration Certificate (RC) *</label>
-        <input type="file" id="doc-rc" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
+        <input type="file" id="doc-rc" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
       </div>
 
       <div class="pt-1 border-t border-slate-900">
         <label class="text-[11px] font-bold text-slate-300 block mb-1">🛡️ Vehicle Fitness Certificate *</label>
-        <input type="file" id="doc-fitness" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
+        <input type="file" id="doc-fitness" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
       </div>
 
       <div class="pt-1 border-t border-slate-900">
         <label class="text-[11px] font-bold text-slate-300 block mb-1">📋 Vehicle Permit (Optional)</label>
-        <input type="file" id="doc-permit" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-300" />
+        <input type="file" id="doc-permit" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-300" />
       </div>
 
       <div class="pt-1 border-t border-slate-900">
         <label class="text-[11px] font-bold text-slate-300 block mb-1">📑 Permit Authorization (Optional)</label>
-        <input type="file" id="doc-permit-auth" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-300" />
+        <input type="file" id="doc-permit-auth" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-300" />
       </div>
 
       <div class="space-y-2 pt-1 border-t border-slate-900">
         <label class="text-[11px] font-bold text-slate-300 block">🆔 Identity Card (Front & Back) *</label>
         <div>
           <span class="text-[10px] text-amber-400 font-semibold">Front Side:</span>
-          <input type="file" id="doc-id-front" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-200" />
+          <input type="file" id="doc-id-front" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-200" />
         </div>
         <div>
           <span class="text-[10px] text-amber-400 font-semibold">Back Side:</span>
-          <input type="file" id="doc-id-back" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-200" />
+          <input type="file" id="doc-id-back" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-200" />
         </div>
       </div>
 
       <div class="pt-1 border-t border-slate-900">
         <label class="text-[11px] font-bold text-slate-300 block mb-1">💳 PAN Card *</label>
-        <input type="file" id="doc-pan" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
+        <input type="file" id="doc-pan" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
       </div>
 
       <div class="pt-1 border-t border-slate-900">
         <label class="text-[11px] font-bold text-slate-300 block mb-1">🏦 Bank Passbook / Statement *</label>
-        <input type="file" id="doc-bank" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
+        <input type="file" id="doc-bank" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
       </div>
 
-      <button id="btn-submit-kyc" onclick="submitDeferredKYC()" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3 rounded-xl text-xs transition shadow-lg mt-2 sticky bottom-0">
+      <button id="btn-submit-kyc" onclick="submitDeferredKYC()" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3.5 rounded-2xl text-xs transition shadow-lg mt-2 sticky bottom-0">
         SUBMIT DOCUMENTS FOR VERIFICATION
       </button>
     </div>
 
-    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-[11px] text-slate-400 space-y-1">
+    <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 text-[11px] text-slate-400 space-y-1">
       <div><b>Name:</b> <span id="pending-name">-</span></div>
       <div><b>Vehicle:</b> <span id="pending-vehicle" class="font-mono text-amber-400">-</span></div>
       <div><b>Status:</b> <span class="text-amber-400 font-bold" id="pending-status-text">DOCUMENTS PENDING</span></div>
     </div>
     
     <div class="pt-2">
-      <button onclick="logoutDriver()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs">
+      <button onclick="logoutDriver()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-2xl text-xs transition">
         Logout
       </button>
     </div>
   </div>
 
   <!-- ================= 3. ADDITIONAL DOCUMENT UPLOAD SCREEN ================= -->
-  <div id="additional-doc-section" class="hidden w-full max-w-md my-auto bg-slate-900 p-6 rounded-2xl border-2 border-orange-500 shadow-2xl space-y-4">
+  <div id="additional-doc-section" class="hidden w-full max-w-md my-auto bg-slate-900/90 backdrop-blur p-6 rounded-3xl border-2 border-orange-500 shadow-2xl space-y-4">
     <div class="text-center space-y-1">
       <div class="text-3xl animate-pulse">📑</div>
       <h2 class="text-base font-black text-orange-400">Additional Document Required</h2>
       <p class="text-xs text-slate-300">
         Admin ne approval ke liye aapse yeh document manga hai:
       </p>
-      <div class="bg-slate-950 border border-orange-500/50 p-3 rounded-xl text-sm font-bold text-amber-300" id="requested-doc-name-display">
+      <div class="bg-slate-950 border border-orange-500/50 p-3 rounded-2xl text-sm font-bold text-amber-300" id="requested-doc-name-display">
         -
       </div>
     </div>
 
-    <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-2">
+    <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
       <label class="text-[11px] font-bold text-slate-300 block">📸 Select File / Take Photo:</label>
-      <input type="file" id="extra-doc-file" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-2 file:px-3.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-orange-500 file:text-slate-950 hover:file:bg-orange-400 cursor-pointer" />
+      <input type="file" id="extra-doc-file" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-orange-500 file:text-slate-950 hover:file:bg-orange-400 cursor-pointer" />
     </div>
 
-    <button id="btn-submit-extra-doc" onclick="submitExtraDocument()" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-black py-3.5 rounded-xl text-xs transition shadow-lg">
+    <button id="btn-submit-extra-doc" onclick="submitExtraDocument()" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-black py-4 rounded-2xl text-xs transition shadow-lg">
       SUBMIT REQUESTED DOCUMENT
     </button>
 
     <div class="pt-1">
-      <button onclick="logoutDriver()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs">
+      <button onclick="logoutDriver()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-2xl text-xs">
         Logout
       </button>
     </div>
   </div>
 
-  <!-- ================= 4. MAIN DRIVER DASHBOARD (APPROVED ONLY) ================= -->
-  <div id="main-driver-dashboard" class="hidden w-full max-w-md pb-12">
-    <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow mb-3 space-y-3">
-      <div class="flex justify-between items-center">
-        <div>
-          <h1 class="text-base font-bold text-amber-400 flex items-center gap-1.5">
-            <span>🚖</span> 67 Partner
-          </h1>
-          <p id="driver-header-name" class="text-sm font-semibold">Driver Name (WagonR)</p>
-          <p id="gps-status-indicator" class="text-[11px] text-green-400 font-bold">● ONLINE • Acquiring Coordinates...</p>
+  <!-- ================= 4. ULTRA-CLEAN MODERN DRIVER DASHBOARD ================= -->
+  <div id="main-driver-dashboard" class="hidden w-full max-w-md pb-6 space-y-4">
+    
+    <!-- Top Sleek Bar: Driver Info + On/Off Duty Switch + Hamburger Menu -->
+    <div id="dashboard-header-card" class="bg-slate-900/90 backdrop-blur-md p-4 rounded-3xl border border-slate-800 shadow-2xl flex items-center justify-between transition-colors">
+      <div class="flex items-center gap-3">
+        <div class="relative">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center text-xl text-slate-950 font-black shadow-lg shadow-amber-500/20">
+            🚖
+          </div>
+          <span id="duty-status-dot" class="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-green-500 border-2 border-slate-900 animate-pulse"></span>
         </div>
-        <div class="flex items-center gap-2">
-          <button onclick="openSettingsModal()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-2 rounded-xl font-bold hover:text-amber-400 text-xs transition flex items-center gap-1 shadow">
-            ⚙️ <span>Settings</span>
-          </button>
-          <button onclick="logoutDriver()" class="text-[10px] bg-slate-800 border border-slate-700 text-slate-300 px-2 py-2 rounded-xl font-bold hover:bg-slate-700 transition">
-            Logout
-          </button>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <h2 id="driver-header-name" class="text-sm font-black text-white truncate max-w-[170px]">Partner Name</h2>
+            <span id="badge-vehicle-no" class="text-[10px] font-mono font-black bg-slate-800 text-amber-400 px-2 py-0.5 rounded-lg border border-slate-700">RJ 14</span>
+          </div>
+          <p id="gps-status-indicator" class="text-[10px] text-green-400 font-bold tracking-tight">● ONLINE • GPS Active</p>
         </div>
       </div>
 
-      <!-- Online / Offline Duty Switch -->
-      <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-        <div class="flex items-center gap-2">
-          <span id="duty-status-dot" class="h-3 w-3 rounded-full bg-green-500 animate-pulse"></span>
-          <span id="duty-status-text" class="text-xs font-black text-green-400 tracking-wider uppercase">ON DUTY (ONLINE)</span>
-        </div>
-        <label class="relative inline-flex items-center cursor-pointer">
+      <!-- Actions: Duty Toggle & ☰ Hamburger Menu -->
+      <div class="flex items-center gap-3">
+        <!-- Duty Toggle -->
+        <label class="relative inline-flex items-center cursor-pointer" title="Toggle On/Off Duty">
           <input type="checkbox" id="driver-duty-toggle" checked onchange="toggleDriverDutyState(this.checked)" class="sr-only peer">
-          <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+          <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600 shadow-inner"></div>
         </label>
+
+        <!-- ☰ Hamburger Button -->
+        <button onclick="openSettingsModal()" class="w-10 h-10 rounded-2xl bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 text-amber-400 flex items-center justify-center text-lg transition shadow-md">
+          ☰
+        </button>
       </div>
     </div>
 
-    <!-- Quick Tools Bar -->
-    <div class="grid grid-cols-2 gap-2 mb-3">
-      <button onclick="openSettingsModalTab('account')" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 p-2.5 rounded-2xl flex items-center justify-between text-left transition">
-        <div>
-          <div class="text-[10px] text-slate-400 font-bold uppercase">Wallet Balance</div>
-          <div id="dash-wallet-bal" class="text-base font-black text-green-400">₹0.00</div>
-        </div>
-        <span class="text-xl">💳</span>
-      </button>
-
-      <button onclick="openSettingsModalTab('profile')" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 p-2.5 rounded-2xl flex items-center justify-between text-left transition">
-        <div>
-          <div class="text-[10px] text-slate-400 font-bold uppercase">Bonus Free Rides</div>
-          <div id="dash-bonus-rides" class="text-base font-black text-amber-400">0 Rides</div>
-        </div>
-        <span class="text-xl">🎁</span>
-      </button>
-    </div>
-
-    <!-- PWA Install Banner -->
-    <div id="pwa-driver-install-banner" class="hidden mb-3 bg-emerald-600 text-white p-3 rounded-2xl flex items-center justify-between shadow-xl border border-emerald-500">
-      <div class="flex items-center gap-2.5">
-        <span class="text-2xl">👨‍✈️</span>
-        <div>
-          <div class="text-xs font-black">Install 67 Partner App</div>
-          <div class="text-[10px] text-emerald-100">Standalone Driver App with GPS</div>
-        </div>
-      </div>
-      <button id="btn-driver-pwa-install" class="bg-slate-950 hover:bg-slate-900 text-emerald-400 text-xs font-bold px-3.5 py-2 rounded-xl shadow transition">
-        Install
-      </button>
-    </div>
-
-    <!-- Active Ride Screen (With Rider Call Button) -->
-    <div id="active-ride-card" class="hidden bg-slate-900 p-5 rounded-2xl border border-amber-400 shadow-2xl mb-4 space-y-4">
-      <div class="flex justify-between items-center">
-        <span id="trip-badge" class="text-xs bg-amber-400 text-slate-950 font-bold px-3 py-1 rounded-full uppercase">
+    <!-- Active Ride Screen (With Direct Rider Call Option) -->
+    <div id="active-ride-card" class="hidden bg-slate-900/95 backdrop-blur p-5 rounded-3xl border-2 border-amber-400 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-800/80 pb-3">
+        <span id="trip-badge" class="text-xs bg-amber-400 text-slate-950 font-black px-3.5 py-1 rounded-full uppercase tracking-wider shadow">
           Driving to Pickup
         </span>
         <span id="active-fare" class="text-2xl font-black text-green-400">₹0</span>
       </div>
 
-      <div class="space-y-2 text-xs text-slate-300 bg-slate-950 p-3 rounded-xl border border-slate-800">
+      <div class="space-y-2 text-xs text-slate-300 bg-slate-950 p-3.5 rounded-2xl border border-slate-800">
         <div>📍 <b>Pickup:</b> <span id="active-pickup">-</span></div>
         <div>🏁 <b>Drop:</b> <span id="active-drop">-</span></div>
-        <div id="rider-info-row" class="pt-1 border-t border-slate-800 text-[11px] flex justify-between items-center text-amber-400">
+        <div id="rider-info-row" class="pt-2 border-t border-slate-800/80 text-[11px] flex justify-between items-center text-amber-400 font-bold">
           <span>👤 Rider: <b id="active-rider-name" class="text-white">Customer</b></span>
           <span id="active-rider-phone-display" class="font-mono text-slate-300"></span>
         </div>
       </div>
 
       <div class="grid grid-cols-3 gap-2">
-        <!-- 📞 Direct Call Rider Button -->
-        <a id="btn-call-rider" href="tel:" class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl transition text-xs shadow-md flex items-center justify-center gap-1">
+        <!-- 📞 Direct Call Button -->
+        <a id="btn-call-rider" href="tel:" class="bg-green-600 hover:bg-green-500 text-white font-black py-3 rounded-2xl transition text-xs shadow-lg flex items-center justify-center gap-1">
           📞 Call
         </a>
-        <button id="btn-arrived" onclick="notifyArrived()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition text-xs shadow-md">
+        <button id="btn-arrived" onclick="notifyArrived()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black py-3 rounded-2xl transition text-xs shadow-lg">
           🔔 Arrived
         </button>
-        <a id="nav-btn" target="_blank" class="block text-center bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition text-xs shadow-md">
+        <a id="nav-btn" target="_blank" class="block text-center bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-2xl transition text-xs shadow-lg flex items-center justify-center gap-1">
           🗺️ Map
         </a>
       </div>
@@ -350,7 +340,7 @@
         <div class="text-center text-xs text-green-400 font-bold bg-green-950/40 border border-green-800 p-2.5 rounded-xl animate-pulse">
           🟢 TRIP ONGOING TO DROP DESTINATION
         </div>
-        <button onclick="completeRide()" class="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-xl text-sm shadow-lg transition">
+        <button onclick="completeRide()" class="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-2xl text-sm shadow-lg transition">
           🏁 Complete Trip & Collect Fare
         </button>
         <button onclick="openEarlyEndModal()" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-400 font-bold py-2 rounded-xl text-xs transition">
@@ -360,143 +350,183 @@
     </div>
 
     <!-- Multi-Offers Feed Container -->
-    <div id="offers-container" class="space-y-4 mb-4"></div>
+    <div id="offers-container" class="space-y-4"></div>
 
-    <!-- Waiting Radar -->
-    <div id="waiting-radar" class="text-center py-16 bg-slate-900/60 rounded-2xl border border-dashed border-slate-800">
-      <div class="animate-ping h-8 w-8 bg-amber-500 rounded-full mx-auto mb-4 opacity-75"></div>
-      <p class="text-sm font-medium text-slate-200">Searching for ride offers...</p>
-      <p class="text-xs text-slate-500 mt-1">Keep screen open</p>
+    <!-- Clean Looking Waiting Radar -->
+    <div id="waiting-radar" class="text-center py-20 bg-slate-900/40 rounded-3xl border border-dashed border-slate-800 flex flex-col items-center justify-center space-y-4 shadow-xl">
+      <div class="relative">
+        <div class="w-20 h-20 rounded-full bg-amber-500/10 flex items-center justify-center radar-pulse">
+          <div class="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center">
+            <span class="text-2xl animate-spin">📡</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="text-sm font-black text-slate-200">Radar Active • Searching Rides</p>
+        <p class="text-[11px] text-slate-500 mt-0.5">Booking aate hi aapki tone apne aap bajegi</p>
+      </div>
     </div>
+
   </div>
 
-  <!-- ================= 5. MASTER SETTINGS MODAL ================= -->
-  <div id="settings-modal" class="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4 hidden backdrop-blur-sm">
-    <div class="bg-slate-900 rounded-3xl p-5 max-w-sm w-full shadow-2xl border border-slate-800 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
-      <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-        <h3 class="text-base font-black text-amber-400 flex items-center gap-1.5">⚙️ Partner Settings</h3>
-        <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
-      </div>
-
-      <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
-        <button onclick="switchSettingsTab('profile')" id="tab-setting-profile" class="w-1/2 py-2 text-xs font-bold rounded-lg bg-amber-500 text-slate-950 transition">
-          Profile Settings
-        </button>
-        <button onclick="switchSettingsTab('account')" id="tab-setting-account" class="w-1/2 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition">
-          Account Settings
-        </button>
-      </div>
-
-      <!-- TAB 1: PROFILE SETTINGS -->
-      <div id="setting-pane-profile" class="space-y-4">
-        <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-2 text-xs">
-          <div class="flex justify-between">
-            <span class="text-slate-400">Driver Name:</span>
-            <span id="set-profile-name" class="font-bold text-white">-</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-slate-400">Vehicle Number:</span>
-            <span id="set-profile-vehicle" class="font-bold text-amber-400 font-mono">-</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-slate-400">Cab Category:</span>
-            <span id="set-profile-category" class="font-bold text-slate-300">-</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-slate-400">UPI Settlement ID:</span>
-            <span id="set-profile-upi" class="font-bold text-green-400 font-mono">-</span>
-          </div>
-        </div>
-
-        <!-- Dual Referral QR Engine -->
-        <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 text-center space-y-3">
-          <div class="text-xs font-bold text-amber-400 uppercase">Referral QR Codes Engine</div>
-          
-          <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
-            <button onclick="switchQRTab('rider')" id="tab-qr-rider" class="w-1/2 py-1.5 text-[11px] font-bold rounded-lg bg-amber-500 text-slate-950 transition">
-              Rider QR
-            </button>
-            <button onclick="switchQRTab('driver')" id="tab-qr-driver" class="w-1/2 py-1.5 text-[11px] font-bold rounded-lg text-slate-400 hover:text-white transition">
-              Driver QR
-            </button>
-          </div>
-
-          <div class="bg-white p-3 rounded-2xl inline-block shadow-inner mx-auto">
-            <div id="referral-qrcode-target" class="flex justify-center"></div>
-          </div>
-
-          <p id="qr-desc-text" class="text-[11px] font-medium text-amber-300">Scan to register Rider with bonus</p>
-          <p class="text-[10px] text-slate-500">Your Code: <b id="display-ref-code" class="text-white font-mono">-</b></p>
-        </div>
-      </div>
-
-      <!-- TAB 2: ACCOUNT SETTINGS -->
-      <div id="setting-pane-account" class="hidden space-y-4">
-        <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 flex justify-between items-center">
-          <div>
-            <div class="text-[10px] text-slate-400 uppercase font-bold">Wallet Balance</div>
-            <div id="modal-wallet-balance" class="text-2xl font-black text-green-400">₹0.00</div>
-          </div>
-          <div class="text-right">
-            <div class="text-[10px] text-slate-400 uppercase font-bold">Bonus Pool</div>
-            <div id="modal-bonus-rides" class="text-xs font-black text-amber-400">0 Free Rides</div>
-          </div>
-        </div>
-
-        <div class="space-y-2 text-xs">
-          <label class="font-bold text-slate-400 uppercase text-[10px]">Recharge Amount (₹)</label>
-          <div class="grid grid-cols-3 gap-2">
-            <button onclick="setRechargeAmount(100)" class="bg-slate-950 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400">₹100</button>
-            <button onclick="setRechargeAmount(250)" class="bg-slate-950 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400">₹250</button>
-            <button onclick="setRechargeAmount(500)" class="bg-slate-950 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400">₹500</button>
-          </div>
-          <input type="number" id="custom-recharge-amt" oninput="handleRechargeAmountChange()" placeholder="Enter custom amount" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 outline-none focus:border-amber-400 font-mono mt-1 text-white" />
-        </div>
-
-        <!-- Coupon Promo Code Section with Live DB Matching -->
-        <div class="space-y-1.5 text-xs">
-          <label class="font-bold text-slate-400 uppercase text-[10px]">Apply Promo Coupon</label>
-          <div class="flex gap-2">
-            <input type="text" id="coupon-code-input" placeholder="e.g. WELCOME100" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 outline-none focus:border-amber-400 font-mono uppercase text-white" />
-            <button id="btn-apply-coupon" onclick="applyCouponCode()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 rounded-xl font-bold transition">Apply</button>
-          </div>
-
-          <!-- Live Applied Coupon Discount Indicator -->
-          <div id="coupon-applied-status" class="hidden bg-green-950/40 border border-green-700/60 p-2.5 rounded-xl flex items-center justify-between text-xs mt-2">
+  <!-- ================= 5. MASTER SLIDE-IN SIDEBAR / SETTINGS DRAWER ================= -->
+  <div id="settings-modal" class="fixed inset-0 bg-black/80 z-[99999] flex justify-end hidden backdrop-blur-sm transition-opacity">
+    <div class="bg-slate-900 text-white w-full max-w-sm h-full shadow-2xl border-l border-slate-800 p-5 space-y-5 overflow-y-auto custom-scrollbar flex flex-col justify-between">
+      
+      <div class="space-y-4">
+        <!-- Top Drawer Header -->
+        <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">⚙️</span>
             <div>
-              <div class="font-black text-green-400 flex items-center gap-1">
-                <span>🎉</span> <span id="applied-coupon-tag">COUPON APPLIED</span>
-              </div>
-              <div class="text-[10px] text-slate-300">Discount: <b class="text-green-300" id="applied-discount-text">-₹0</b> | Payable: <b class="text-white font-mono" id="applied-payable-text">₹0</b></div>
+              <h3 class="text-base font-black text-amber-400 leading-tight">Partner Settings</h3>
+              <p class="text-[10px] text-slate-400">Account & Preference Controls</p>
             </div>
-            <button onclick="removeAppliedCoupon()" class="text-slate-400 hover:text-red-400 text-xs font-bold ml-2">✕ Remove</button>
           </div>
+          <button onclick="closeSettingsModal()" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-sm font-bold">
+            ✕
+          </button>
+        </div>
 
-          <!-- Driver Eligible Coupons List Section -->
-          <div id="driver-eligible-coupons-box" class="pt-2">
-            <div class="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center justify-between">
-              <span>Available Coupons For You</span>
-              <span id="coupons-loading-indicator" class="text-amber-400 font-normal hidden animate-pulse text-[9px]">Fetching...</span>
+        <!-- Light / Dark Theme Switcher Widget -->
+        <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <span id="theme-icon" class="text-lg">🌙</span>
+            <div>
+              <div class="text-xs font-bold text-slate-200">Appearance Theme</div>
+              <div id="theme-text" class="text-[10px] text-slate-400">Dark Mode Active</div>
             </div>
-            <div id="driver-eligible-coupons-list" class="space-y-1.5 max-h-32 overflow-y-auto custom-scrollbar">
-              <div class="text-[10px] text-slate-500 italic p-1">No coupons available.</div>
-            </div>
+          </div>
+          <button onclick="toggleDriverTheme()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold text-amber-400 transition shadow">
+            Switch
+          </button>
+        </div>
+
+        <!-- Wallet & Free Rides Quick Overview Cards inside Drawer -->
+        <div class="grid grid-cols-2 gap-2.5">
+          <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800">
+            <span class="text-[9px] font-bold text-slate-400 uppercase">Wallet Balance</span>
+            <div id="modal-wallet-balance" class="text-xl font-black text-green-400 mt-0.5">₹0.00</div>
+          </div>
+          <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800">
+            <span class="text-[9px] font-bold text-slate-400 uppercase">Reward Pool</span>
+            <div id="modal-bonus-rides" class="text-sm font-black text-amber-400 mt-1">0 Free Rides</div>
           </div>
         </div>
 
-        <button id="btn-execute-recharge" onclick="executeWalletRecharge()" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3 rounded-xl text-xs transition shadow-lg flex items-center justify-center gap-1.5">
-          <span>⚡ Pay & Recharge via UPI</span>
-          <span id="recharge-btn-amount" class="text-amber-300 font-mono"></span>
-        </button>
-
-        <div class="pt-4 border-t border-slate-800 space-y-2">
-          <div class="text-[10px] font-bold text-red-400 uppercase">Danger Zone</div>
-          <button onclick="deleteAccountDriver()" class="w-full bg-red-950/60 border border-red-800 hover:bg-red-900 text-red-300 font-bold py-2.5 rounded-xl text-xs transition shadow flex items-center justify-center gap-1.5">
-            🗑️ Permanently Delete Account
+        <!-- Settings Tabs Switcher -->
+        <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+          <button onclick="switchSettingsTab('profile')" id="tab-setting-profile" class="w-1/2 py-2 text-xs font-bold rounded-lg bg-amber-500 text-slate-950 transition">
+            Profile Details
           </button>
-          <p class="text-[9px] text-slate-500 text-center">Deleting account removes your profile, wallet and ride metrics permanently.</p>
+          <button onclick="switchSettingsTab('account')" id="tab-setting-account" class="w-1/2 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition">
+            Wallet & Coupons
+          </button>
+        </div>
+
+        <!-- TAB 1: PROFILE & DUAL REFERRAL QR -->
+        <div id="setting-pane-profile" class="space-y-4">
+          <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-2 text-xs">
+            <div class="flex justify-between">
+              <span class="text-slate-400">Driver Name:</span>
+              <span id="set-profile-name" class="font-bold text-white">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">Vehicle Number:</span>
+              <span id="set-profile-vehicle" class="font-bold text-amber-400 font-mono">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">Cab Category:</span>
+              <span id="set-profile-category" class="font-bold text-slate-300">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">UPI Settlement:</span>
+              <span id="set-profile-upi" class="font-bold text-green-400 font-mono">-</span>
+            </div>
+          </div>
+
+          <!-- Dual Referral QR Engine -->
+          <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 text-center space-y-3">
+            <div class="text-xs font-bold text-amber-400 uppercase tracking-wider">Referral QR Codes Engine</div>
+            
+            <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
+              <button onclick="switchQRTab('rider')" id="tab-qr-rider" class="w-1/2 py-1.5 text-[11px] font-bold rounded-lg bg-amber-500 text-slate-950 transition">
+                Rider QR
+              </button>
+              <button onclick="switchQRTab('driver')" id="tab-qr-driver" class="w-1/2 py-1.5 text-[11px] font-bold rounded-lg text-slate-400 hover:text-white transition">
+                Driver QR
+              </button>
+            </div>
+
+            <div class="bg-white p-3 rounded-2xl inline-block shadow-inner mx-auto">
+              <div id="referral-qrcode-target" class="flex justify-center"></div>
+            </div>
+
+            <p id="qr-desc-text" class="text-[11px] font-medium text-amber-300">Scan to register Rider with bonus</p>
+            <p class="text-[10px] text-slate-500">Your Code: <b id="display-ref-code" class="text-white font-mono">-</b></p>
+          </div>
+        </div>
+
+        <!-- TAB 2: RECHARGE & COUPONS -->
+        <div id="setting-pane-account" class="hidden space-y-4">
+          <div class="space-y-2 text-xs">
+            <label class="font-bold text-slate-400 uppercase text-[10px]">Recharge Amount (₹)</label>
+            <div class="grid grid-cols-3 gap-2">
+              <button onclick="setRechargeAmount(100)" class="bg-slate-950 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400">₹100</button>
+              <button onclick="setRechargeAmount(250)" class="bg-slate-950 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400">₹250</button>
+              <button onclick="setRechargeAmount(500)" class="bg-slate-950 border border-slate-700 py-2 rounded-xl font-bold hover:border-amber-400">₹500</button>
+            </div>
+            <input type="number" id="custom-recharge-amt" oninput="handleRechargeAmountChange()" placeholder="Enter custom amount" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 outline-none focus:border-amber-400 font-mono mt-1 text-white" />
+          </div>
+
+          <!-- Coupon Promo Code Section -->
+          <div class="space-y-1.5 text-xs">
+            <label class="font-bold text-slate-400 uppercase text-[10px]">Apply Promo Coupon</label>
+            <div class="flex gap-2">
+              <input type="text" id="coupon-code-input" placeholder="e.g. WELCOME100" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 outline-none focus:border-amber-400 font-mono uppercase text-white" />
+              <button id="btn-apply-coupon" onclick="applyCouponCode()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 rounded-xl font-bold transition">Apply</button>
+            </div>
+
+            <!-- Live Applied Coupon Discount Indicator -->
+            <div id="coupon-applied-status" class="hidden bg-green-950/40 border border-green-700/60 p-2.5 rounded-xl flex items-center justify-between text-xs mt-2">
+              <div>
+                <div class="font-black text-green-400 flex items-center gap-1">
+                  <span>🎉</span> <span id="applied-coupon-tag">COUPON APPLIED</span>
+                </div>
+                <div class="text-[10px] text-slate-300">Discount: <b class="text-green-300" id="applied-discount-text">-₹0</b> | Payable: <b class="text-white font-mono" id="applied-payable-text">₹0</b></div>
+              </div>
+              <button onclick="removeAppliedCoupon()" class="text-slate-400 hover:text-red-400 text-xs font-bold ml-2">✕ Remove</button>
+            </div>
+
+            <!-- Driver Eligible Coupons List Section -->
+            <div id="driver-eligible-coupons-box" class="pt-2">
+              <div class="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center justify-between">
+                <span>Available Coupons For You</span>
+                <span id="coupons-loading-indicator" class="text-amber-400 font-normal hidden animate-pulse text-[9px]">Fetching...</span>
+              </div>
+              <div id="driver-eligible-coupons-list" class="space-y-1.5 max-h-28 overflow-y-auto custom-scrollbar">
+                <div class="text-[10px] text-slate-500 italic p-1">No coupons available.</div>
+              </div>
+            </div>
+          </div>
+
+          <button id="btn-execute-recharge" onclick="executeWalletRecharge()" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3 rounded-xl text-xs transition shadow-lg flex items-center justify-center gap-1.5">
+            <span>⚡ Pay & Recharge via UPI</span>
+            <span id="recharge-btn-amount" class="text-amber-300 font-mono"></span>
+          </button>
         </div>
       </div>
+
+      <!-- Drawer Bottom: Logout & Delete Account -->
+      <div class="pt-3 border-t border-slate-800 space-y-2">
+        <button onclick="logoutDriver()" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-3 rounded-2xl text-xs transition flex items-center justify-center gap-1.5">
+          🚪 Logout Account
+        </button>
+        <button onclick="deleteAccountDriver()" class="w-full bg-red-950/40 hover:bg-red-900/60 border border-red-800/80 text-red-300 font-bold py-2 rounded-xl text-[10px] transition flex items-center justify-center gap-1">
+          🗑️ Delete Driver Account
+        </button>
+      </div>
+
     </div>
   </div>
 
@@ -535,18 +565,18 @@
 
   <!-- PAYMENT MODAL -->
   <div id="payment-modal" class="fixed inset-0 bg-black/90 backdrop-blur-sm hidden items-center justify-center p-4 z-[9999]">
-    <div class="bg-slate-900 border-2 border-green-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl text-center space-y-4">
+    <div class="bg-slate-900 border-2 border-green-500 w-full max-w-sm rounded-3xl p-6 shadow-2xl text-center space-y-4">
       <div class="border-b border-slate-800 pb-2">
         <span class="text-xs font-bold uppercase tracking-wider text-green-400">Trip Completed</span>
         <h2 class="text-lg font-bold text-white mt-1">Collect Fare</h2>
       </div>
 
-      <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+      <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800">
         <p class="text-xs text-slate-400">Total Payable Amount</p>
         <p id="modal-fare-amount" class="text-3xl font-black text-green-400 mt-0.5">₹0</p>
       </div>
 
-      <div class="bg-white p-3 rounded-xl inline-block shadow-inner">
+      <div class="bg-white p-3 rounded-2xl inline-block shadow-inner">
         <div id="qrcode-target" class="flex justify-center"></div>
       </div>
 
@@ -554,7 +584,7 @@
         Rider can scan using Google Pay, PhonePe, Paytm, or BHIM UPI.
       </p>
 
-      <button onclick="dismissPaymentModal()" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3.5 rounded-xl text-sm transition shadow-lg">
+      <button onclick="dismissPaymentModal()" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3.5 rounded-2xl text-sm transition shadow-lg">
         ✅ Payment Received (Done)
       </button>
     </div>
@@ -565,19 +595,6 @@
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredDriverPrompt = e;
-      const banner = document.getElementById('pwa-driver-install-banner');
-      if (banner) banner.classList.remove('hidden');
-    });
-
-    document.getElementById('btn-driver-pwa-install')?.addEventListener('click', async () => {
-      if (deferredDriverPrompt) {
-        deferredDriverPrompt.prompt();
-        const { outcome } = await deferredDriverPrompt.userChoice;
-        if (outcome === 'accepted') {
-          document.getElementById('pwa-driver-install-banner').classList.add('hidden');
-        }
-        deferredDriverPrompt = null;
-      }
     });
 
     const socket = io({
@@ -609,6 +626,39 @@
     // Active Applied Coupon State
     let appliedCouponData = null;
 
+    // Theme Switcher Engine (Light vs Dark Mode)
+    function initDriverTheme() {
+      const savedTheme = localStorage.getItem('67_driver_theme') || 'dark';
+      applyDriverTheme(savedTheme);
+    }
+
+    function toggleDriverTheme() {
+      const isDark = document.documentElement.classList.contains('dark');
+      const newTheme = isDark ? 'light' : 'dark';
+      applyDriverTheme(newTheme);
+      localStorage.setItem('67_driver_theme', newTheme);
+    }
+
+    function applyDriverTheme(theme) {
+      const icon = document.getElementById('theme-icon');
+      const text = document.getElementById('theme-text');
+      const headerCard = document.getElementById('dashboard-header-card');
+
+      if (theme === 'light') {
+        document.documentElement.classList.remove('dark');
+        document.body.className = "bg-slate-100 text-slate-900 min-h-screen p-3 md:p-6 flex flex-col items-center select-none font-sans relative transition-colors duration-300";
+        if (headerCard) headerCard.className = "bg-white p-4 rounded-3xl border border-slate-200 shadow-xl flex items-center justify-between transition-colors";
+        if (icon) icon.innerText = "☀️";
+        if (text) text.innerText = "Light Mode Active";
+      } else {
+        document.documentElement.classList.add('dark');
+        document.body.className = "bg-slate-950 text-slate-100 min-h-screen p-3 md:p-6 flex flex-col items-center select-none font-sans relative transition-colors duration-300";
+        if (headerCard) headerCard.className = "bg-slate-900/90 backdrop-blur-md p-4 rounded-3xl border border-slate-800 shadow-2xl flex items-center justify-between transition-colors";
+        if (icon) icon.innerText = "🌙";
+        if (text) text.innerText = "Dark Mode Active";
+      }
+    }
+
     // Fetch Live Dynamic Cab Rates from MongoDB Atlas
     async function fetchLiveFareRatesForDriver() {
       try {
@@ -623,7 +673,6 @@
               <option value="SUV">SUV (₹${data.rates.SUV || 30}/km)</option>
             `;
           }
-          console.log("🍃 Live MongoDB Rates synced in Driver App:", data.rates);
         }
       } catch (e) {}
     }
@@ -636,18 +685,14 @@
           if (data.isCustom && data.audioData) {
             mongoDriverAudio = new Audio(data.audioData);
             mongoDriverAudio.loop = true;
-            console.log('🍃 MongoDB Base64 Custom Audio loaded successfully!');
           } else if (data.soundName && data.soundName.startsWith('/sounds/')) {
             mongoDriverAudio = new Audio(data.soundName);
             mongoDriverAudio.loop = true;
-            console.log('🎵 Custom MP3 sound loaded:', data.soundName);
           } else {
             mongoDriverAudio = null;
           }
         }
-      } catch (e) {
-        console.warn('MongoDB sound load fallback to WebAudio');
-      }
+      } catch (e) {}
     }
 
     function syncSessionToCapacitorStorage(driverData) {
@@ -704,17 +749,18 @@
       if (tab === 'login') {
         loginForm.classList.remove('hidden');
         signupForm.classList.add('hidden');
-        tabLoginBtn.className = "w-1/2 py-2 text-xs font-black rounded-lg bg-amber-500 text-slate-950 transition";
-        tabSignupBtn.className = "w-1/2 py-2 text-xs font-black rounded-lg text-slate-400 hover:text-white transition";
+        tabLoginBtn.className = "w-1/2 py-2.5 text-xs font-black rounded-xl bg-amber-500 text-slate-950 transition shadow-md";
+        tabSignupBtn.className = "w-1/2 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition";
       } else {
         loginForm.classList.add('hidden');
         signupForm.classList.remove('hidden');
-        tabSignupBtn.className = "w-1/2 py-2 text-xs font-black rounded-lg bg-amber-500 text-slate-950 transition";
-        tabLoginBtn.className = "w-1/2 py-2 text-xs font-black rounded-lg text-slate-400 hover:text-white transition";
+        tabSignupBtn.className = "w-1/2 py-2.5 text-xs font-black rounded-xl bg-amber-500 text-slate-950 transition shadow-md";
+        tabLoginBtn.className = "w-1/2 py-2.5 text-xs font-black rounded-xl text-slate-400 hover:text-white transition";
       }
     }
 
     window.addEventListener('DOMContentLoaded', () => {
+      initDriverTheme();
       const urlParams = new URLSearchParams(window.location.search);
       const refCode = urlParams.get('ref');
       if (refCode) {
@@ -885,18 +931,13 @@
       localStorage.setItem('67_driver_duty', isDriverOnline ? 'true' : 'false');
       
       const dot = document.getElementById('duty-status-dot');
-      const text = document.getElementById('duty-status-text');
       const gpsIndicator = document.getElementById('gps-status-indicator');
 
       if (isDriverOnline) {
-        dot.className = "h-3 w-3 rounded-full bg-green-500 animate-pulse";
-        text.className = "text-xs font-black text-green-400 tracking-wider uppercase";
-        text.innerText = "ON DUTY (ONLINE)";
+        dot.className = "absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-green-500 border-2 border-slate-900 animate-pulse";
         registerDriver();
       } else {
-        dot.className = "h-3 w-3 rounded-full bg-red-500";
-        text.className = "text-xs font-black text-slate-400 tracking-wider uppercase";
-        text.innerText = "OFF DUTY (OFFLINE)";
+        dot.className = "absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-red-500 border-2 border-slate-900";
         gpsIndicator.innerHTML = `● <span class="text-slate-400">OFFLINE</span>`;
       }
 
@@ -1039,7 +1080,7 @@
           if (currentTripPhase === 'ARRIVED') {
             const btn = document.getElementById('btn-arrived');
             btn.innerText = "✅ Arrived";
-            btn.className = "bg-green-700 text-white font-bold py-3 rounded-xl text-xs";
+            btn.className = "bg-green-700 text-white font-bold py-3 rounded-2xl text-xs";
             document.getElementById('trip-badge').innerText = "Arrived at Pickup";
             document.getElementById('otp-section').classList.remove('hidden');
           } else if (currentTripPhase === 'TO_DROP') {
@@ -1072,9 +1113,7 @@
             window.history.replaceState({}, document.title, "/driver.html");
             await checkAndRestoreActiveRide();
           }
-        } catch (e) {
-          console.warn("Auto-accept failed:", e.message);
-        }
+        } catch (e) {}
       }
     }
 
@@ -1116,24 +1155,20 @@
 
       if (driver.status === 'APPROVED') {
         document.getElementById('main-driver-dashboard').classList.remove('hidden');
-        document.getElementById('driver-header-name').innerText = `${driver.name} (${driver.vehicleNo})`;
-        document.getElementById('dash-wallet-bal').innerText = `₹${driver.walletBalance || 0}.00`;
-        document.getElementById('dash-bonus-rides').innerText = `${driver.bonusFreeRides || 0} Rides`;
+        document.getElementById('driver-header-name').innerText = driver.name;
+        document.getElementById('badge-vehicle-no').innerText = driver.vehicleNo;
+        document.getElementById('modal-wallet-balance').innerText = `₹${driver.walletBalance || 0}.00`;
+        document.getElementById('modal-bonus-rides').innerText = `${driver.bonusFreeRides || 0} Free Rides`;
 
         const savedDuty = localStorage.getItem('67_driver_duty');
         isDriverOnline = (savedDuty !== 'false');
         document.getElementById('driver-duty-toggle').checked = isDriverOnline;
         
         const dot = document.getElementById('duty-status-dot');
-        const text = document.getElementById('duty-status-text');
         if (isDriverOnline) {
-          dot.className = "h-3 w-3 rounded-full bg-green-500 animate-pulse";
-          text.className = "text-xs font-black text-green-400 tracking-wider uppercase";
-          text.innerText = "ON DUTY (ONLINE)";
+          dot.className = "absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-green-500 border-2 border-slate-900 animate-pulse";
         } else {
-          dot.className = "h-3 w-3 rounded-full bg-red-500";
-          text.className = "text-xs font-black text-slate-400 tracking-wider uppercase";
-          text.innerText = "OFF DUTY (OFFLINE)";
+          dot.className = "absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-red-500 border-2 border-slate-900";
         }
 
         populateSettingsDetails(driver);
@@ -1239,7 +1274,7 @@
 
     function initDriverGPS() {
       if (!navigator.geolocation) {
-        document.getElementById('gps-status-indicator').innerHTML = `● <span class="text-red-400">GPS Not Supported</span>`;
+        document.getElementById('gps-status-indicator').innerHTML = `● <span class="text-red-400">GPS Off</span>`;
         return;
       }
 
@@ -1265,7 +1300,6 @@
           }
         },
         (err) => {
-          console.warn("GPS acquisition retry with network provider:", err.message);
           if (!geoWatchId) {
             geoWatchId = navigator.geolocation.watchPosition(
               updatePosition,
@@ -1284,7 +1318,7 @@
       currentDriver.location = { lat: latitude, lng: longitude };
       
       if (isDriverOnline) {
-        document.getElementById('gps-status-indicator').innerHTML = `● ONLINE • ${currentDriver.cabType} <span class="text-green-400">(${latitude.toFixed(4)}, ${longitude.toFixed(4)})</span>`;
+        document.getElementById('gps-status-indicator').innerHTML = `● ONLINE • ${currentDriver.cabType} <span class="text-green-400 font-mono">(${latitude.toFixed(3)}, ${longitude.toFixed(3)})</span>`;
         registerDriver();
       }
       
@@ -1304,7 +1338,7 @@
       if (mongoDriverAudio) {
         if (mongoDriverAudio.paused) {
           mongoDriverAudio.currentTime = 0;
-          mongoDriverAudio.play().catch(e => console.log('Audio autoplay retry'));
+          mongoDriverAudio.play().catch(() => {});
         }
       } else {
         try {
@@ -1358,9 +1392,9 @@
         offer.dropName = dropStr;
 
         html += `
-          <div id="card-${rideId}" class="bg-slate-900 border-2 border-amber-400 rounded-2xl p-4 shadow-2xl space-y-3 animate-pulse">
+          <div id="card-${rideId}" class="bg-slate-900 border-2 border-amber-400 rounded-3xl p-5 shadow-2xl space-y-3.5 animate-pulse">
             <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-              <span class="text-xs font-bold uppercase text-amber-400 flex items-center gap-1.5">
+              <span class="text-xs font-black uppercase text-amber-400 flex items-center gap-1.5">
                 <span class="animate-ping h-2.5 w-2.5 bg-amber-400 rounded-full inline-block"></span> NEW RIDE OFFER
               </span>
               <span class="text-2xl font-black text-green-400">₹${offer.totalFare}</span>
@@ -1370,10 +1404,10 @@
               <div class="text-slate-300 truncate">🏁 <b>To:</b> <span>${dropStr}</span></div>
             </div>
             <div class="grid grid-cols-2 gap-2.5 pt-1">
-              <button onclick="declineSingleOffer('${rideId}')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-xl text-xs transition">
+              <button onclick="declineSingleOffer('${rideId}')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-2xl text-xs transition">
                 Decline
               </button>
-              <button onclick="acceptSelectedRide('${rideId}')" class="bg-green-600 hover:bg-green-500 text-white font-black py-3 rounded-xl text-xs shadow-lg transition">
+              <button onclick="acceptSelectedRide('${rideId}')" class="bg-green-600 hover:bg-green-500 text-white font-black py-3 rounded-2xl text-xs shadow-lg transition tracking-wider uppercase">
                 ACCEPT
               </button>
             </div>
@@ -1422,7 +1456,6 @@
       removeOffer(rideId);
     });
 
-    // ---------------- INSTANT RESET & RE-REGISTER ON CANCEL ----------------
     socket.on('ride:cancelled', ({ rideId }) => {
       removeOffer(rideId);
       if (currentActiveRideId === rideId || !currentActiveRideId) {
@@ -1441,7 +1474,6 @@
       }
     });
 
-    // ---------------- INSTANT ONGOING SCREEN SWITCH WITH RIDER PHONE ----------------
     socket.on('driver:ride_confirmed', (rideData) => {
       if (rideData && rideData.riderPhone) {
         setRiderPhoneLink(rideData.riderPhone);
@@ -1452,9 +1484,6 @@
       checkAndRestoreActiveRide();
     });
 
-    // ==========================================
-    // RIDE ACCEPTANCE & AUTO-DECLINE QUEUE
-    // ==========================================
     async function acceptSelectedRide(rideId) {
       const selected = activeOffersMap.get(rideId);
       if (!selected || !currentDriver) return;
@@ -1504,7 +1533,7 @@
       socket.emit('driver:arrived', { rideId: currentActiveRideId });
       const btn = document.getElementById('btn-arrived');
       btn.innerText = "✅ Arrived";
-      btn.className = "bg-green-700 text-white font-bold py-3 rounded-xl text-xs";
+      btn.className = "bg-green-700 text-white font-bold py-3 rounded-2xl text-xs";
       document.getElementById('trip-badge').innerText = "Arrived at Pickup";
       document.getElementById('otp-section').classList.remove('hidden');
 
@@ -1576,9 +1605,6 @@
       }
     }
 
-    // ==========================================
-    // EARLY TERMINATION & EMERGENCY SETTLEMENT
-    // ==========================================
     function openEarlyEndModal() { document.getElementById('early-end-modal').classList.remove('hidden'); }
     function closeEarlyEndModal() { document.getElementById('early-end-modal').classList.add('hidden'); }
 
@@ -1630,18 +1656,7 @@
     }
 
     // ==========================================
-    // DUAL REFERRAL QR ENGINE (DRIVER & RIDER)
-    // ==========================================
-    function openReferralModal() {
-      document.getElementById('referral-modal').classList.remove('hidden');
-      document.getElementById('display-ref-code').innerText = currentDriver?.driverId || 'DRV_67';
-      renderReferralQR();
-    }
-
-    function closeReferralModal() { document.getElementById('referral-modal').classList.add('hidden'); }
-
-    // ==========================================
-    // SETTINGS MODAL LOGIC (PROFILE & ACCOUNT)
+    // ☰ SLIDE-IN SIDEBAR / SETTINGS DRAWER
     // ==========================================
     function openSettingsModal() {
       document.getElementById('settings-modal').classList.remove('hidden');
@@ -1650,11 +1665,6 @@
         populateSettingsDetails(currentDriver);
       }
       renderReferralQR();
-    }
-
-    function openSettingsModalTab(tab) {
-      openSettingsModal();
-      switchSettingsTab(tab);
     }
 
     function closeSettingsModal() {
@@ -1723,14 +1733,6 @@
     // ==========================================
     // DRIVER WALLET & COUPONS ENGINE
     // ==========================================
-    function openWalletModal() {
-      document.getElementById('wallet-modal').classList.remove('hidden');
-      document.getElementById('modal-wallet-balance').innerText = `₹${currentDriver?.walletBalance || 0}.00`;
-      document.getElementById('modal-bonus-rides').innerText = `${currentDriver?.bonusFreeRides || 0} Free Rides`;
-    }
-
-    function closeWalletModal() { document.getElementById('wallet-modal').classList.add('hidden'); }
-    
     function setRechargeAmount(amt) { 
       document.getElementById('custom-recharge-amt').value = amt;
       handleRechargeAmountChange();
@@ -1871,16 +1873,11 @@
       }
 
       document.getElementById('modal-wallet-balance').innerText = `₹${currentDriver.walletBalance}.00`;
-      document.getElementById('dash-wallet-bal').innerText = `₹${currentDriver.walletBalance}.00`;
-
       removeAppliedCoupon(true);
       closeSettingsModal();
-      if (document.getElementById('wallet-modal')) closeWalletModal();
     }
 
-    // ==========================================
-    // DRIVER SAFETY AUDIO RECORDER (LOCAL)
-    // ==========================================
+    // Safety Audio Recorder
     async function toggleDriverSafetyAudio() {
       if (!isDriverRecording) {
         try {
