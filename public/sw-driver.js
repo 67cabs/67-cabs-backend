@@ -1,4 +1,4 @@
-const CACHE_NAME = '67-driver-cache-v2';
+const CACHE_NAME = '67-driver-cache-v3';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -20,6 +20,7 @@ self.addEventListener('push', (event) => {
     title: '🚖 Nayi Ride Request!',
     body: 'Aapke pass ek nayi ride offer aayi hai.',
     rideId: '',
+    driverId: '',
     fare: '0',
     pickup: 'Pickup Point',
     drop: 'Drop Point',
@@ -36,6 +37,7 @@ self.addEventListener('push', (event) => {
   }
 
   const rideId = data.rideId || (data.data && data.data.rideId) || '';
+  const driverId = data.driverId || (data.data && data.data.driverId) || '';
 
   const options = {
     body: data.body || `Kiraya: ₹${data.fare} | ${data.pickup} ➔ ${data.drop}`,
@@ -47,6 +49,7 @@ self.addEventListener('push', (event) => {
     requireInteraction: true,
     data: {
       rideId: rideId,
+      driverId: driverId,
       url: rideId ? `/driver.html?status=ongoing&id=${rideId}` : (data.data?.url || '/driver.html')
     },
     actions: [
@@ -64,9 +67,10 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const rideId = event.notification.data?.rideId;
+  const driverId = event.notification.data?.driverId;
   const action = event.action;
 
-  // 1. Agar Driver ne Notification Bar se 'REJECT' dabaya
+  // 1. Agar Driver ne 'REJECT' dabaya
   if (action === 'reject_ride') {
     if (rideId) {
       event.waitUntil(
@@ -80,20 +84,20 @@ self.addEventListener('notificationclick', (event) => {
     return;
   }
 
-  // 2. Agar Driver ne 'ACCEPT RIDE' dabaya ya Notification body par direct tap kiya
+  // 2. Agar Driver ne 'ACCEPT RIDE' dabaya ya Notification body par click kiya
   const targetUrl = event.notification.data?.url || (rideId ? `/driver.html?status=ongoing&id=${rideId}` : '/driver.html');
 
   const handleAcceptAndOpen = async () => {
-    // Instant Backend API Call: Browser window khulne ke delay se pehle hi status confirm
+    // Sahi Endpoint (/api/ride/accept-bg) par rideId aur driverId dono bhejein
     if (rideId) {
       try {
-        await fetch('/api/ride/accept', {
+        await fetch('/api/ride/accept-bg', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rideId })
+          body: JSON.stringify({ rideId, driverId })
         });
       } catch (err) {
-        console.error('Ride accept call failed:', err);
+        console.error('Ride accept-bg call failed:', err);
       }
     }
 

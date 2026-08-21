@@ -1461,10 +1461,15 @@ io.on('connection', (socket) => {
         title: '🚖 Nayi Direct Ride Request!',
         body: `Kiraya: ₹${ridePayload.totalFare}`,
         rideId: ridePayload.rideId,
+        driverId: targetDriverId,
         fare: ridePayload.totalFare,
         pickup: pickup?.text || 'Pickup Location',
         drop: stops?.[0]?.text || 'Drop Location',
-        data: { rideId: ridePayload.rideId, url: `/driver.html?status=ongoing&id=${ridePayload.rideId}&autoAccept=true` }
+        data: { 
+          rideId: ridePayload.rideId, 
+          driverId: targetDriverId,
+          url: `/driver.html?status=ongoing&id=${ridePayload.rideId}` 
+        }
       });
 
       console.log(`🎯 Targeted Ride ${rideId} dispatched to Driver Room: driver:${targetDriverId}`);
@@ -1523,10 +1528,15 @@ io.on('connection', (socket) => {
           title: '🚖 Nayi Ride Request!',
           body: `Category: ${requestedCabType} | Kiraya: ₹${totalFare}`,
           rideId: rideId,
+          driverId: driver.driverId,
           fare: totalFare,
           pickup: pickup?.text || 'Pickup Location',
           drop: drop?.text || 'Drop Location',
-          data: { rideId, url: `/driver.html?status=ongoing&id=${rideId}&autoAccept=true` }
+          data: { 
+            rideId, 
+            driverId: driver.driverId,
+            url: `/driver.html?status=ongoing&id=${rideId}` 
+          }
         });
       }
     });
@@ -1758,7 +1768,7 @@ io.on('connection', (socket) => {
           const currentAvg = driver.rating || 5.0;
           const newAvg = parseFloat(((currentAvg * currentCount + numRating) / (currentCount + 1)).toFixed(1));
           await Driver.updateOne(
-            { driverId: driver.driverId },
+            { driverId: driver.driverId }, 
             { 
               $set: { rating: newAvg },
               $inc: { totalRatingsCount: 1 }
@@ -1775,7 +1785,7 @@ io.on('connection', (socket) => {
 
     try {
       const completedTrip = await Trip.findOneAndUpdate(
-        { rideId },
+        { rideId }, 
         { 
           status: 'COMPLETED', 
           finalFare: finalAmount, 
@@ -1804,7 +1814,7 @@ io.on('connection', (socket) => {
           const referrerDriver = await Driver.findOne({ driverId: riderDoc.referralCode.trim() });
           if (referrerDriver) {
             await Driver.updateOne(
-              { driverId: referrerDriver.driverId },
+              { driverId: referrerDriver.driverId }, 
               { $inc: { bonusFreeRides: 1 } }
             );
             await Rider.updateOne({ _id: riderDoc._id }, { isFirstTripRewardClaimed: true });
@@ -1818,7 +1828,7 @@ io.on('connection', (socket) => {
           const referrerDriver = await Driver.findOne({ driverId: currentDriverDoc.referralCode.trim() });
           if (referrerDriver) {
             await Driver.updateOne(
-              { driverId: referrerDriver.driverId },
+              { driverId: referrerDriver.driverId }, 
               { $inc: { bonusFreeRides: 1 } }
             );
             await Driver.updateOne({ _id: currentDriverDoc._id }, { isFirstTripRewardClaimed: true });
