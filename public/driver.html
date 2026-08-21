@@ -81,7 +81,7 @@
           <select id="reg-cabtype" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-2.5 text-xs outline-none focus:border-amber-400 mt-1">
             <option value="HATCHBACK">Hatchback (₹16/km)</option>
             <option value="SEDAN">Sedan (₹20/km)</option>
-            <option value="SUV">SUV (₹25/km)</option>
+            <option value="SUV">SUV (₹30/km)</option>
           </select>
         </div>
       </div>
@@ -601,6 +601,25 @@
     // Active Applied Coupon State
     let appliedCouponData = null;
 
+    // Fetch Live Dynamic Cab Rates from MongoDB Atlas
+    async function fetchLiveFareRatesForDriver() {
+      try {
+        const res = await fetch('/api/fare/public-rates');
+        const data = await res.json();
+        if (data.success && data.rates) {
+          const selectEl = document.getElementById('reg-cabtype');
+          if (selectEl) {
+            selectEl.innerHTML = `
+              <option value="HATCHBACK">Hatchback (₹${data.rates.HATCHBACK || 16}/km)</option>
+              <option value="SEDAN">Sedan (₹${data.rates.SEDAN || 20}/km)</option>
+              <option value="SUV">SUV (₹${data.rates.SUV || 30}/km)</option>
+            `;
+          }
+          console.log("🍃 Live MongoDB Rates synced in Driver App:", data.rates);
+        }
+      } catch (e) {}
+    }
+
     async function loadDynamicSoundFromMongoDB() {
       try {
         const res = await fetch('/api/driver/alert-sound');
@@ -695,6 +714,7 @@
         switchAuthTab('signup');
       }
       loadDynamicSoundFromMongoDB();
+      fetchLiveFareRatesForDriver();
     });
 
     async function handleDriverSignup(e) {
@@ -1143,6 +1163,7 @@
         }
         checkAndRestoreActiveRide();
         handleUrlDeepLink();
+        fetchLiveFareRatesForDriver();
       }
     });
 
@@ -1170,6 +1191,7 @@
       if (isDriverOnline) registerDriver();
       checkAndRestoreActiveRide();
       handleUrlDeepLink();
+      fetchLiveFareRatesForDriver();
     });
 
     setInterval(() => {

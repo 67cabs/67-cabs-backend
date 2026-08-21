@@ -451,6 +451,27 @@ app.post('/api/admin/fare-rules', async (req, res) => {
   }
 });
 
+// Public API for Rider & Driver Frontends to fetch Live Rates
+app.get('/api/fare/public-rates', async (req, res) => {
+  try {
+    let doc = await FareConfig.findOne({ key: 'global_fare_rules' });
+    if (!doc) doc = await FareConfig.create({ key: 'global_fare_rules' });
+    return res.json({
+      success: true,
+      rates: {
+        HATCHBACK: doc.HATCHBACK?.perKm || 16,
+        SEDAN: doc.SEDAN?.perKm || 20,
+        SUV: doc.SUV?.perKm || 30
+      }
+    });
+  } catch (e) {
+    return res.json({
+      success: true,
+      rates: { HATCHBACK: 16, SEDAN: 20, SUV: 25 }
+    });
+  }
+});
+
 // ---------------- ADMIN SOUND & SETTINGS ROUTES (MONGODB DRIVEN) ----------------
 app.get('/api/admin/settings/sound', async (req, res) => {
   try {
@@ -473,7 +494,6 @@ app.post('/api/admin/settings/sound', async (req, res) => {
       { upsert: true, new: true }
     );
 
-    // If preset is selected, purge base64 override
     await Setting.deleteOne({ key: 'driver_alert_sound_base64' });
 
     console.log(`🔔 Global driver alert sound updated in MongoDB: ${globalActiveSound}`);
@@ -490,7 +510,6 @@ app.post('/api/admin/upload-custom-sound', uploadSound.single('audioFile'), asyn
       return res.status(400).json({ success: false, message: 'Audio file upload failed.' });
     }
 
-    // Convert file to Base64 to store in MongoDB directly
     const fileBuffer = fs.readFileSync(req.file.path);
     const base64Audio = `data:${req.file.mimetype || 'audio/mp3'};base64,${fileBuffer.toString('base64')}`;
 
@@ -547,7 +566,6 @@ app.post('/api/driver/update-location', async (req, res) => {
     const lat = Number(latitude);
     const lng = Number(longitude);
 
-    // 1. Update in-memory driver location
     if (driverId && activeDrivers.has(driverId)) {
       const d = activeDrivers.get(driverId);
       d.location = { lat, lng };
@@ -555,7 +573,6 @@ app.post('/api/driver/update-location', async (req, res) => {
       activeDrivers.set(driverId, d);
     }
 
-    // 2. Update database telemetry
     if (driverId) {
       await DriverLocation.findOneAndUpdate(
         { driverId },
@@ -568,7 +585,6 @@ app.post('/api/driver/update-location', async (req, res) => {
       );
     }
 
-    // 3. If a ride is active, broadcast live position to rider
     if (rideId) {
       const telemetryPayload = {
         lat,
@@ -600,7 +616,6 @@ app.post('/api/ride/accept-bg', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Ride ID required.' });
     }
 
-    // Clear 15-second timer on acceptance
     if (rideTimeoutTimers.has(rideId)) {
       clearTimeout(rideTimeoutTimers.get(rideId));
       rideTimeoutTimers.delete(rideId);
@@ -658,7 +673,6 @@ app.post('/api/ride/accept-bg', async (req, res) => {
       }
     }
 
-    // Broadcast globally to all dynamic sockets
     io.emit(`ride:accepted:${rideId}`, {
       rideId,
       driver: driverPayload,
@@ -694,7 +708,6 @@ app.post('/api/ride/decline', async (req, res) => {
     const { rideId } = req.body;
     if (!rideId) return res.status(400).json({ success: false, message: 'Ride ID required.' });
 
-    // Clear active timer
     if (rideTimeoutTimers.has(rideId)) {
       clearTimeout(rideTimeoutTimers.get(rideId));
       rideTimeoutTimers.delete(rideId);
@@ -1719,12 +1732,10 @@ io.on('connection', (socket) => {
 
       console.log(`🎯 Targeted Ride ${rideId} dispatched to Driver: ${targetDriverId} with sound: ${globalActiveSound}`);
 
-      // Clear any prior timer
       if (rideTimeoutTimers.has(rideId)) {
         clearTimeout(rideTimeoutTimers.get(rideId));
       }
 
-      // EXACT 15 SECONDS AUTO TIMEOUT TIMER
       const timer = setTimeout(async () => {
         const currentRide = activeRides.get(rideId);
         if (currentRide && currentRide.status === 'SEARCHING') {
@@ -1807,7 +1818,6 @@ io.on('connection', (socket) => {
     });
     io.emit('ride:new_offer', ridePayload);
 
-    // 15 Seconds Timer for general broadcast request
     if (rideTimeoutTimers.has(rideId)) {
       clearTimeout(rideTimeoutTimers.get(rideId));
     }

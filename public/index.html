@@ -166,18 +166,18 @@
           </button>
         </div>
 
-        <!-- Category Tabs -->
+        <!-- Category Tabs (Dynamically Updated from MongoDB Atlas) -->
         <div>
           <label class="text-[10px] font-bold text-slate-500 uppercase">Select Vehicle Category</label>
           <div class="grid grid-cols-3 gap-1.5 mt-1 bg-slate-100 p-1 rounded-xl">
             <button onclick="switchCategory('HATCHBACK')" id="tab-HATCHBACK" class="category-tab py-2 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 shadow-sm transition">
-              Hatchback<br><span class="text-[9px] font-normal">₹16/km</span>
+              Hatchback<br><span id="badge-rate-hatchback" class="text-[9px] font-normal">₹16/km</span>
             </button>
             <button onclick="switchCategory('SEDAN')" id="tab-SEDAN" class="category-tab py-2 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition">
-              Sedan<br><span class="text-[9px] font-normal">₹20/km</span>
+              Sedan<br><span id="badge-rate-sedan" class="text-[9px] font-normal">₹20/km</span>
             </button>
             <button onclick="switchCategory('SUV')" id="tab-SUV" class="category-tab py-2 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition">
-              SUV<br><span class="text-[9px] font-normal">₹25/km</span>
+              SUV<br><span id="badge-rate-suv" class="text-[9px] font-normal">₹30/km</span>
             </button>
           </div>
         </div>
@@ -599,6 +599,34 @@
     let currentUser = null;
     let currentSelectedRating = 5;
 
+    // Live Dynamic Pricing from MongoDB Atlas
+    let dynamicCategoryRates = {
+      HATCHBACK: { tripPerKm: 16, pickupPerKm: 10, base: 50 },
+      SEDAN: { tripPerKm: 20, pickupPerKm: 10, base: 70 },
+      SUV: { tripPerKm: 30, pickupPerKm: 10, base: 100 }
+    };
+
+    async function fetchLiveFareRatesFromMongoDB() {
+      try {
+        const res = await fetch('/api/fare/public-rates');
+        const data = await res.json();
+        if (data.success && data.rates) {
+          if (data.rates.HATCHBACK) dynamicCategoryRates.HATCHBACK.tripPerKm = Number(data.rates.HATCHBACK);
+          if (data.rates.SEDAN) dynamicCategoryRates.SEDAN.tripPerKm = Number(data.rates.SEDAN);
+          if (data.rates.SUV) dynamicCategoryRates.SUV.tripPerKm = Number(data.rates.SUV);
+
+          const hBadge = document.getElementById('badge-rate-hatchback');
+          const sBadge = document.getElementById('badge-rate-sedan');
+          const suvBadge = document.getElementById('badge-rate-suv');
+
+          if (hBadge) hBadge.innerText = `₹${dynamicCategoryRates.HATCHBACK.tripPerKm}/km`;
+          if (sBadge) sBadge.innerText = `₹${dynamicCategoryRates.SEDAN.tripPerKm}/km`;
+          if (suvBadge) suvBadge.innerText = `₹${dynamicCategoryRates.SUV.tripPerKm}/km`;
+          console.log("🍃 Live MongoDB Fare Badges Loaded in Rider App:", dynamicCategoryRates);
+        }
+      } catch (e) {}
+    }
+
     // 15-Sec Dispatch Timer & State
     let activeTargetDriverId = null;
     let dispatchTimer = null;
@@ -662,6 +690,7 @@
         openAuthModal();
       }
       checkSavedUser();
+      fetchLiveFareRatesFromMongoDB();
     });
 
     function showSettlementUI(fare, upiVpa) {
@@ -763,6 +792,7 @@
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
         if (currentUser) checkAndRestoreRiderActiveRide();
+        fetchLiveFareRatesFromMongoDB();
         if (pickupCoords && !activeRideId && !document.getElementById('step-2-cab-selection').classList.contains('hidden')) {
           fetchAndRenderNearbyDrivers();
         }
@@ -771,6 +801,7 @@
 
     socket.on('connect', () => {
       if (currentUser) checkAndRestoreRiderActiveRide();
+      fetchLiveFareRatesFromMongoDB();
       if (pickupCoords && !activeRideId && !document.getElementById('step-2-cab-selection').classList.contains('hidden')) {
         fetchAndRenderNearbyDrivers();
       }
@@ -880,7 +911,6 @@
       return `📍 GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     }
 
-    // PURE HARDWARE GPS FETCHER WITH DUAL-STAGE RETRY & CLEAR PERMISSION LOGIC
     function fetchPreciseGPS() {
       const btn = document.getElementById('btn-gps');
       if (btn) btn.innerText = '⏳';
@@ -906,7 +936,6 @@
       const onSuccess = async (position) => {
         if (btn) btn.innerText = '🎯';
         const { latitude, longitude, accuracy } = position.coords;
-        console.log(`📍 Hardware GPS Location: ${latitude}, ${longitude} (Accuracy: ${accuracy}m)`);
 
         if (!isWithinJaipur(latitude, longitude)) {
           showInAppToast(`Location outside Jaipur (${latitude.toFixed(3)}, ${longitude.toFixed(3)})`, "⚠️");
@@ -920,9 +949,7 @@
       };
 
       const onError = (error) => {
-        // Retry with network provider if high accuracy satellite timeout occurs
         if (error.code === 3 || error.code === 2) {
-          console.warn("Retrying with standard network GPS...");
           navigator.geolocation.getCurrentPosition(
             onSuccess,
             (finalError) => {
@@ -1103,14 +1130,9 @@
     }
 
     function calculateDynamicFare(category, tripKm, pickupKm) {
-      const rates = {
-        HATCHBACK: { tripPerKm: 16, pickupPerKm: 8, base: 50 },
-        SEDAN: { tripPerKm: 20, pickupPerKm: 10, base: 70 },
-        SUV: { tripPerKm: 25, pickupPerKm: 12, base: 100 }
-      };
-      const r = rates[category] || rates.HATCHBACK;
+      const r = dynamicCategoryRates[category] || dynamicCategoryRates.HATCHBACK;
       const tripCost = Math.max(r.base, tripKm * r.tripPerKm);
-      const pickupCost = pickupKm * r.pickupPerKm;
+      const pickupCost = pickupKm * (r.pickupPerKm || 10);
       return Math.round(tripCost + pickupCost);
     }
 
@@ -1206,7 +1228,6 @@
       
       renderProximityCards();
 
-      // Clean listener registration
       socket.off(`ride:accepted:${activeRideId}`);
       socket.on(`ride:accepted:${activeRideId}`, handleRideAcceptedEvent);
 
@@ -1223,7 +1244,6 @@
 
       document.getElementById('dispatch-waiting-banner').classList.remove('hidden');
 
-      // EXACT 15 SECONDS TIMER
       dispatchCountdown = 15;
       document.getElementById('dispatch-timer-text').innerText = `Awaiting driver response (Auto-timeout in ${dispatchCountdown}s)`;
 
@@ -1270,7 +1290,6 @@
       }
     }
 
-    // SINGLE CLEAN DECLINE LISTENER WITHOUT DUPLICATE POPUP ALERTS
     socket.off('ride:declined_targeted');
     socket.on('ride:declined_targeted', (payload) => {
       cancelRideSearchSilent();
