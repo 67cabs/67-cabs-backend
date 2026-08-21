@@ -613,6 +613,24 @@
     let currentUser = null;
     let currentSelectedRating = 5;
 
+    // Custom Draggable Pin Helper
+    function createPinIcon(emoji, bgColor) {
+      return L.divIcon({
+        className: 'custom-pin-marker',
+        html: `
+          <div style="background-color: ${bgColor}; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.35); font-size: 16px; transform: translate(-50%, -50%); cursor: grab;">
+            <span>${emoji}</span>
+          </div>
+        `,
+        iconSize: [34, 34],
+        iconAnchor: [17, 34],
+        popupAnchor: [0, -34]
+      });
+    }
+
+    const pickupPinIcon = createPinIcon('📍', '#ef4444');
+    const dropPinIcon = createPinIcon('🏁', '#3b82f6');
+
     // RIDER PULL-TO-REFRESH (SWIPE DOWN GESTURE)
     let riderTouchStartY = 0;
     let isRiderPulling = false;
@@ -931,22 +949,52 @@
     function removeStopRow(index) {
       const el = document.getElementById(`stop-row-${index}`);
       if (el) el.remove();
+      if (stopMarkers[index]) {
+        map.removeLayer(stopMarkers[index]);
+        delete stopMarkers[index];
+      }
       dropStops.splice(index, 1);
     }
 
+    // DRAGGABLE PICKUP MARKER HANDLER
     function setPickup(lat, lng, labelText = null) {
       if (!isWithinJaipur(lat, lng)) {
         showInAppToast("67 Cabs operates only within Jaipur.", "⚠️");
         return;
       }
       pickupCoords = [lat, lng];
-      if (pickupMarker) map.removeLayer(pickupMarker);
-      pickupMarker = L.marker(pickupCoords).addTo(map).bindPopup("📍 Pickup").openPopup();
-      
+
+      if (pickupMarker) {
+        pickupMarker.setLatLng(pickupCoords);
+      } else {
+        pickupMarker = L.marker(pickupCoords, {
+          icon: pickupPinIcon,
+          draggable: true,
+          autoPan: true
+        }).addTo(map);
+
+        // DRAG END: Live Reverse Geocode & Recalculate
+        pickupMarker.on('dragend', async (event) => {
+          const position = event.target.getLatLng();
+          if (!isWithinJaipur(position.lat, position.lng)) {
+            showInAppToast("Pickup Jaipur service boundary ke bahar nahi ho sakta.", "⚠️");
+            pickupMarker.setLatLng(pickupCoords);
+            return;
+          }
+          pickupCoords = [position.lat, position.lng];
+          const updatedAddress = await reverseGeocode(position.lat, position.lng);
+          document.getElementById('pickup-search-input').value = updatedAddress;
+          pickupMarker.bindPopup(`<b>📍 Pickup:</b><br>${updatedAddress}`).openPopup();
+          showInAppToast("Pickup Location Adjusted!", "📍");
+        });
+      }
+
       const displayStr = labelText || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
       document.getElementById('pickup-search-input').value = displayStr;
+      pickupMarker.bindPopup(`<b>📍 Pickup:</b><br>${displayStr}`).openPopup();
     }
 
+    // DRAGGABLE DROP & MULTI-STOP MARKER HANDLER
     function setStopLocation(index, lat, lng, labelText = null) {
       if (!isWithinJaipur(lat, lng)) {
         showInAppToast("Location is outside Jaipur boundary.", "⚠️");
@@ -956,8 +1004,39 @@
       const inputEl = document.getElementById(`drop-search-input-${index}`);
       if (inputEl) inputEl.value = dropStops[index].text;
 
-      if (stopMarkers[index]) map.removeLayer(stopMarkers[index]);
-      stopMarkers[index] = L.marker([lat, lng]).addTo(map).bindPopup(`🏁 Stop ${index + 1}`).openPopup();
+      if (stopMarkers[index]) {
+        stopMarkers[index].setLatLng([lat, lng]);
+      } else {
+        const marker = L.marker([lat, lng], {
+          icon: dropPinIcon,
+          draggable: true,
+          autoPan: true
+        }).addTo(map);
+
+        // DRAG END: Live Reverse Geocode & Recalculate
+        marker.on('dragend', async (event) => {
+          const position = event.target.getLatLng();
+          if (!isWithinJaipur(position.lat, position.lng)) {
+            showInAppToast("Drop location Jaipur service boundary ke bahar nahi ho sakti.", "⚠️");
+            marker.setLatLng([dropStops[index].lat, dropStops[index].lng]);
+            return;
+          }
+          dropStops[index].lat = position.lat;
+          dropStops[index].lng = position.lng;
+          const updatedAddress = await reverseGeocode(position.lat, position.lng);
+          dropStops[index].text = updatedAddress;
+
+          const currInput = document.getElementById(`drop-search-input-${index}`);
+          if (currInput) currInput.value = updatedAddress;
+
+          marker.bindPopup(`<b>🏁 Stop ${index + 1}:</b><br>${updatedAddress}`).openPopup();
+          showInAppToast(`Stop ${index + 1} Adjusted!`, "🏁");
+        });
+
+        stopMarkers[index] = marker;
+      }
+
+      stopMarkers[index].bindPopup(`<b>🏁 Stop ${index + 1}:</b><br>${dropStops[index].text}`).openPopup();
     }
 
     async function reverseGeocode(lat, lng) {
@@ -996,7 +1075,7 @@
 
       const onSuccess = async (position) => {
         if (btn) btn.innerText = '🎯';
-        const { latitude, longitude, accuracy } = position.coords;
+        const { latitude, longitude } = position.coords;
 
         if (!isWithinJaipur(latitude, longitude)) {
           showInAppToast(`Location outside Jaipur (${latitude.toFixed(3)}, ${longitude.toFixed(3)})`, "⚠️");
