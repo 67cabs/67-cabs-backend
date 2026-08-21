@@ -31,8 +31,8 @@ import io.socket.client.Socket;
 
 public class LocationService extends Service {
 
-    private static final String CHANNEL_ID = "DriverLocationChannel";
-    private static final String ALERT_CHANNEL_ID = "DriverIncomingRideAlertChannel_v4";
+    private static final String CHANNEL_ID = "DriverLocationChannel_v6";
+    private static final String ALERT_CHANNEL_ID = "DriverIncomingRideAlertChannel_v6";
     private static final int ALERT_NOTIFICATION_ID = 6705;
 
     private LocationManager locationManager;
@@ -51,8 +51,22 @@ public class LocationService extends Service {
 
     private void loadCachedDriverId() {
         try {
-            SharedPreferences prefs = getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE);
-            String driverSessionJson = prefs.getString("67_driver_session", null);
+            // 1. Check Default App Shared Preferences
+            SharedPreferences defaultPrefs = getSharedPreferences(getPackageName() + "_preferences", Context.MODE_PRIVATE);
+            String driverSessionJson = defaultPrefs.getString("67_driver_session", null);
+
+            // 2. Check Standard Capacitor Preferences Key
+            if (driverSessionJson == null) {
+                SharedPreferences capPrefs = getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE);
+                driverSessionJson = capPrefs.getString("67_driver_session", null);
+            }
+
+            // 3. Fallback Capacitor Standard Key
+            if (driverSessionJson == null) {
+                SharedPreferences capPrefs2 = getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE);
+                driverSessionJson = capPrefs2.getString("CapacitorStorage.67_driver_session", null);
+            }
+
             if (driverSessionJson != null) {
                 JSONObject driver = new JSONObject(driverSessionJson);
                 cachedDriverId = driver.optString("driverId", "");
@@ -64,6 +78,12 @@ public class LocationService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null && intent.hasExtra("driverId")) {
+            cachedDriverId = intent.getStringExtra("driverId");
+        } else if (cachedDriverId.isEmpty()) {
+            loadCachedDriverId();
+        }
+
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("67 Cabs Driver Online")
                 .setContentText("आपकी लाइव लोकेशन राइडर्स को दिख रही है...")
@@ -83,7 +103,7 @@ public class LocationService extends Service {
             IO.Options opts = new IO.Options();
             opts.transports = new String[]{"websocket", "polling"};
             opts.reconnection = true;
-            opts.reconnectionAttempts = 100;
+            opts.reconnectionAttempts = 500;
             opts.reconnectionDelay = 1000;
 
             mSocket = IO.socket("https://137.23.57.23.sslip.io", opts);
@@ -269,7 +289,7 @@ public class LocationService extends Service {
 
     private void createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) {
                 NotificationChannel trackChannel = new NotificationChannel(
                         CHANNEL_ID,
