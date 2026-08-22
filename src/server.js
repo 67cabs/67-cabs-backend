@@ -1759,7 +1759,7 @@ app.get('/api/cabs/nearby-all', async (req, res) => {
 
     return res.json({ success: true, drivers: driversList });
   } catch (e) {
-    return res.status(500).json({ success: false, error: e.message });
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 
