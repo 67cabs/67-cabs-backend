@@ -166,7 +166,7 @@
       <div>
         <label class="text-[11px] font-bold text-slate-300 block mb-1">📸 Driver Profile Photo / Live Selfie *</label>
         <input type="file" id="doc-selfie" accept="image/*" capture="user" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
-    </div>
+      </div>
 
       <div class="space-y-2 pt-1 border-t border-slate-900">
         <label class="text-[11px] font-bold text-slate-300 block">🪪 Driving License (Front & Back) *</label>
@@ -396,8 +396,8 @@
 
         <div class="relative z-10 w-20 h-20 rounded-full bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center shadow-2xl shadow-amber-500/50 border-2 border-white/40 animate-spin" style="animation-duration: 3s;">
           <span class="text-4xl filter drop-shadow">📡</span>
+        </div>
       </div>
-    </div>
 
       <!-- Radar Titles -->
       <div class="text-center px-4">
@@ -421,8 +421,8 @@
             <div>
               <h3 class="text-base font-black text-amber-600 dark:text-amber-400 leading-tight" id="drawer-main-title">Partner Settings</h3>
               <p class="text-xs font-black text-slate-900 dark:text-slate-300" id="drawer-sub-title">Account & Preference Controls</p>
+            </div>
           </div>
-        </div>
           
           <div class="flex items-center gap-2">
             <!-- Circular Document Control Button -->
@@ -432,8 +432,8 @@
             <button onclick="closeSettingsModal()" class="w-8 h-8 rounded-xl border border-slate-400 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-200 hover:text-amber-500 flex items-center justify-center text-sm font-black">
               ✕
             </button>
+          </div>
         </div>
-      </div>
 
         <!-- Light / Dark Theme Switcher Widget -->
         <div id="theme-switch-card" class="bg-slate-950 p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
@@ -447,7 +447,7 @@
           <button onclick="toggleDriverTheme()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3.5 py-1.5 rounded-xl text-xs font-black text-amber-400 transition shadow">
             Switch
           </button>
-      </div>
+        </div>
 
         <!-- Dual Overview: Govt Tax Wallet & Ride Pass Validity -->
         <div class="grid grid-cols-2 gap-3">
@@ -455,13 +455,13 @@
             <span class="text-xs font-black text-slate-900 dark:text-slate-300 uppercase tracking-wider block" id="lbl-wallet">Govt Tax Wallet</span>
             <div id="modal-wallet-balance" class="text-lg font-black text-amber-600 dark:text-amber-400">₹0.00</div>
             <span class="text-[11px] font-bold text-slate-800 dark:text-slate-400 block" id="sub-wallet">For Govt Tax Dues</span>
-        </div>
+          </div>
           <div id="drawer-bonus-card" class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-0.5">
             <span class="text-xs font-black text-slate-900 dark:text-slate-300 uppercase tracking-wider block" id="lbl-pass">Ride Pass / Pool</span>
             <div id="modal-bonus-rides" class="text-lg font-black text-amber-600 dark:text-amber-400">0 Active Passes</div>
             <span class="text-[11px] font-bold text-slate-800 dark:text-slate-400 block" id="sub-pass">For Ride Requests</span>
+          </div>
         </div>
-      </div>
 
         <!-- Settings Tabs Switcher -->
         <div id="drawer-tab-switcher" class="flex bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
@@ -471,7 +471,7 @@
           <button onclick="switchSettingsTab('account')" id="tab-setting-account" class="w-1/2 py-2.5 text-xs font-black rounded-xl text-slate-900 dark:text-slate-300 hover:text-amber-600 transition">
             Recharge & Wallet
           </button>
-      </div>
+        </div>
 
         <!-- TAB 1: PROFILE & DUAL REFERRAL QR -->
         <div id="setting-pane-profile" class="space-y-4">
@@ -479,20 +479,20 @@
             <div class="flex justify-between items-center">
               <span class="text-slate-900 dark:text-slate-300 font-bold" id="lbl-p-name">Driver Name:</span>
               <span id="set-profile-name" class="font-black text-slate-900 dark:text-white">-</span>
-          </div>
+            </div>
             <div class="flex justify-between items-center">
               <span class="text-slate-900 dark:text-slate-300 font-bold" id="lbl-p-veh">Vehicle Number:</span>
               <span id="set-profile-vehicle" class="font-black text-amber-600 dark:text-amber-400 font-mono">-</span>
-          </div>
+            </div>
             <div class="flex justify-between items-center">
               <span class="text-slate-900 dark:text-slate-300 font-bold" id="lbl-p-cat">Cab Category:</span>
               <span id="set-profile-category" class="font-black text-slate-900 dark:text-white">-</span>
-          </div>
+            </div>
             <div class="flex justify-between items-center">
               <span class="text-slate-900 dark:text-slate-300 font-bold" id="lbl-p-upi">Receiving UPI ID:</span>
               <span id="set-profile-upi" class="font-black text-amber-600 dark:text-amber-400 font-mono">-</span>
+            </div>
           </div>
-        </div>
 
           <!-- Dual Referral QR Engine -->
           <div id="referral-box-card" class="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-center space-y-3">
@@ -505,16 +505,16 @@
               <button onclick="switchQRTab('driver')" id="tab-qr-driver" class="w-1/2 py-1.5 text-xs font-black rounded-lg text-slate-900 dark:text-slate-300 hover:text-amber-600 transition">
                 Driver QR
               </button>
-          </div>
+            </div>
 
             <div class="bg-white p-3 rounded-2xl inline-block shadow-inner mx-auto">
               <div id="referral-qrcode-target" class="flex justify-center"></div>
-          </div>
+            </div>
 
             <p id="qr-desc-text" class="text-xs font-black text-amber-600 dark:text-amber-400">Scan to register Rider with bonus</p>
             <p class="text-xs font-bold text-slate-900 dark:text-slate-300">Your Code: <b id="display-ref-code" class="font-mono text-amber-600 dark:text-amber-400 font-black">-</b></p>
+          </div>
         </div>
-      </div>
 
         <!-- TAB 2: DYNAMIC RECHARGE PASSES & DIRECT ADMIN UPI -->
         <div id="setting-pane-account" class="hidden space-y-4">
@@ -522,7 +522,7 @@
             <div class="font-black text-amber-600 dark:text-amber-400 uppercase text-xs flex justify-between items-center">
               <span>🎟️ Ride Request Recharge Passes</span>
               <span class="text-[10px] bg-amber-500/15 text-amber-700 dark:text-amber-400 px-2.5 py-0.5 rounded-md font-extrabold border border-amber-500/30" id="plans-sync-badge">Instant Activation</span>
-          </div>
+            </div>
             <p class="text-xs font-bold text-slate-900 dark:text-slate-300 leading-relaxed" id="lbl-recharge-note">Recharge pass lene se aapko naye ride requests lene ki validity milti hai.</p>
 
             <div class="grid grid-cols-3 gap-2 pt-1" id="dynamic-plans-container">
@@ -538,21 +538,21 @@
                 <span class="text-xs font-black">₹500</span>
                 <span class="text-[10px] text-slate-400 font-semibold">(VIP Pass)</span>
               </button>
-          </div>
+            </div>
             <input type="number" id="custom-recharge-amt" oninput="handleRechargeAmountChange()" placeholder="Enter custom pass amount (₹)" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 outline-none focus:border-amber-400 font-mono mt-1 text-white text-xs font-bold" />
-        </div>
+          </div>
 
           <div class="space-y-2 text-xs">
             <label class="font-black text-slate-900 dark:text-slate-300 uppercase text-xs tracking-wider" id="lbl-coupon">Apply Promo Coupon</label>
             <div class="flex gap-2">
               <input type="text" id="coupon-code-input" placeholder="e.g. WELCOME100" class="w-full border rounded-xl p-2.5 outline-none focus:border-amber-400 font-mono uppercase bg-slate-950 border-slate-700 text-white text-xs font-bold" />
               <button id="btn-apply-coupon" onclick="applyCouponCode()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-4 rounded-xl transition">Apply</button>
-          </div>
+            </div>
 
             <div id="box-available-coupons" class="space-y-1.5 pt-1">
               <span class="text-[10px] font-black text-amber-500 uppercase tracking-wider block">Available Coupon Options (Tap to Apply):</span>
               <div id="available-coupons-list" class="grid grid-cols-1 gap-1.5 max-h-36 overflow-y-auto custom-scrollbar"></div>
-          </div>
+            </div>
 
             <div id="coupon-applied-status" class="hidden bg-amber-500/10 border border-amber-500/40 p-2.5 rounded-xl flex items-center justify-between text-xs mt-2">
               <div>
@@ -562,15 +562,15 @@
                 <div class="text-[11px] font-black text-slate-900 dark:text-slate-300">Discount: <b class="text-amber-600 dark:text-amber-400" id="applied-discount-text">-₹0</b> | Payable: <b class="font-mono text-slate-900 dark:text-white" id="applied-payable-text">₹0</b></div>
               </div>
               <button onclick="removeAppliedCoupon()" class="text-slate-900 dark:text-slate-300 hover:text-red-500 text-xs font-black ml-2">✕ Remove</button>
+            </div>
           </div>
-        </div>
 
           <button id="btn-execute-recharge" onclick="executeDirectUpiToAdmin()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3.5 rounded-2xl text-xs transition shadow-lg flex items-center justify-center gap-1.5 uppercase tracking-wider">
             <span>⚡ Pay Direct via UPI App</span>
             <span id="recharge-btn-amount" class="font-mono"></span>
           </button>
+        </div>
       </div>
-    </div>
 
       <!-- Drawer Bottom: Support Desk + Logout & Delete Account -->
       <div class="pt-3 border-t border-slate-800 space-y-2" id="drawer-footer-sec">
@@ -584,9 +584,9 @@
         <button onclick="deleteAccountDriver()" class="w-full bg-red-950/40 hover:bg-red-900/60 border border-red-800 text-red-400 font-extrabold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1" id="btn-drawer-delete">
           🗑️ Delete Driver Account
         </button>
-    </div>
+      </div>
 
-  </div>
+    </div>
   </div>
 
   <!-- ================= 6. DRIVER DOCUMENTS & RE-UPLOAD MODAL ================= -->
@@ -1698,16 +1698,18 @@
             const pLng = trip.pickup?.lng || (trip.pickup && trip.pickup[1]);
             document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${pLat},${pLng}&travelmode=driving`;
             document.getElementById('trip-badge').innerText = "Driving to Pickup";
+            document.getElementById('trip-badge').className = "text-xs bg-amber-500 text-slate-950 font-black px-3.5 py-1 rounded-full uppercase tracking-wider shadow";
             document.getElementById('otp-section').classList.add('hidden');
             document.getElementById('trip-running-section').classList.add('hidden');
           } else if (currentTripPhase === 'ARRIVED') {
-            const dLat = trip.drop?.lat || trip.stops?.[0]?.lat;
-            const dLng = trip.drop?.lng || trip.stops?.[0]?.lng;
-            document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${dLat},${dLng}&travelmode=driving`;
+            const pLat = trip.pickup?.lat || (trip.pickup && trip.pickup[0]);
+            const pLng = trip.pickup?.lng || (trip.pickup && trip.pickup[1]);
+            document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${pLat},${pLng}&travelmode=driving`;
             const btn = document.getElementById('btn-arrived');
             btn.innerText = "✅ Arrived";
             btn.className = "bg-green-700 text-white font-bold py-3 rounded-2xl text-xs";
             document.getElementById('trip-badge').innerText = "Arrived at Pickup";
+            document.getElementById('trip-badge').className = "text-xs bg-indigo-600 text-white font-bold px-3.5 py-1 rounded-full uppercase tracking-wider shadow";
             document.getElementById('otp-section').classList.remove('hidden');
             document.getElementById('trip-running-section').classList.add('hidden');
           } else if (currentTripPhase === 'TO_DROP') {
@@ -2054,7 +2056,7 @@
         mongoDriverAudio.pause();
         mongoDriverAudio.currentTime = 0;
       }
-    if (window.fallbackDriverAudio) {
+      if (window.fallbackDriverAudio) {
         window.fallbackDriverAudio.pause();
         window.fallbackDriverAudio.currentTime = 0;
       }
@@ -2258,9 +2260,12 @@
       document.getElementById('active-rider-name').innerText = rName;
       setRiderPhoneLink(rPhone);
 
+      // Phase 1: Only Pickup Location Map Opened
       const pLat = selected.pickup?.lat || (selected.pickup && selected.pickup[0]);
       const pLng = selected.pickup?.lng || (selected.pickup && selected.pickup[1]);
       document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${pLat},${pLng}&travelmode=driving`;
+      document.getElementById('trip-badge').innerText = "Driving to Pickup";
+      document.getElementById('trip-badge').className = "text-xs bg-amber-500 text-slate-950 font-black px-3.5 py-1 rounded-full uppercase tracking-wider shadow";
 
       if (currentDriver.location) {
         startMovementSimulation(currentDriver.location, selected.pickup, 'TO_PICKUP');
@@ -2274,12 +2279,14 @@
       btn.innerText = "✅ Arrived";
       btn.className = "bg-green-700 text-white font-bold py-3 rounded-2xl text-xs";
       document.getElementById('trip-badge').innerText = "Arrived at Pickup";
+      document.getElementById('trip-badge').className = "text-xs bg-indigo-600 text-white font-bold px-3.5 py-1 rounded-full uppercase tracking-wider shadow";
       document.getElementById('otp-section').classList.remove('hidden');
 
+      // Keep Map pointing to pickup until OTP verified
       if (acceptedRide) {
-        const destLat = acceptedRide.drop?.lat || acceptedRide.stops?.[0]?.lat;
-        const destLng = acceptedRide.drop?.lng || acceptedRide.stops?.[0]?.lng;
-        document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}&travelmode=driving`;
+        const pLat = acceptedRide.pickup?.lat || (acceptedRide.pickup && acceptedRide.pickup[0]);
+        const pLng = acceptedRide.pickup?.lng || (acceptedRide.pickup && acceptedRide.pickup[1]);
+        document.getElementById('nav-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${pLat},${pLng}&travelmode=driving`;
       }
     }
 
@@ -2323,6 +2330,7 @@
       badge.innerText = "Trip Ongoing";
       badge.className = "text-xs bg-green-500 text-slate-950 font-bold px-3 py-1 rounded-full uppercase";
 
+      // Phase 3: Now switch Navigation to Drop Point
       if (acceptedRide) {
         const destLat = acceptedRide.drop?.lat || acceptedRide.stops?.[0]?.lat;
         const destLng = acceptedRide.drop?.lng || acceptedRide.stops?.[0]?.lng;
