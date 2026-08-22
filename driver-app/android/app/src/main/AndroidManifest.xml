@@ -23,8 +23,14 @@
         android:name="android.permission.FOREGROUND_SERVICE"
         tools:ignore="ForegroundServicePermission" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SHORT_SERVICE" />
+
+    <!-- Background Stay-Alive & Battery Whitelist Permissions -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- Overlay & Full-Screen Ride Alert Permissions (Ola/Uber Screen Pop) -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -106,12 +112,12 @@
             </intent-filter>
         </service>
 
-        <!-- Foreground Location Tracking Service (Background GPS) -->
+        <!-- Foreground Location & Dispatch Tracking Service (Background Stay-Alive) -->
         <service
             android:name=".LocationService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="location" />
+            android:foregroundServiceType="location|dataSync|specialUse" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
