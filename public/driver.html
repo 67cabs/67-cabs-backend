@@ -1041,7 +1041,9 @@
           fetchAvailableCouponsForDriver(),
           checkAndRestoreActiveRide()
         ]);
-        if (isDriverOnline) registerDriver();
+        if (isDriverOnline && socket.connected) {
+          registerDriver();
+        }
       } catch (e) {
       } finally {
         setTimeout(() => {
@@ -1053,11 +1055,10 @@
 
     // CONTINUOUS ACTIVE POLLING LOOP
     setInterval(() => {
-      if (currentDriver && currentDriver.status === 'APPROVED' && isDriverOnline && !currentActiveRideId) {
-        registerDriver();
-        checkAndRestoreActiveRide();
+      if (currentDriver && currentDriver.status === 'APPROVED' && isDriverOnline && !currentActiveRideId && socket.connected) {
+        socket.emit('driver:ping_alive', { driverId: currentDriver.driverId });
       }
-    }, 3000);
+    }, 4000);
 
     // inDrive-Style Swipe/Toggle Duty Switch Functionality
     function toggleDriverDutyState(targetOnline) {
@@ -1087,6 +1088,9 @@
         knob.className = "absolute top-[2px] left-[3px] h-7 w-7 rounded-full bg-red-500 text-white font-black text-[10px] flex items-center justify-center shadow-lg transition-all duration-300";
         txtOff.className = "text-[9px] font-black text-red-400 tracking-wider transition-opacity";
         txtOn.className = "text-[9px] font-black text-slate-500 tracking-wider transition-opacity";
+        activeOffersMap.clear();
+        stopOfferSiren();
+        renderOffersList();
       }
 
       if (currentDriver?.driverId) {
@@ -2021,19 +2025,23 @@
       }
     }
 
+    function stopOfferSiren() {
+      if (mongoDriverAudio) {
+        mongoDriverAudio.pause();
+        mongoDriverAudio.currentTime = 0;
+      }
+      if (window.fallbackDriverAudio) {
+        window.fallbackDriverAudio.pause();
+        window.fallbackDriverAudio.currentTime = 0;
+      }
+    }
+
     function syncSirenState() {
       if (activeOffersMap.size > 0 && !currentActiveRideId) {
         playOfferSiren();
         if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200]);
       } else {
-        if (mongoDriverAudio) {
-          mongoDriverAudio.pause();
-          mongoDriverAudio.currentTime = 0;
-        }
-        if (window.fallbackDriverAudio) {
-          window.fallbackDriverAudio.pause();
-          window.fallbackDriverAudio.currentTime = 0;
-        }
+        stopOfferSiren();
       }
     }
 
@@ -2138,7 +2146,12 @@
     }
 
     function declineSingleOffer(rideId) {
-      socket.emit('ride:decline_targeted', { rideId, driverId: currentDriver?.driverId });
+      stopOfferSiren();
+      socket.emit('ride:decline_targeted', { 
+        rideId, 
+        driverId: currentDriver?.driverId,
+        reason: 'DRIVER_DECLINED'
+      });
       removeOffer(rideId);
     }
 
@@ -2153,6 +2166,7 @@
     });
 
     socket.on('ride:cancelled', ({ rideId }) => {
+      stopOfferSiren();
       removeOffer(rideId);
       if (currentActiveRideId === rideId || !currentActiveRideId) {
         if (simInterval) clearInterval(simInterval);
@@ -2184,12 +2198,12 @@
       const selected = activeOffersMap.get(rideId);
       if (!selected || !currentDriver) return;
 
+      stopOfferSiren();
       acceptedRide = selected;
       currentActiveRideId = rideId;
       currentTripPhase = 'TO_PICKUP';
 
       activeOffersMap.clear();
-      syncSirenState();
       document.getElementById('offers-container').innerHTML = '';
       document.getElementById('waiting-radar').classList.add('hidden');
 
