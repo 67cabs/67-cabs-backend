@@ -303,6 +303,22 @@
       <input type="checkbox" id="driver-duty-toggle" checked class="hidden" />
     </div>
 
+    <!-- LIVE REFRESHING & CHECKING STATUS BAR (INDICATOR) -->
+    <div id="driver-live-sync-bar" class="bg-slate-900 border border-slate-800 px-3.5 py-2 rounded-2xl shadow-md flex items-center justify-between text-xs">
+      <div class="flex items-center gap-2">
+        <span class="relative flex h-2.5 w-2.5">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+        </span>
+        <span id="driver-sync-status-text" class="text-[11px] font-bold text-slate-300">
+          Live Checking Active
+        </span>
+      </div>
+      <button id="btn-manual-driver-refresh" onclick="triggerManualDriverRefresh()" class="text-[10px] bg-slate-800 hover:bg-slate-700 border border-slate-700 font-bold px-2.5 py-1 rounded-xl text-amber-400 transition flex items-center gap-1">
+        🔄 <span>Refresh</span>
+      </button>
+    </div>
+
     <!-- ACTIVE RIDE MANAGEMENT CARD -->
     <div id="active-ride-card" class="hidden p-5 rounded-3xl border-2 border-amber-400 shadow-2xl space-y-4 bg-slate-900 text-white shrink-0">
       <div class="flex justify-between items-center border-b border-slate-800 pb-3">
@@ -370,7 +386,7 @@
     <div id="offers-container" class="space-y-3 overflow-y-auto max-h-[75vh] custom-scrollbar pr-1"></div>
 
     <!-- FULL HEIGHT VERTICAL EXPANDING RADAR CANVAS -->
-    <div id="waiting-radar" class="flex-1 w-full min-h-[calc(100vh-140px)] rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 flex flex-col items-center justify-center space-y-8 shadow-xl transition-colors relative overflow-hidden my-auto">
+    <div id="waiting-radar" class="flex-1 w-full min-h-[calc(100vh-180px)] rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 flex flex-col items-center justify-center space-y-8 shadow-xl transition-colors relative overflow-hidden my-auto">
 
       <!-- Central Rotating Pulse Core -->
       <div class="relative flex items-center justify-center w-36 h-36">
@@ -731,6 +747,11 @@
 
     let driverVaultDocs = {};
 
+    // 2-Second Safe Cooldown & Status Throttling for Driver App
+    let isDriverRefreshing = false;
+    let lastDriverRefreshTime = 0;
+    const DRIVER_REFRESH_COOLDOWN_MS = 2000;
+
     // Configurable Admin Receiving UPI ID
     let ADMIN_RECEIVING_UPI = '67cabs@upi';
 
@@ -966,22 +987,68 @@
       isPulling = false;
       const spinner = document.getElementById('ptr-spinner-container');
       if (spinner && spinner.classList.contains('ptr-active')) {
-        await executeLiveRefresh();
+        await executeLiveRefresh(true);
         setTimeout(() => {
           spinner.classList.remove('ptr-active');
         }, 500);
       }
     }, { passive: true });
 
-    async function executeLiveRefresh() {
-      await Promise.all([
-        fetchLiveFareRatesForDriver(),
-        fetchDynamicRechargePlansFromMongoDB(),
-        loadDynamicSoundFromMongoDB(),
-        fetchAvailableCouponsForDriver(),
-        checkAndRestoreActiveRide()
-      ]);
-      if (isDriverOnline) registerDriver();
+    // VISUAL FEEDBACK SYNC ENGINE FOR DRIVER
+    function updateDriverSyncUI(isChecking) {
+      const statusText = document.getElementById('driver-sync-status-text');
+      const manualBtn = document.getElementById('btn-manual-driver-refresh');
+
+      if (isChecking) {
+        if (statusText) statusText.innerHTML = `<span class="text-amber-400 font-black animate-pulse">🔄 Refreshing & Checking Cabs & Rides...</span>`;
+        if (manualBtn) {
+          manualBtn.disabled = true;
+          manualBtn.innerHTML = `🔄 <span class="animate-pulse">Checking...</span>`;
+          manualBtn.classList.add('opacity-70', 'cursor-not-allowed');
+        }
+      } else {
+        if (statusText) {
+          const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          statusText.innerHTML = `<span class="text-green-400 font-bold">🟢 Live Checking Active</span> <span class="text-[10px] text-slate-400">(${nowStr})</span>`;
+        }
+        if (manualBtn) {
+          manualBtn.disabled = false;
+          manualBtn.innerHTML = `🔄 <span>Refresh</span>`;
+          manualBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+        }
+      }
+    }
+
+    async function triggerManualDriverRefresh() {
+      await executeLiveRefresh(true);
+    }
+
+    async function executeLiveRefresh(force = false) {
+      const now = Date.now();
+      if (!force && (isDriverRefreshing || (now - lastDriverRefreshTime < DRIVER_REFRESH_COOLDOWN_MS))) {
+        return;
+      }
+
+      isDriverRefreshing = true;
+      lastDriverRefreshTime = now;
+      updateDriverSyncUI(true);
+
+      try {
+        await Promise.all([
+          fetchLiveFareRatesForDriver(),
+          fetchDynamicRechargePlansFromMongoDB(),
+          loadDynamicSoundFromMongoDB(),
+          fetchAvailableCouponsForDriver(),
+          checkAndRestoreActiveRide()
+        ]);
+        if (isDriverOnline) registerDriver();
+      } catch (e) {
+      } finally {
+        setTimeout(() => {
+          isDriverRefreshing = false;
+          updateDriverSyncUI(false);
+        }, DRIVER_REFRESH_COOLDOWN_MS);
+      }
     }
 
     // CONTINUOUS ACTIVE POLLING LOOP
@@ -1080,6 +1147,7 @@
       const customRechargeInput = document.getElementById('custom-recharge-amt');
       const couponInput = document.getElementById('coupon-code-input');
       const driverHeaderName = document.getElementById('driver-header-name');
+      const syncBar = document.getElementById('driver-live-sync-bar');
 
       if (isLight) {
         if (headerCard) headerCard.className = "bg-white border border-slate-300 p-3 sm:p-3.5 rounded-3xl shadow-xl flex items-center justify-between transition-colors shrink-0 gap-2";
@@ -1087,7 +1155,8 @@
         if (badgeVehicle) badgeVehicle.className = "text-[9px] font-mono font-black px-1.5 py-0.5 rounded-md border bg-amber-100 text-amber-900 border-amber-300 inline-block mt-0.5";
         if (btnHamburger) btnHamburger.className = "w-10 h-10 rounded-2xl border bg-slate-100 hover:bg-slate-200 text-slate-900 border-slate-300 flex items-center justify-center text-xl transition shadow-md active:scale-95 shrink-0";
 
-        if (radarBox) radarBox.className = "flex-1 w-full min-h-[calc(100vh-140px)] rounded-3xl border border-dashed border-slate-300 bg-white shadow-sm flex flex-col items-center justify-center space-y-8 transition-colors relative overflow-hidden my-auto";
+        if (syncBar) syncBar.className = "bg-white border border-slate-300 px-3.5 py-2 rounded-2xl shadow-sm flex items-center justify-between text-xs";
+        if (radarBox) radarBox.className = "flex-1 w-full min-h-[calc(100vh-180px)] rounded-3xl border border-dashed border-slate-300 bg-white shadow-sm flex flex-col items-center justify-center space-y-8 transition-colors relative overflow-hidden my-auto";
         if (radarTitle) radarTitle.className = "text-lg font-black text-slate-900 tracking-tight";
         if (radarSubtitle) radarSubtitle.className = "text-xs text-slate-900 font-black mt-1";
 
@@ -1122,7 +1191,8 @@
         if (badgeVehicle) badgeVehicle.className = "text-[9px] font-mono font-black px-1.5 py-0.5 rounded-md border bg-slate-800 text-amber-400 border-slate-700 inline-block mt-0.5";
         if (btnHamburger) btnHamburger.className = "w-10 h-10 rounded-2xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-amber-400 flex items-center justify-center text-xl transition shadow-md active:scale-95 shrink-0";
 
-        if (radarBox) radarBox.className = "flex-1 w-full min-h-[calc(100vh-140px)] rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 flex flex-col items-center justify-center space-y-8 shadow-xl transition-colors relative overflow-hidden my-auto";
+        if (syncBar) syncBar.className = "bg-slate-900 border border-slate-800 px-3.5 py-2 rounded-2xl shadow-md flex items-center justify-between text-xs";
+        if (radarBox) radarBox.className = "flex-1 w-full min-h-[calc(100vh-180px)] rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 flex flex-col items-center justify-center space-y-8 shadow-xl transition-colors relative overflow-hidden my-auto";
         if (radarTitle) radarTitle.className = "text-lg font-black text-slate-100 tracking-tight";
         if (radarSubtitle) radarSubtitle.className = "text-xs text-slate-400 mt-1 font-medium";
 
@@ -1816,11 +1886,8 @@
         if (isDriverOnline) {
           registerDriver();
         }
-        await checkAndRestoreActiveRide();
+        await executeLiveRefresh(true);
         handleUrlDeepLink();
-        fetchLiveFareRatesForDriver();
-        fetchDynamicRechargePlansFromMongoDB();
-        fetchAvailableCouponsForDriver();
       }
     }
 
@@ -1864,11 +1931,8 @@
 
     socket.on('connect', () => {
       if (isDriverOnline) registerDriver();
-      checkAndRestoreActiveRide();
+      executeLiveRefresh(true);
       handleUrlDeepLink();
-      fetchLiveFareRatesForDriver();
-      fetchDynamicRechargePlansFromMongoDB();
-      fetchAvailableCouponsForDriver();
     });
 
     setInterval(() => {
