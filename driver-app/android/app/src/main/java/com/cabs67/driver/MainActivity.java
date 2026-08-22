@@ -8,6 +8,7 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.provider.Settings;
 import android.view.WindowManager;
 import androidx.annotation.NonNull;
@@ -23,6 +24,7 @@ public class MainActivity extends BridgeActivity {
     private static final int OVERLAY_REQ_CODE = 6702;
     private static final int BG_LOCATION_REQ_CODE = 6703;
     private static final int FULL_SCREEN_REQ_CODE = 6704;
+    private static final int BATTERY_OPT_REQ_CODE = 6706;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -116,6 +118,23 @@ public class MainActivity extends BridgeActivity {
             }
         }
 
+        checkBatteryOptimizationAndStart();
+    }
+
+    private void checkBatteryOptimizationAndStart() {
+        // Request Exemption from Battery Optimization to Prevent OS Silent Kills
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (pm != null && !pm.isIgnoringBatteryOptimizations(getPackageName())) {
+                try {
+                    Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                            Uri.parse("package:" + getPackageName()));
+                    startActivityForResult(intent, BATTERY_OPT_REQ_CODE);
+                    return;
+                } catch (Exception ignored) {}
+            }
+        }
+
         startBackgroundLocationServiceSafe();
     }
 
@@ -148,6 +167,8 @@ public class MainActivity extends BridgeActivity {
         if (requestCode == OVERLAY_REQ_CODE) {
             checkFullScreenIntentPermission();
         } else if (requestCode == FULL_SCREEN_REQ_CODE) {
+            checkBatteryOptimizationAndStart();
+        } else if (requestCode == BATTERY_OPT_REQ_CODE) {
             startBackgroundLocationServiceSafe();
         }
     }

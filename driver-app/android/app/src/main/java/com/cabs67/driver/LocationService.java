@@ -38,7 +38,9 @@ public class LocationService extends Service {
 
     private static final String CHANNEL_ID = "DriverLocationChannel_v11";
     private static final String ALERT_CHANNEL_ID = "DriverIncomingRideAlertChannel_v11";
+    private static final String KILL_CHANNEL_ID = "DriverAppKilledAlertChannel_v11";
     private static final int ALERT_NOTIFICATION_ID = 6705;
+    private static final int KILL_NOTIFICATION_ID = 6709;
 
     private LocationManager locationManager;
     private LocationListener locationListener;
@@ -162,7 +164,10 @@ public class LocationService extends Service {
 
             mSocket = IO.socket("https://137.23.57.23.sslip.io", opts);
 
-            mSocket.on(Socket.EVENT_CONNECT, args -> emitDriverHeartbeat());
+            mSocket.on(Socket.EVENT_CONNECT, args -> {
+                emitDriverHeartbeat();
+                bindTargetedOfferListeners();
+            });
 
             mSocket.on("ride:new_offer", args -> {
                 if (args.length > 0 && args[0] instanceof JSONObject) {
@@ -174,6 +179,24 @@ public class LocationService extends Service {
             mSocket.connect();
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    private void bindTargetedOfferListeners() {
+        if (!cachedDriverId.isEmpty() && mSocket != null) {
+            mSocket.off("ride:offer_for_" + cachedDriverId);
+            mSocket.on("ride:offer_for_" + cachedDriverId, args -> {
+                if (args.length > 0 && args[0] instanceof JSONObject) {
+                    launchIncomingRideFullScreen((JSONObject) args[0]);
+                }
+            });
+
+            mSocket.off("ride:new_offer:" + cachedDriverId);
+            mSocket.on("ride:new_offer:" + cachedDriverId, args -> {
+                if (args.length > 0 && args[0] instanceof JSONObject) {
+                    launchIncomingRideFullScreen((JSONObject) args[0]);
+                }
+            });
         }
     }
 
@@ -361,13 +384,68 @@ public class LocationService extends Service {
                 alertChannel.setSound(soundUri, audioAttributes);
 
                 manager.createNotificationChannel(alertChannel);
+
+                NotificationChannel killChannel = new NotificationChannel(
+                        KILL_CHANNEL_ID,
+                        "Driver Background Warning Alert",
+                        NotificationManager.IMPORTANCE_HIGH
+                );
+                killChannel.setDescription("Warns driver when OS kills the app in background");
+                killChannel.enableVibration(true);
+                manager.createNotificationChannel(killChannel);
             }
         }
     }
 
+    private void showAppKilledNotification() {
+        try {
+            Intent openIntent = new Intent(this, MainActivity.class);
+            openIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+            PendingIntent pIntent = PendingIntent.getActivity(
+                    this,
+                    (int) System.currentTimeMillis(),
+                    openIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0)
+            );
+
+            Notification killNotif = new NotificationCompat.Builder(this, KILL_CHANNEL_ID)
+                    .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                    .setContentTitle("⚠️ 67 Partner: App Background me Inactive ho gayi!")
+                    .setContentText("Android ne app ko sleep kar diya hai. Nayi rides pane ke liye turant app kholein!")
+                    .setStyle(new NotificationCompat.BigTextStyle()
+                            .bigText("Android ne battery bachat ke liye aapki location band kar di hai. Rides lene ke liye abhi tap karke app wapas kholein."))
+                    .setPriority(NotificationCompat.PRIORITY_HIGH)
+                    .setContentIntent(pIntent)
+                    .setAutoCancel(true)
+                    .build();
+
+            NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if (manager != null) {
+                manager.notify(KILL_NOTIFICATION_ID, killNotif);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        showAppKilledNotification();
+        if (mSocket != null && mSocket.connected() && !cachedDriverId.isEmpty()) {
+            try {
+                JSONObject obj = new JSONObject();
+                obj.put("driverId", cachedDriverId);
+                obj.put("isOnline", false);
+                mSocket.emit("driver:toggle_online", obj);
+            } catch (Exception ignored) {}
+        }
+        super.onTaskRemoved(rootIntent);
+    }
+
     @Override
     public void onDestroy() {
-        super.onDestroy();
+        showAppKilledNotification();
         if (heartbeatHandler != null && heartbeatRunnable != null) {
             heartbeatHandler.removeCallbacks(heartbeatRunnable);
         }
@@ -375,12 +453,21 @@ public class LocationService extends Service {
             locationManager.removeUpdates(locationListener);
         }
         if (mSocket != null) {
+            if (mSocket.connected() && !cachedDriverId.isEmpty()) {
+                try {
+                    JSONObject obj = new JSONObject();
+                    obj.put("driverId", cachedDriverId);
+                    obj.put("isOnline", false);
+                    mSocket.emit("driver:toggle_online", obj);
+                } catch (Exception ignored) {}
+            }
             mSocket.disconnect();
             mSocket.off();
         }
         if (wakeLock != null && wakeLock.isHeld()) {
             wakeLock.release();
         }
+        super.onDestroy();
     }
 
     @Override

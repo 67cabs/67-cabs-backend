@@ -856,12 +856,12 @@ app.post('/api/ride/decline', async (req, res) => {
     const ride = activeRides.get(rideId);
     if (ride && ride.riderSocketId) {
       io.to(ride.riderSocketId).emit('ride:declined_targeted', { 
-        rideId,
+        rideId, 
         message: 'Driver is currently unavailable.' 
       });
     } else {
       io.emit(`ride:declined_targeted:${rideId}`, { 
-        rideId,
+        rideId, 
         message: 'Driver is currently unavailable.' 
       });
     }
@@ -1759,7 +1759,7 @@ app.get('/api/cabs/nearby-all', async (req, res) => {
 
     return res.json({ success: true, drivers: driversList });
   } catch (e) {
-    return res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({ success: false, error: e.message });
   }
 });
 
@@ -1845,6 +1845,19 @@ io.on('connection', (socket) => {
 
     // Broadcast driver availability immediately to all active riders
     io.to(COMMON_CAB_ROOM).emit('drivers:updated', Array.from(activeDrivers.values()));
+  });
+
+  socket.on('driver:ping_alive', async ({ driverId }) => {
+    if (!driverId) return;
+    if (activeDrivers.has(driverId)) {
+      const d = activeDrivers.get(driverId);
+      d.isOnline = true;
+      d.socketId = socket.id;
+      activeDrivers.set(driverId, d);
+    }
+    driverSocketMap.set(driverId, socket.id);
+    socket.join(`driver:${driverId}`);
+    socket.join(COMMON_CAB_ROOM);
   });
 
   socket.on('driver:toggle_online', async ({ driverId, isOnline }) => {
@@ -1941,8 +1954,8 @@ io.on('connection', (socket) => {
           console.log(`⏱️ Targeted Ride ${rideId} timed out after 15 seconds.`);
           if (currentRide.riderSocketId) {
             io.to(currentRide.riderSocketId).emit('ride:declined_targeted', { 
-              rideId,
-              message: 'Driver did not respond within 15 seconds.'
+              rideId, 
+              message: 'Driver did not respond within 15 seconds.' 
             });
           }
           io.emit(`ride:declined_targeted:${rideId}`, {
@@ -2102,8 +2115,8 @@ io.on('connection', (socket) => {
           $set: { 
             status: 'CANCELLED', 
             earlyDropReason: reason || 'RIDER_REPORTED_MISMATCH',
-            isRiderDismissed: true,
-            isDriverDismissed: true
+            isRiderDismissed: true, 
+            isDriverDismissed: true 
           } 
         },
         { new: true }
@@ -2392,13 +2405,15 @@ io.on('connection', (socket) => {
       const completedTrip = await Trip.findOneAndUpdate(
         { rideId }, 
         { 
-          status: 'COMPLETED', 
-          finalFare: finalAmount, 
-          isEarlyDrop, 
-          earlyDropReason: settlementReason, 
-          isRiderDismissed: false, 
-          isDriverDismissed: false, 
-          endTime: new Date() 
+          $set: { 
+            status: 'COMPLETED', 
+            finalFare: finalAmount, 
+            isEarlyDrop, 
+            earlyDropReason: settlementReason, 
+            isRiderDismissed: false, 
+            isDriverDismissed: false, 
+            endTime: new Date() 
+          } 
         },
         { new: true }
       );
