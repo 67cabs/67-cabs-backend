@@ -197,7 +197,8 @@ const tripSchema = new mongoose.Schema({
     name: String,
     vehicleNo: String,
     phone: String,
-    upiId: String
+    upiId: String,
+    photo: String
   },
   riderData: {
     name: String,
@@ -771,7 +772,8 @@ app.post('/api/ride/accept-bg', async (req, res) => {
       name: driver?.name || memoryRide?.driverData?.name || '67 Partner Driver',
       vehicleNo: driver?.vehicleNo || memoryRide?.driverData?.vehicleNo || 'RJ 14 TA 6767',
       phone: driver?.phone || memoryRide?.driverData?.phone || '',
-      upiId: driver?.upiId || '67cabs@upi'
+      upiId: driver?.upiId || '67cabs@upi',
+      photo: driver?.documents?.selfiePhoto || memoryRide?.driverData?.photo || ''
     };
 
     const startOtp = trip?.otp || Math.floor(1000 + Math.random() * 9000).toString();
@@ -1018,7 +1020,7 @@ app.post('/api/rider/delete-account', async (req, res) => {
     const cleanPhone = sanitizePhone(phone);
     await Rider.deleteOne({
       $or: [
-        { phone: cleanPhone },
+        { cleanPhone },
         { phone: phone.trim() }
       ]
     });
@@ -1101,10 +1103,49 @@ app.post('/api/trip/dismiss-settlement', async (req, res) => {
   }
 });
 
-// ---------------- DRIVER AUTH & ONBOARDING ROUTES ----------------
+// ---------------- DRIVER AUTH, ONBOARDING & DOCUMENTS ROUTES ----------------
+app.get('/api/driver/documents/:driverId', async (req, res) => {
+  try {
+    const { driverId } = req.params;
+    const driver = await Driver.findOne({ driverId }).select('documents status name vehicleNo cabType');
+    if (!driver) return res.status(404).json({ success: false, message: 'Driver nahi mila.' });
+    return res.json({ success: true, documents: driver.documents || {}, status: driver.status, driver });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+app.post('/api/driver/update-documents', async (req, res) => {
+  try {
+    const { driverId, documents } = req.body;
+    if (!driverId || !documents) {
+      return res.status(400).json({ success: false, message: 'Driver ID and documents required.' });
+    }
+
+    const driver = await Driver.findOne({ driverId });
+    if (!driver) return res.status(404).json({ success: false, message: 'Driver nahi mila.' });
+
+    const mergedDocs = { ...driver.documents.toObject(), ...documents };
+    driver.documents = mergedDocs;
+    driver.status = 'PENDING_APPROVAL';
+    driver.isOnline = false;
+    await driver.save();
+
+    await DriverLocation.updateOne({ driverId }, { isOnline: false });
+    activeDrivers.delete(driverId);
+
+    io.emit(`driver:status:${driverId}`, { status: 'PENDING_APPROVAL' });
+    io.to(COMMON_CAB_ROOM).emit('drivers:updated', Array.from(activeDrivers.values()));
+
+    return res.json({ success: true, message: 'Documents submitted for Admin re-verification!', driver });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.post('/api/driver/signup-fast', async (req, res) => {
   try {
-    const { name, phone, password, vehicleNo, cabType, referralCode } = req.body;
+    const { name, phone, password, vehicleNo, cabType, referralCode, documents } = req.body;
     if (!name || !phone || !password || !vehicleNo) {
       return res.status(400).json({ success: false, message: 'Name, Phone, Password, aur Vehicle Number zaroori hain.' });
     }
@@ -1136,7 +1177,7 @@ app.post('/api/driver/signup-fast', async (req, res) => {
       referralCode: referralCode ? referralCode.trim() : '',
       walletBalance: 0,
       bonusFreeRides: 0,
-      documents: {},
+      documents: documents || {},
       status: 'NEEDS_KYC',
       isOnline: false
     });
@@ -1155,7 +1196,7 @@ app.post('/api/driver/signup-fast', async (req, res) => {
         bonusFreeRides: newDriver.bonusFreeRides,
         status: newDriver.status,
         isOnline: false,
-        documents: {}
+        documents: newDriver.documents
       }
     });
   } catch (err) {
@@ -2047,6 +2088,44 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Rider Rejection for Driver or Cab Mismatch
+  socket.on('ride:rider_rejected_driver', async ({ rideId, reason }) => {
+    try {
+      if (rideTimeoutTimers.has(rideId)) {
+        clearTimeout(rideTimeoutTimers.get(rideId));
+        rideTimeoutTimers.delete(rideId);
+      }
+
+      const trip = await Trip.findOneAndUpdate(
+        { rideId },
+        { 
+          $set: { 
+            status: 'CANCELLED', 
+            earlyDropReason: reason || 'RIDER_REPORTED_MISMATCH',
+            isRiderDismissed: true,
+            isDriverDismissed: true
+          } 
+        },
+        { new: true }
+      );
+
+      const driverId = trip?.driverData?.driverId;
+      activeRides.delete(rideId);
+
+      if (driverId) {
+        io.to(`driver:${driverId}`).emit('ride:cancelled_by_rider_mismatch', {
+          rideId,
+          message: '⚠️ Rider cancelled: Driver face or Vehicle plate mismatched.'
+        });
+      }
+
+      io.emit(`ride:cancelled:${rideId}`, { rideId, message: 'Trip cancelled due to mismatch.' });
+      io.to(COMMON_CAB_ROOM).emit('ride:cancelled', { rideId });
+    } catch (e) {
+      console.error('Error on rider rejected driver:', e);
+    }
+  });
+
   // 3. Driver Accepts Ride
   socket.on('ride:accept', async ({ rideId, driverData }) => {
     if (rideTimeoutTimers.has(rideId)) {
@@ -2077,13 +2156,15 @@ io.on('connection', (socket) => {
     }
 
     const resolvedDriverPhone = registeredDriver?.phone || driverData?.phone || dbDriver?.phone || '';
+    const resolvedDriverPhoto = dbDriver?.documents?.selfiePhoto || driverData?.photo || '';
 
     const assignedDriverData = {
       driverId: targetDrvId,
       name: registeredDriver ? registeredDriver.name : (driverData?.name || dbDriver?.name || 'Partner Driver'),
       vehicleNo: registeredDriver ? registeredDriver.vehicleNo : (driverData?.vehicleNo || dbDriver?.vehicleNo || 'RJ 14 TA 6767'),
       phone: resolvedDriverPhone,
-      upiId: registeredDriver ? registeredDriver.upiId : (driverData?.upiId || dbDriver?.upiId || '67cabs@upi')
+      upiId: registeredDriver ? registeredDriver.upiId : (driverData?.upiId || dbDriver?.upiId || '67cabs@upi'),
+      photo: resolvedDriverPhoto
     };
 
     let tripDoc = null;
@@ -2153,12 +2234,20 @@ io.on('connection', (socket) => {
 
   socket.on('driver:arrived', async ({ rideId }) => {
     const ride = activeRides.get(rideId);
+    let driverData = ride?.driverData;
+
+    if (!driverData) {
+      const trip = await Trip.findOne({ rideId });
+      driverData = trip?.driverData;
+    }
+
     if (ride) {
       ride.status = 'ARRIVED';
       activeRides.set(rideId, ride);
       if (ride.riderSocketId) {
         io.to(ride.riderSocketId).emit('ride:driver_arrived', { 
           rideId, 
+          driver: driverData,
           message: '🚖 Driver has arrived at your pickup location!' 
         });
       }
@@ -2166,10 +2255,12 @@ io.on('connection', (socket) => {
     await Trip.updateOne({ rideId }, { status: 'ARRIVED' }).catch(() => {});
     io.emit(`ride:driver_arrived:${rideId}`, {
       rideId,
+      driver: driverData,
       message: '🚖 Driver has arrived at your pickup location!'
     });
     io.emit('ride:driver_arrived', {
       rideId,
+      driver: driverData,
       message: '🚖 Driver has arrived at your pickup location!'
     });
   });

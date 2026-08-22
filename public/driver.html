@@ -125,6 +125,12 @@
         </div>
       </div>
 
+      <!-- Mandatory RC Upload during Registration -->
+      <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+        <label class="text-[11px] font-bold text-amber-400 uppercase block">📄 Vehicle RC Document Photo (Mandatory) *</label>
+        <input type="file" id="reg-rc" accept="image/*" capture="environment" required class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950" />
+      </div>
+
       <div>
         <label class="text-[11px] font-bold text-slate-400 uppercase">Referral Code (Optional)</label>
         <input type="text" id="reg-referral" placeholder="Auto-filled via Driver QR" class="w-full bg-slate-950 border border-slate-700 text-amber-400 rounded-xl p-3 text-xs outline-none focus:border-amber-400 mt-1 uppercase font-mono" />
@@ -392,7 +398,7 @@
     <div id="drawer-container" class="bg-slate-900 text-white w-full max-w-md h-full shadow-2xl border-r border-slate-800 p-6 space-y-5 overflow-y-auto custom-scrollbar flex flex-col justify-between transform -translate-x-full transition-transform duration-200 ease-in-out">
 
       <div class="space-y-4">
-        <!-- Top Drawer Header -->
+        <!-- Top Drawer Header with Circular Document Button -->
         <div class="flex justify-between items-center border-b border-slate-800 pb-3" id="drawer-header">
           <div class="flex items-center gap-2.5">
             <span class="text-2xl text-amber-500">⚙️</span>
@@ -401,9 +407,16 @@
               <p class="text-xs font-black text-slate-900 dark:text-slate-300" id="drawer-sub-title">Account & Preference Controls</p>
             </div>
           </div>
-          <button onclick="closeSettingsModal()" class="w-8 h-8 rounded-xl border border-slate-400 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-200 hover:text-amber-500 flex items-center justify-center text-sm font-black">
-            ✕
-          </button>
+          
+          <div class="flex items-center gap-2">
+            <!-- Circular Document Control Button -->
+            <button onclick="openDocumentsModal()" title="View & Manage Uploaded Documents" class="w-9 h-9 rounded-full bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center justify-center text-sm font-black shadow-lg transition active:scale-95">
+              📄
+            </button>
+            <button onclick="closeSettingsModal()" class="w-8 h-8 rounded-xl border border-slate-400 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-200 hover:text-amber-500 flex items-center justify-center text-sm font-black">
+              ✕
+            </button>
+          </div>
         </div>
 
         <!-- Light / Dark Theme Switcher Widget -->
@@ -489,8 +502,6 @@
 
         <!-- TAB 2: DYNAMIC RECHARGE PASSES & DIRECT ADMIN UPI -->
         <div id="setting-pane-account" class="hidden space-y-4">
-
-          <!-- Section A: Dynamic Ride Validity Recharge Passes -->
           <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2 text-xs" id="recharge-plans-box">
             <div class="font-black text-amber-600 dark:text-amber-400 uppercase text-xs flex justify-between items-center">
               <span>🎟️ Ride Request Recharge Passes</span>
@@ -498,7 +509,6 @@
             </div>
             <p class="text-xs font-bold text-slate-900 dark:text-slate-300 leading-relaxed" id="lbl-recharge-note">Recharge pass lene se aapko naye ride requests lene ki validity milti hai.</p>
 
-            <!-- Dynamic Plans Render Target -->
             <div class="grid grid-cols-3 gap-2 pt-1" id="dynamic-plans-container">
               <button onclick="setRechargeAmount(100)" class="recharge-btn bg-slate-900 border border-slate-700 py-3 rounded-xl font-bold text-amber-400 hover:border-amber-400 text-center transition flex flex-col items-center justify-center">
                 <span class="text-xs font-black">₹100</span>
@@ -516,7 +526,6 @@
             <input type="number" id="custom-recharge-amt" oninput="handleRechargeAmountChange()" placeholder="Enter custom pass amount (₹)" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 outline-none focus:border-amber-400 font-mono mt-1 text-white text-xs font-bold" />
           </div>
 
-          <!-- Section B: Coupon Promo Code for Recharge + Clickable Available Coupons -->
           <div class="space-y-2 text-xs">
             <label class="font-black text-slate-900 dark:text-slate-300 uppercase text-xs tracking-wider" id="lbl-coupon">Apply Promo Coupon</label>
             <div class="flex gap-2">
@@ -524,15 +533,11 @@
               <button id="btn-apply-coupon" onclick="applyCouponCode()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-4 rounded-xl transition">Apply</button>
             </div>
 
-            <!-- Clickable Available Coupons Section -->
             <div id="box-available-coupons" class="space-y-1.5 pt-1">
               <span class="text-[10px] font-black text-amber-500 uppercase tracking-wider block">Available Coupon Options (Tap to Apply):</span>
-              <div id="available-coupons-list" class="grid grid-cols-1 gap-1.5 max-h-36 overflow-y-auto custom-scrollbar">
-                <!-- Dynamically loaded available coupons -->
-              </div>
+              <div id="available-coupons-list" class="grid grid-cols-1 gap-1.5 max-h-36 overflow-y-auto custom-scrollbar"></div>
             </div>
 
-            <!-- Applied Coupon Status -->
             <div id="coupon-applied-status" class="hidden bg-amber-500/10 border border-amber-500/40 p-2.5 rounded-xl flex items-center justify-between text-xs mt-2">
               <div>
                 <div class="font-black text-amber-600 dark:text-amber-400 flex items-center gap-1">
@@ -544,7 +549,6 @@
             </div>
           </div>
 
-          <!-- Section C: Direct UPI Pay to Admin Button -->
           <button id="btn-execute-recharge" onclick="executeDirectUpiToAdmin()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3.5 rounded-2xl text-xs transition shadow-lg flex items-center justify-center gap-1.5 uppercase tracking-wider">
             <span>⚡ Pay Direct via UPI App</span>
             <span id="recharge-btn-amount" class="font-mono"></span>
@@ -554,7 +558,6 @@
 
       <!-- Drawer Bottom: Support Desk + Logout & Delete Account -->
       <div class="pt-3 border-t border-slate-800 space-y-2" id="drawer-footer-sec">
-        <!-- 💬 Driver Contact Admin Support Button -->
         <button onclick="openSupportModal()" class="w-full bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-700 dark:text-amber-400 font-black py-3 rounded-2xl text-xs transition flex items-center justify-center gap-2 shadow-sm">
           <span>💬</span> <span>Help & Contact Admin Support</span>
         </button>
@@ -564,6 +567,38 @@
         </button>
         <button onclick="deleteAccountDriver()" class="w-full bg-red-950/40 hover:bg-red-900/60 border border-red-800 text-red-400 font-extrabold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1" id="btn-drawer-delete">
           🗑️ Delete Driver Account
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================= 6. DRIVER DOCUMENTS & RE-UPLOAD MODAL ================= -->
+  <div id="driver-documents-modal" class="fixed inset-0 bg-black/85 z-[999999] hidden items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-slate-900 border border-slate-800 text-white rounded-3xl p-5 max-w-md w-full shadow-2xl space-y-4 max-h-[90vh] flex flex-col justify-between">
+      
+      <div class="flex justify-between items-center border-b border-slate-800 pb-2.5">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">📄</span>
+          <div>
+            <h3 class="text-sm font-black text-amber-400">Driver Document Vault</h3>
+            <p class="text-[10px] text-slate-400">View uploaded documents & upload updates</p>
+          </div>
+        </div>
+        <button onclick="closeDocumentsModal()" class="text-slate-400 hover:text-white text-base font-bold">✕</button>
+      </div>
+
+      <div class="space-y-3 overflow-y-auto custom-scrollbar flex-1 pr-1 text-xs" id="driver-docs-list-container">
+        <!-- Rendered dynamically -->
+        <div class="text-center p-4 text-slate-400">Loading documents...</div>
+      </div>
+
+      <div class="pt-2 border-t border-slate-800 space-y-2">
+        <button id="btn-save-driver-docs" onclick="submitUpdatedDriverDocs()" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3 rounded-2xl text-xs transition shadow-lg uppercase tracking-wider">
+          💾 Save & Submit for Admin Verification
+        </button>
+        <button onclick="closeDocumentsModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2 rounded-xl text-xs">
+          Dismiss
         </button>
       </div>
 
@@ -694,6 +729,8 @@
     let mongoDriverAudio = null;
     let appliedCouponData = null;
 
+    let driverVaultDocs = {};
+
     // Configurable Admin Receiving UPI ID
     let ADMIN_RECEIVING_UPI = '67cabs@upi';
 
@@ -721,6 +758,146 @@
       if (modal) {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
+      }
+    }
+
+    // ==========================================
+    // DRIVER DOCUMENTS VAULT MODAL HANDLERS
+    // ==========================================
+    async function openDocumentsModal() {
+      if (!currentDriver?.driverId) return;
+      const modal = document.getElementById('driver-documents-modal');
+      const container = document.getElementById('driver-docs-list-container');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      container.innerHTML = `<div class="text-center p-4 text-slate-400">Loading documents from MongoDB...</div>`;
+
+      try {
+        const res = await fetch(`/api/driver/documents/${currentDriver.driverId}`);
+        const data = await res.json();
+        if (data.success && data.documents) {
+          driverVaultDocs = data.documents;
+          renderDriverVault(data.documents, data.status);
+        } else {
+          container.innerHTML = `<div class="text-center p-4 text-red-400">Failed to load documents.</div>`;
+        }
+      } catch (e) {
+        container.innerHTML = `<div class="text-center p-4 text-red-400">Network error fetching documents.</div>`;
+      }
+    }
+
+    function closeDocumentsModal() {
+      const modal = document.getElementById('driver-documents-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function renderDriverVault(docs, status) {
+      const container = document.getElementById('driver-docs-list-container');
+      const docFields = [
+        { key: 'vehicleRc', label: '📄 Vehicle Registration (RC)', required: true },
+        { key: 'selfiePhoto', label: '📸 Driver Profile Selfie', required: true },
+        { key: 'drivingLicenseFront', label: '🪪 Driving License (Front)', required: true },
+        { key: 'drivingLicenseBack', label: '🪪 Driving License (Back)', required: true },
+        { key: 'vehicleFitness', label: '🛡️ Vehicle Fitness Certificate', required: true },
+        { key: 'aadhaarCardFront', label: '🆔 Aadhaar / Gov ID (Front)', required: true },
+        { key: 'aadhaarCardBack', label: '🆔 Aadhaar / Gov ID (Back)', required: true },
+        { key: 'panCard', label: '💳 PAN Card', required: true },
+        { key: 'bankPassbook', label: '🏦 Bank Passbook', required: true },
+        { key: 'vehiclePermit', label: '📋 Vehicle Permit (Optional)', required: false },
+        { key: 'permitAuthorization', label: '📑 Permit Authorization (Optional)', required: false }
+      ];
+
+      let html = `
+        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-[11px] flex justify-between items-center mb-2">
+          <span>Current Approval Status:</span>
+          <span class="font-bold px-2 py-0.5 rounded ${status === 'APPROVED' ? 'bg-green-500/20 text-green-400 border border-green-500/40' : 'bg-amber-500/20 text-amber-400 border border-amber-500/40'}">${status}</span>
+        </div>
+      `;
+
+      docFields.forEach(item => {
+        const hasDoc = !!docs[item.key];
+        html += `
+          <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800 space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="font-bold text-slate-200">${item.label}</span>
+              <span class="text-[10px] font-black px-2 py-0.5 rounded ${hasDoc ? 'bg-green-950 text-green-400 border border-green-700' : 'bg-red-950 text-red-400 border border-red-700'}">${hasDoc ? 'UPLOADED' : 'MISSING'}</span>
+            </div>
+            
+            ${hasDoc ? `
+              <div class="flex items-center gap-2">
+                <img src="${docs[item.key]}" alt="${item.label}" class="w-14 h-14 object-cover rounded-xl border border-slate-700 bg-slate-900" />
+                <span class="text-[10px] text-slate-400 flex-1">Tap below to replace or update photo.</span>
+              </div>
+            ` : ''}
+
+            <input type="file" id="vault-input-${item.key}" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-200" />
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    async function submitUpdatedDriverDocs() {
+      if (!currentDriver?.driverId) return;
+      const btn = document.getElementById('btn-save-driver-docs');
+      btn.disabled = true;
+      btn.innerText = "⏳ Compressing & Uploading to Admin...";
+
+      const docKeys = [
+        'vehicleRc', 'selfiePhoto', 'drivingLicenseFront', 'drivingLicenseBack',
+        'vehicleFitness', 'aadhaarCardFront', 'aadhaarCardBack', 'panCard',
+        'bankPassbook', 'vehiclePermit', 'permitAuthorization'
+      ];
+
+      const newDocsPayload = {};
+      let hasNewUpload = false;
+
+      for (const key of docKeys) {
+        const input = document.getElementById(`vault-input-${key}`);
+        if (input && input.files && input.files[0]) {
+          const base64 = await compressImageFile(input.files[0]);
+          if (base64) {
+            newDocsPayload[key] = base64;
+            hasNewUpload = true;
+          }
+        }
+      }
+
+      if (!hasNewUpload) {
+        alert("⚠️ Aapne koi naya document select nahi kiya hai.");
+        btn.disabled = false;
+        btn.innerText = "💾 Save & Submit for Admin Verification";
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/driver/update-documents', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            driverId: currentDriver.driverId,
+            documents: newDocsPayload
+          })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          alert("✅ Documents successfully submitted! Admin verification ke baad approval mil jayega.");
+          currentDriver.status = 'PENDING_APPROVAL';
+          syncSessionToCapacitorStorage(currentDriver);
+          closeDocumentsModal();
+          initDriverSession(currentDriver);
+        } else {
+          alert(`⚠️ ${data.message}`);
+        }
+      } catch (e) {
+        alert("Document update failed. Please check internet connection.");
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "💾 Save & Submit for Admin Verification";
       }
     }
 
@@ -1153,8 +1330,17 @@
     async function handleDriverSignup(e) {
       e.preventDefault();
       const submitBtn = document.getElementById('submit-signup-btn');
+      const rcFile = document.getElementById('reg-rc').files[0];
+
+      if (!rcFile) {
+        alert("⚠️ Vehicle RC document upload karna zaroori hai.");
+        return;
+      }
+
       submitBtn.disabled = true;
-      submitBtn.innerText = '⏳ Creating Partner Account...';
+      submitBtn.innerText = '⏳ Compressing RC & Creating Account...';
+
+      const rcBase64 = await compressImageFile(rcFile);
 
       const payload = {
         name: document.getElementById('reg-name').value.trim(),
@@ -1165,7 +1351,9 @@
         referralCode: document.getElementById('reg-referral').value.trim() || '',
         upiId: document.getElementById('reg-upi')?.value?.trim() || '',
         email: document.getElementById('reg-email')?.value?.trim() || '',
-        documents: {}
+        documents: {
+          vehicleRc: rcBase64
+        }
       };
 
       try {
@@ -1505,6 +1693,13 @@
         if (!currentActiveRideId && currentDriver?.status === 'APPROVED' && isDriverOnline) {
           addOrUpdateOffer(offer);
         }
+      });
+
+      // Listener for Rider Mismatch Cancel
+      socket.off('ride:cancelled_by_rider_mismatch');
+      socket.on('ride:cancelled_by_rider_mismatch', ({ message }) => {
+        alert(`⚠️ ${message}`);
+        window.location.reload();
       });
 
       hideAllSections();
@@ -1911,7 +2106,8 @@
           name: currentDriver.name, 
           vehicleNo: currentDriver.vehicleNo, 
           phone: currentDriver.phone || '', 
-          upiId: currentDriver.upiId 
+          upiId: currentDriver.upiId,
+          photo: currentDriver.documents?.selfiePhoto || ''
         }
       });
 

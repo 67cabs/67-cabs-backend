@@ -211,10 +211,13 @@
       <!-- ========================================== -->
       <div id="rider-confirmed-card" class="mt-2 hidden bg-slate-900 text-white p-4 rounded-2xl shadow-2xl border border-slate-800 space-y-3">
         <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-          <div>
-            <div id="ride-status-badge" class="text-[10px] text-green-400 font-bold uppercase tracking-wider">Driver Assigned & En Route</div>
-            <div id="assigned-driver-name" class="text-sm font-black text-slate-100">Driver Name</div>
-            <div id="assigned-vehicle-no" class="text-xs text-slate-400 font-mono">RJ 14 TA 0000</div>
+          <div class="flex items-center gap-2.5">
+            <img id="assigned-driver-photo" src="" alt="Driver" class="w-11 h-11 rounded-full object-cover border-2 border-amber-400 bg-slate-800 hidden" />
+            <div>
+              <div id="ride-status-badge" class="text-[10px] text-green-400 font-bold uppercase tracking-wider">Driver Assigned & En Route</div>
+              <div id="assigned-driver-name" class="text-sm font-black text-slate-100">Driver Name</div>
+              <div id="assigned-vehicle-no" class="text-xs text-slate-400 font-mono">RJ 14 TA 0000</div>
+            </div>
           </div>
           
           <div class="flex items-center gap-2">
@@ -491,33 +494,48 @@
     </div>
   </div>
 
-  <!-- ================= MODAL: ARRIVAL SAFETY VERIFICATION POPUP ================= -->
-  <div id="arrival-safety-modal" class="fixed inset-0 bg-black/75 z-[99999] flex items-center justify-center p-4 hidden backdrop-blur-sm">
+  <!-- ================= MODAL: ARRIVAL SAFETY VERIFICATION POPUP (PHOTO + PLATE) ================= -->
+  <div id="arrival-safety-modal" class="fixed inset-0 bg-black/80 z-[99999] flex items-center justify-center p-4 hidden backdrop-blur-md">
     <div class="bg-slate-900 text-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-amber-500/50 space-y-4 text-center max-h-[90vh] overflow-y-auto custom-scrollbar">
       <div class="text-3xl animate-bounce">🔔</div>
       <h3 class="text-base font-black text-amber-400">Driver Arrived at Pickup!</h3>
-      <p class="text-xs text-slate-300">
-        Safety Verification: Pehle car plate number aur driver face verify karein, fir OTP share karein.
+      <p class="text-xs text-slate-300 leading-relaxed">
+        Safety Verification: Kripya driver ka chehra aur car number plate match karein, fir OTP share karein.
       </p>
 
-      <div class="bg-slate-800 p-3 rounded-2xl border border-slate-700 text-left space-y-2 text-xs">
-        <div class="flex justify-between">
-          <span class="text-slate-400">Driver Name:</span>
-          <span id="verify-driver-name" class="font-bold text-white">-</span>
+      <div class="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 flex items-center gap-3.5 text-left text-xs">
+        <!-- Driver Profile Photo in Left Corner -->
+        <div class="relative shrink-0">
+          <img id="verify-driver-photo" src="" alt="Driver" class="w-16 h-16 rounded-2xl object-cover border-2 border-amber-400 bg-slate-950 shadow-md" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'64\' height=\'64\' fill=\'%23f59e0b\' viewBox=\'0 0 16 16\'><path d=\'M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0z\'/><path fill-rule=\'evenodd\' d=\'M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1z\'/></svg>'" />
+          <span class="absolute -bottom-1 -right-1 bg-amber-500 text-slate-950 text-[9px] font-black px-1 rounded-full">🚖</span>
         </div>
-        <div class="flex justify-between">
-          <span class="text-slate-400">Vehicle Number:</span>
-          <span id="verify-plate-no" class="font-bold text-amber-400 font-mono">-</span>
-        </div>
-        <div class="flex justify-between items-center border-t border-slate-700 pt-2">
-          <span class="text-slate-400">Trip Start OTP:</span>
-          <span id="verify-otp-display" class="font-black text-xl text-green-400 tracking-widest">----</span>
+
+        <div class="space-y-1 flex-1">
+          <div>
+            <span class="text-slate-400 text-[10px] block">Driver Partner:</span>
+            <b id="verify-driver-name" class="font-black text-sm text-white">-</b>
+          </div>
+          <div>
+            <span class="text-slate-400 text-[10px] block">Taxi Plate Number:</span>
+            <b id="verify-plate-no" class="font-bold text-amber-400 font-mono text-xs">-</b>
+          </div>
         </div>
       </div>
 
-      <button onclick="closeArrivalModal()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-black py-3 rounded-xl text-xs transition">
-        ✅ I Verified Driver & Plate
-      </button>
+      <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex justify-between items-center px-4">
+        <span class="text-slate-400 text-xs font-bold">Trip Start OTP:</span>
+        <span id="verify-otp-display" class="font-black text-2xl text-green-400 tracking-widest font-mono">----</span>
+      </div>
+
+      <!-- Verification Actions: Verified vs Mismatch Rejection -->
+      <div class="space-y-2 pt-1">
+        <button onclick="closeArrivalModal()" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3.5 rounded-2xl text-xs transition shadow-lg tracking-wider uppercase">
+          ✅ I Verified Driver & Plate
+        </button>
+        <button onclick="reportDriverMismatchAndCancel()" class="w-full bg-red-950/60 hover:bg-red-900 border border-red-700 text-red-300 font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5">
+          ⚠️ Driver / Cab Mismatch (Reject & Cancel)
+        </button>
+      </div>
     </div>
   </div>
 
@@ -589,8 +607,11 @@
 
     const socket = io({
       transports: ['websocket', 'polling'],
-      reconnectionAttempts: 20,
-      reconnectionDelay: 1000
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000
     });
 
     const map = L.map('map').setView([26.9124, 75.7873], 13);
@@ -819,6 +840,12 @@
           document.getElementById('assigned-vehicle-no').innerText = trip.driverData?.vehicleNo || 'RJ 14 TA 6767';
           document.getElementById('display-otp').innerText = trip.otp || '----';
 
+          const photoEl = document.getElementById('assigned-driver-photo');
+          if (photoEl && trip.driverData?.photo) {
+            photoEl.src = trip.driverData.photo;
+            photoEl.classList.remove('hidden');
+          }
+
           const driverPhone = trip.driverData?.phone || '';
           const callBtn = document.getElementById('btn-call-driver');
           if (callBtn) {
@@ -828,6 +855,11 @@
           document.getElementById('verify-driver-name').innerText = trip.driverData?.name || 'Driver';
           document.getElementById('verify-plate-no').innerText = trip.driverData?.vehicleNo || 'RJ 14 TA 6767';
           document.getElementById('verify-otp-display').innerText = trip.otp || '----';
+
+          const vPhoto = document.getElementById('verify-driver-photo');
+          if (vPhoto && trip.driverData?.photo) {
+            vPhoto.src = trip.driverData.photo;
+          }
 
           document.getElementById('rider-confirmed-card').classList.remove('hidden');
 
@@ -848,7 +880,7 @@
             statusEl.className = "text-center text-xs text-slate-300 bg-slate-800/80 p-2.5 rounded-xl border border-slate-700";
             statusEl.innerHTML = "🟢 <b class='text-green-400'>Trip Ongoing</b> (Navigating to Drop Location)";
           } else if (tripPhase === 'ARRIVED') {
-            handleDriverArrivalUI();
+            handleDriverArrivalUI(trip.driverData);
           }
         }
       } catch (e) {}
@@ -881,6 +913,12 @@
     socket.on('connect', () => {
       if (currentUser) checkAndRestoreRiderActiveRide();
       fetchLiveFareRatesFromMongoDB();
+      if (pickupCoords && !activeRideId && !document.getElementById('step-2-cab-selection').classList.contains('hidden')) {
+        fetchAndRenderNearbyDrivers();
+      }
+    });
+
+    socket.on('drivers:updated', () => {
       if (pickupCoords && !activeRideId && !document.getElementById('step-2-cab-selection').classList.contains('hidden')) {
         fetchAndRenderNearbyDrivers();
       }
@@ -973,7 +1011,6 @@
           autoPan: true
         }).addTo(map);
 
-        // DRAG END: Live Reverse Geocode & Recalculate
         pickupMarker.on('dragend', async (event) => {
           const position = event.target.getLatLng();
           if (!isWithinJaipur(position.lat, position.lng)) {
@@ -1013,7 +1050,6 @@
           autoPan: true
         }).addTo(map);
 
-        // DRAG END: Live Reverse Geocode & Recalculate
         marker.on('dragend', async (event) => {
           const position = event.target.getLatLng();
           if (!isWithinJaipur(position.lat, position.lng)) {
@@ -1430,6 +1466,21 @@
       }
     }
 
+    // Handle Rider Reporting Face or Plate Mismatch
+    function reportDriverMismatchAndCancel() {
+      if (confirm("⚠️ Kya aap confirm karte hain ki yeh driver ya car number plate aapke app me dikhaye gaye record se match nahi ho rahe? Ride cancel kar di jayegi.")) {
+        if (activeRideId) {
+          socket.emit('ride:rider_rejected_driver', {
+            rideId: activeRideId,
+            reason: 'RIDER_REPORTED_FACE_OR_PLATE_MISMATCH'
+          });
+        }
+        closeArrivalModal();
+        showInAppToast("Ride cancelled due to security mismatch.", "⚠️");
+        setTimeout(() => window.location.reload(), 1200);
+      }
+    }
+
     socket.off('ride:declined_targeted');
     socket.on('ride:declined_targeted', (payload) => {
       cancelRideSearchSilent();
@@ -1463,7 +1514,12 @@
       document.getElementById('ride-status-badge').innerText = 'Driver Assigned & En Route';
       document.getElementById('ride-status-badge').className = 'text-[10px] text-green-400 font-bold uppercase tracking-wider';
 
-      // Set Driver Direct Call Button Dialer Link
+      const photoEl = document.getElementById('assigned-driver-photo');
+      if (photoEl && driver?.photo) {
+        photoEl.src = driver.photo;
+        photoEl.classList.remove('hidden');
+      }
+
       const resolvedPhone = driver?.phone || driverPhone || '';
       const callBtn = document.getElementById('btn-call-driver');
       if (callBtn) {
@@ -1479,22 +1535,36 @@
       document.getElementById('verify-plate-no').innerText = driver?.vehicleNo || 'RJ 14 TA 6767';
       document.getElementById('verify-otp-display').innerText = otp || '----';
 
+      const vPhoto = document.getElementById('verify-driver-photo');
+      if (vPhoto && driver?.photo) {
+        vPhoto.src = driver.photo;
+      }
+
       showInAppToast("Ride Accepted! Driver is arriving.", "✅");
     }
 
     socket.off('ride:accepted');
     socket.on('ride:accepted', handleRideAcceptedEvent);
 
-    function handleDriverArrivalUI() {
+    function handleDriverArrivalUI(driverData) {
       tripPhase = 'ARRIVED';
       playArrivedChime();
       
       const arrivalModal = document.getElementById('arrival-safety-modal');
       if (arrivalModal) arrivalModal.classList.remove('hidden');
 
+      if (driverData) {
+        if (driverData.name) document.getElementById('verify-driver-name').innerText = driverData.name;
+        if (driverData.vehicleNo) document.getElementById('verify-plate-no').innerText = driverData.vehicleNo;
+        if (driverData.photo) {
+          const p = document.getElementById('verify-driver-photo');
+          if (p) p.src = driverData.photo;
+        }
+      }
+
       const statusEl = document.getElementById('trip-live-status');
       if (statusEl) {
-        statusEl.innerHTML = `🔔 <b class="text-amber-400">Driver Arrived at Pickup!</b> Please verify plate & share OTP.`;
+        statusEl.innerHTML = `🔔 <b class="text-amber-400">Driver Arrived at Pickup!</b> Please verify photo & plate, then share OTP.`;
         statusEl.className = "text-center text-xs text-amber-300 bg-amber-950/70 p-3 rounded-xl border border-amber-500 animate-pulse font-bold";
       }
 
@@ -1506,7 +1576,7 @@
     }
 
     socket.off('ride:driver_arrived');
-    socket.on('ride:driver_arrived', handleDriverArrivalUI);
+    socket.on('ride:driver_arrived', (data) => handleDriverArrivalUI(data?.driver));
 
     socket.on('driver:location_broadcast', ({ lat, lng, phase }) => {
       if (phase === 'ARRIVED' || tripPhase === 'ARRIVED') {

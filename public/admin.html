@@ -1308,7 +1308,7 @@
       }
     }
 
-    // Driver Modal Handlers
+    // Driver Modal Handlers (Complete Document Viewer with RC)
     function openDriverKYCModal(driverId) {
       selectedDriverId = driverId;
       const driver = driversData.find(d => d.driverId === driverId);
@@ -1320,10 +1320,10 @@
       const grid = document.getElementById('driver-docs-grid');
       const docs = driver.documents || {};
       const docLabels = {
+        vehicleRc: 'Vehicle Registration Certificate (RC)',
         selfiePhoto: 'Live Selfie / Photo',
         drivingLicenseFront: 'DL Front',
         drivingLicenseBack: 'DL Back',
-        vehicleRc: 'Vehicle RC',
         vehicleFitness: 'Fitness Certificate',
         vehiclePermit: 'Vehicle Permit',
         permitAuthorization: 'Permit Auth',
