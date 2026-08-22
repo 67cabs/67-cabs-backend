@@ -718,7 +718,11 @@
       deferredDriverPrompt = e;
     });
 
-    const socket = io({
+    const LIVE_SERVER_HOST = (typeof window !== 'undefined' && window.location && window.location.origin && !window.location.origin.includes('localhost') && window.location.origin.startsWith('http')) 
+      ? window.location.origin 
+      : 'https://137.23.57.23.sslip.io';
+
+    const socket = io(LIVE_SERVER_HOST, {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: Infinity,
@@ -1939,12 +1943,6 @@
       handleUrlDeepLink();
     });
 
-    setInterval(() => {
-      if (socket.connected && currentDriver?.status === 'APPROVED' && isDriverOnline) {
-        registerDriver();
-      }
-    }, 3000);
-
     function initDriverGPS() {
       if (!navigator.geolocation) {
         return;
@@ -2157,7 +2155,9 @@
 
     socket.on('ride:new_offer', (offer) => {
       if (!currentActiveRideId && currentDriver?.status === 'APPROVED' && isDriverOnline) {
-        addOrUpdateOffer(offer);
+        if (!offer.targetDriverId || (currentDriver && offer.targetDriverId === currentDriver.driverId)) {
+          addOrUpdateOffer(offer);
+        }
       }
     });
 
