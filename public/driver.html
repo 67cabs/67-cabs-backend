@@ -1797,19 +1797,49 @@
     }
     requestWakeLock();
 
-    document.addEventListener('visibilitychange', async () => {
-      if (document.visibilityState === 'visible' && currentDriver?.status === 'APPROVED') {
-        await requestWakeLock();
+    // =========================================================================
+    // ENHANCED APP WAKE / RESUME & BACKGROUND PERSISTENCE LOGIC
+    // =========================================================================
+    async function wakeAndSyncDriverApp() {
+      await requestWakeLock();
+      if (socket && !socket.connected) {
+        socket.connect();
+      }
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => updatePosition(pos),
+          () => {},
+          { enableHighAccuracy: true, timeout: 5000 }
+        );
+      }
+      if (currentDriver && currentDriver.status === 'APPROVED') {
         if (isDriverOnline) {
           registerDriver();
         }
-        checkAndRestoreActiveRide();
+        await checkAndRestoreActiveRide();
         handleUrlDeepLink();
         fetchLiveFareRatesForDriver();
         fetchDynamicRechargePlansFromMongoDB();
         fetchAvailableCouponsForDriver();
       }
+    }
+
+    document.addEventListener('visibilitychange', async () => {
+      if (document.visibilityState === 'visible') {
+        await wakeAndSyncDriverApp();
+      }
     });
+
+    // Native Capacitor App Resume Listener
+    try {
+      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+        window.Capacitor.Plugins.App.addListener('appStateChange', (state) => {
+          if (state && state.isActive) {
+            wakeAndSyncDriverApp();
+          }
+        });
+      }
+    } catch (e) {}
 
     window.addEventListener('beforeunload', () => {
       if (currentDriver?.driverId && !currentActiveRideId) {
@@ -2009,7 +2039,7 @@
               <button onclick="declineSingleOffer('${rideId}')" class="border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-2xl text-xs transition">
                 Decline
               </button>
-              <button onclick="acceptSelectedRide('${rideId}')" class="bg-green-600 hover:bg-green-500 text-white font-black py-3 rounded-2xl text-xs shadow-lg transition tracking-wider uppercase">
+              <button onclick="acceptSelectedRide('${rideId}')" class="bg-green-600 hover:bg-green-500 text-white font-black py-3.5 rounded-2xl text-xs shadow-lg transition tracking-wider uppercase">
                 ACCEPT RIDE
               </button>
             </div>
@@ -2106,7 +2136,7 @@
           name: currentDriver.name, 
           vehicleNo: currentDriver.vehicleNo, 
           phone: currentDriver.phone || '', 
-          upiId: currentDriver.upiId,
+          upiId: currentDriver.upiId, 
           photo: currentDriver.documents?.selfiePhoto || ''
         }
       });

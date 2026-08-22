@@ -194,7 +194,7 @@
             <span class="text-[10px] font-bold text-slate-500 uppercase">Available Nearby Drivers</span>
             <div class="flex items-center gap-1.5">
               <span id="cabs-count-tag" class="text-[9px] bg-green-100 text-green-800 font-bold px-2 py-0.5 rounded-full">0 Online</span>
-              <button onclick="fetchAndRenderNearbyDrivers()" class="text-[10px] bg-slate-200 hover:bg-slate-300 font-bold px-2.5 py-1 rounded-lg text-slate-800 transition flex items-center gap-1" title="Refresh nearby cabs from database">
+              <button id="btn-refresh-nearby-cabs" onclick="fetchAndRenderNearbyDrivers()" class="text-[10px] bg-slate-200 hover:bg-slate-300 font-bold px-2.5 py-1 rounded-lg text-slate-800 transition flex items-center gap-1" title="Refresh nearby cabs from database">
                 🔄 <span>Refresh Cabs</span>
               </button>
             </div>
@@ -634,6 +634,11 @@
     let currentUser = null;
     let currentSelectedRating = 5;
 
+    // 2-Second Cooldown & Lock Protection for Driver Refresh
+    let isFetchingNearbyDrivers = false;
+    let lastDriversFetchTime = 0;
+    const REFRESH_COOLDOWN_MS = 2000;
+
     // Custom Draggable Pin Helper
     function createPinIcon(emoji, bgColor) {
       return L.divIcon({
@@ -684,7 +689,7 @@
           checkAndRestoreRiderActiveRide()
         ]);
         if (pickupCoords && !activeRideId && !document.getElementById('step-2-cab-selection').classList.contains('hidden')) {
-          fetchAndRenderNearbyDrivers();
+          fetchAndRenderNearbyDrivers(true);
         }
         showInAppToast("Rider Data Refreshed!", "🔄");
         setTimeout(() => {
@@ -1267,7 +1272,7 @@
           document.getElementById('step-2-cab-selection').classList.remove('hidden');
           document.getElementById('summary-distance-text').innerText = `${totalTripDistanceKm} km • ~${totalTripDurationMins} mins (${validStops.length} Stops)`;
 
-          fetchAndRenderNearbyDrivers();
+          fetchAndRenderNearbyDrivers(true);
 
           if (autoRefreshInterval) clearInterval(autoRefreshInterval);
           autoRefreshInterval = setInterval(() => {
@@ -1312,13 +1317,27 @@
       return Math.round(tripCost + pickupCost);
     }
 
-    async function fetchAndRenderNearbyDrivers() {
+    // ENHANCED NEARBY DRIVERS FETCHER WITH 2-SEC SAFE THROTTLE LOCK
+    async function fetchAndRenderNearbyDrivers(force = false) {
       if (!pickupCoords) return;
-      const refreshBtn = document.querySelector('button[onclick="fetchAndRenderNearbyDrivers()"]');
-      if (refreshBtn) refreshBtn.innerHTML = `🔄 <span class="animate-pulse">Checking...</span>`;
+
+      const now = Date.now();
+      if (!force && (isFetchingNearbyDrivers || (now - lastDriversFetchTime < REFRESH_COOLDOWN_MS))) {
+        return;
+      }
+
+      isFetchingNearbyDrivers = true;
+      lastDriversFetchTime = now;
+
+      const refreshBtn = document.getElementById('btn-refresh-nearby-cabs');
+      if (refreshBtn) {
+        refreshBtn.disabled = true;
+        refreshBtn.innerHTML = `🔄 <span class="animate-pulse">Checking...</span>`;
+        refreshBtn.classList.add('opacity-70', 'cursor-not-allowed');
+      }
 
       try {
-        const res = await fetch(`/api/cabs/nearby-all?lat=${pickupCoords[0]}&lng=${pickupCoords[1]}&t=${Date.now()}`);
+        const res = await fetch(`/api/cabs/nearby-all?lat=${pickupCoords[0]}&lng=${pickupCoords[1]}&t=${now}`);
         const data = await res.json();
         currentNearbyDrivers = data.drivers || [];
         renderProximityCards();
@@ -1326,7 +1345,14 @@
         currentNearbyDrivers = [];
         renderProximityCards();
       } finally {
-        if (refreshBtn) refreshBtn.innerHTML = `🔄 <span>Refresh Cabs</span>`;
+        setTimeout(() => {
+          isFetchingNearbyDrivers = false;
+          if (refreshBtn) {
+            refreshBtn.disabled = false;
+            refreshBtn.innerHTML = `🔄 <span>Refresh Cabs</span>`;
+            refreshBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+          }
+        }, REFRESH_COOLDOWN_MS);
       }
     }
 
