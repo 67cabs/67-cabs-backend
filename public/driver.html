@@ -669,8 +669,11 @@
 
     const socket = io({
       transports: ['websocket', 'polling'],
-      reconnectionAttempts: 20,
-      reconnectionDelay: 1000
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000
     });
 
     let currentDriver = null;
@@ -1477,6 +1480,8 @@
       if (!driver) return;
       currentDriver = driver;
 
+      // Real-time Status Sync
+      socket.off(`driver:status:${driver.driverId}`);
       socket.on(`driver:status:${driver.driverId}`, ({ status, docName }) => {
         driver.status = status;
         if (docName) {
@@ -1485,6 +1490,21 @@
         }
         syncSessionToCapacitorStorage(driver);
         initDriverSession(driver);
+      });
+
+      // Bind Multi-Channel Targeted Listeners
+      socket.off(`ride:offer_for_${driver.driverId}`);
+      socket.on(`ride:offer_for_${driver.driverId}`, (offer) => {
+        if (!currentActiveRideId && currentDriver?.status === 'APPROVED' && isDriverOnline) {
+          addOrUpdateOffer(offer);
+        }
+      });
+
+      socket.off(`ride:new_offer:${driver.driverId}`);
+      socket.on(`ride:new_offer:${driver.driverId}`, (offer) => {
+        if (!currentActiveRideId && currentDriver?.status === 'APPROVED' && isDriverOnline) {
+          addOrUpdateOffer(offer);
+        }
       });
 
       hideAllSections();

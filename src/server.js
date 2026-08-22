@@ -45,6 +45,8 @@ const io = new Server(server, {
     methods: ['GET', 'POST'],
     credentials: true
   },
+  pingTimeout: 60000,
+  pingInterval: 25000,
   transports: ['websocket', 'polling']
 });
 
@@ -1745,8 +1747,12 @@ app.get('/api/cabs/nearby', async (req, res) => {
   }
 });
 
+// Common Global Communication Room for Rider and Driver Synchronization
+const COMMON_CAB_ROOM = 'global_live_cabs_room';
+
 io.on('connection', (socket) => {
   console.log(`⚡ Device Connected: ${socket.id}`);
+  socket.join(COMMON_CAB_ROOM);
 
   // 1. Driver Online Registration & Permanent Room Join
   socket.on('driver:register', async (driverData) => {
@@ -1754,6 +1760,7 @@ io.on('connection', (socket) => {
     const driverId = driverData.driverId || socket.id;
 
     socket.join(`driver:${driverId}`);
+    socket.join(COMMON_CAB_ROOM);
     driverSocketMap.set(driverId, socket.id);
 
     const isOnlineState = driverData.isOnline === true;
@@ -1794,6 +1801,9 @@ io.on('connection', (socket) => {
         );
       }
     } catch (e) {}
+
+    // Broadcast driver availability immediately to all active riders
+    io.to(COMMON_CAB_ROOM).emit('drivers:updated', Array.from(activeDrivers.values()));
   });
 
   socket.on('driver:toggle_online', async ({ driverId, isOnline }) => {
@@ -1801,7 +1811,13 @@ io.on('connection', (socket) => {
     
     if (isOnline) {
       const d = activeDrivers.get(driverId);
-      if (d) d.isOnline = true;
+      if (d) {
+        d.isOnline = true;
+        d.socketId = socket.id;
+      }
+      socket.join(`driver:${driverId}`);
+      socket.join(COMMON_CAB_ROOM);
+      driverSocketMap.set(driverId, socket.id);
     } else {
       activeDrivers.delete(driverId);
     }
@@ -1812,6 +1828,7 @@ io.on('connection', (socket) => {
     } catch (e) {}
 
     console.log(`📡 Driver ${driverId} status updated: ${isOnline ? 'ONLINE' : 'OFFLINE'}`);
+    io.to(COMMON_CAB_ROOM).emit('drivers:updated', Array.from(activeDrivers.values()));
   });
 
   socket.on('driver:logout', async ({ driverId }) => {
@@ -1826,6 +1843,7 @@ io.on('connection', (socket) => {
     } catch (e) {}
 
     console.log(`🚪 Driver ${driverId} logged out & purged from active radar.`);
+    io.to(COMMON_CAB_ROOM).emit('drivers:updated', Array.from(activeDrivers.values()));
   });
 
   // 2. Targeted 1-Click Ride Request
@@ -1857,12 +1875,18 @@ io.on('connection', (socket) => {
     const dbDriver = await Driver.findOne({ driverId: targetDriverId, status: 'APPROVED' });
 
     if (isMemoryOnline || dbDriver) {
+      // 1. Room-level broadcast
       io.to(`driver:${targetDriverId}`).emit('ride:new_offer', ridePayload);
       
+      // 2. Direct Socket ID target
       const sId = driverSocketMap.get(targetDriverId);
       if (sId) {
         io.to(sId).emit('ride:new_offer', ridePayload);
       }
+
+      // 3. Global Common Room fallback
+      io.to(COMMON_CAB_ROOM).emit(`ride:offer_for_${targetDriverId}`, ridePayload);
+      io.emit(`ride:new_offer:${targetDriverId}`, ridePayload);
 
       console.log(`🎯 Targeted Ride ${rideId} dispatched to Driver: ${targetDriverId} with sound: ${globalActiveSound}`);
 
@@ -1880,6 +1904,10 @@ io.on('connection', (socket) => {
               message: 'Driver did not respond within 15 seconds.'
             });
           }
+          io.emit(`ride:declined_targeted:${rideId}`, {
+            rideId,
+            message: 'Driver did not respond within 15 seconds.'
+          });
           activeRides.delete(rideId);
           rideTimeoutTimers.delete(rideId);
           await Trip.updateOne({ rideId }, { status: 'CANCELLED' }).catch(() => {});
@@ -1907,6 +1935,10 @@ io.on('connection', (socket) => {
         message: 'Driver declined the ride request.' 
       });
     }
+    io.emit(`ride:declined_targeted:${rideId}`, { 
+      rideId, 
+      message: 'Driver declined the ride request.' 
+    });
     activeRides.delete(rideId);
   });
 
@@ -1949,6 +1981,7 @@ io.on('connection', (socket) => {
         io.to(`driver:${driver.driverId}`).emit('ride:new_offer', ridePayload);
       }
     });
+    io.to(COMMON_CAB_ROOM).emit('ride:new_offer', ridePayload);
     io.emit('ride:new_offer', ridePayload);
 
     if (rideTimeoutTimers.has(rideId)) {
@@ -1964,6 +1997,10 @@ io.on('connection', (socket) => {
             message: 'No nearby driver accepted the ride in 15 seconds.' 
           });
         }
+        io.emit(`ride:declined_targeted:${rideId}`, { 
+          rideId,
+          message: 'No nearby driver accepted the ride in 15 seconds.' 
+        });
         activeRides.delete(rideId);
         rideTimeoutTimers.delete(rideId);
         await Trip.updateOne({ rideId }, { status: 'CANCELLED' }).catch(() => {});
@@ -2002,6 +2039,7 @@ io.on('connection', (socket) => {
         io.to(`driver:${assignedDriverId}`).emit('ride:cancelled', { rideId });
       }
 
+      io.to(COMMON_CAB_ROOM).emit('ride:cancelled', { rideId });
       io.emit('ride:cancelled', { rideId });
       io.emit('ride:taken', { rideId });
     } catch (e) {
@@ -2092,7 +2130,7 @@ io.on('connection', (socket) => {
       fare: finalTotalFare,
       driverPhone: resolvedDriverPhone
     });
-    io.emit('ride:accepted', {
+    io.to(COMMON_CAB_ROOM).emit('ride:accepted', {
       rideId,
       driver: assignedDriverData,
       otp: startOtp,
@@ -2337,15 +2375,22 @@ io.on('connection', (socket) => {
     });
 
     if (disconnectedDriverId) {
-      driverSocketMap.delete(disconnectedDriverId);
-      activeDrivers.delete(disconnectedDriverId);
+      // 5-second grace period for quick reconnects/app tab switching
+      setTimeout(async () => {
+        const currentSocketId = driverSocketMap.get(disconnectedDriverId);
+        if (currentSocketId === socket.id) {
+          driverSocketMap.delete(disconnectedDriverId);
+          activeDrivers.delete(disconnectedDriverId);
 
-      try {
-        await Driver.updateOne({ driverId: disconnectedDriverId }, { isOnline: false });
-        await DriverLocation.updateOne({ driverId: disconnectedDriverId }, { isOnline: false });
-      } catch (e) {}
+          try {
+            await Driver.updateOne({ driverId: disconnectedDriverId }, { isOnline: false });
+            await DriverLocation.updateOne({ driverId: disconnectedDriverId }, { isOnline: false });
+          } catch (e) {}
 
-      console.log(`📡 Driver ${disconnectedDriverId} disconnected and purged from radar.`);
+          console.log(`📡 Driver ${disconnectedDriverId} disconnected and purged from radar.`);
+          io.to(COMMON_CAB_ROOM).emit('drivers:updated', Array.from(activeDrivers.values()));
+        }
+      }, 5000);
     }
   });
 });

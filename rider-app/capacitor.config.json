@@ -4,6 +4,19 @@
   "webDir": "www",
   "server": {
     "url": "https://137.23.57.23.sslip.io",
-    "cleartext": true
+    "cleartext": true,
+    "androidScheme": "https",
+    "allowNavigation": [
+      "137.23.57.23.sslip.io",
+      "*.sslip.io",
+      "*.openstreetmap.org",
+      "*.komoot.io",
+      "router.project-osrm.org"
+    ]
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true
   }
 }
