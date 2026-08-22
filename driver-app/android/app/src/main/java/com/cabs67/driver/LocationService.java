@@ -99,6 +99,11 @@ public class LocationService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         loadCachedDriverData();
 
+        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager != null) {
+            manager.cancel(KILL_NOTIFICATION_ID);
+        }
+
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("67 Cabs Driver Online")
                 .setContentText("आपकी लाइव लोकेशन राइडर्स को दिख रही है...")

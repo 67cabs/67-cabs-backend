@@ -25,10 +25,17 @@ public class MainActivity extends BridgeActivity {
     private static final int BG_LOCATION_REQ_CODE = 6703;
     private static final int FULL_SCREEN_REQ_CODE = 6704;
     private static final int BATTERY_OPT_REQ_CODE = 6706;
+    private static final int KILL_NOTIFICATION_ID = 6709;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Clear any previous kill warning notification when app is opened
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (notificationManager != null) {
+            notificationManager.cancel(KILL_NOTIFICATION_ID);
+        }
 
         // Keep Screen On & Wake up over lockscreen flags
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
@@ -44,6 +51,15 @@ public class MainActivity extends BridgeActivity {
         }
 
         checkAndRequestAppPermissions();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (notificationManager != null) {
+            notificationManager.cancel(KILL_NOTIFICATION_ID);
+        }
     }
 
     private void checkAndRequestAppPermissions() {
