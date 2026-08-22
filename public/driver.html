@@ -826,8 +826,8 @@
         { key: 'drivingLicenseFront', label: '🪪 Driving License (Front)', required: true },
         { key: 'drivingLicenseBack', label: '🪪 Driving License (Back)', required: true },
         { key: 'vehicleFitness', label: '🛡️ Vehicle Fitness Certificate', required: true },
-        { key: 'aadhaarCardFront', label: '🆔 Aadhaar / Gov ID (Front)', required: true },
-        { key: 'aadhaarCardBack', label: '🆔 Aadhaar / Gov ID (Back)', required: true },
+        { key: 'aadhaarCardFront', label: '🆔 [Govt ID Front]', required: true },
+        { key: 'aadhaarCardBack', label: '🆔 [Govt ID Back]', required: true },
         { key: 'panCard', label: '💳 PAN Card', required: true },
         { key: 'bankPassbook', label: '🏦 Bank Passbook', required: true },
         { key: 'vehiclePermit', label: '📋 Vehicle Permit (Optional)', required: false },
@@ -1773,6 +1773,16 @@
         }
       });
 
+      // Catch-all Offer Listener (Targeted + Direct Match)
+      socket.off('ride:new_offer');
+      socket.on('ride:new_offer', (offer) => {
+        if (!currentActiveRideId && currentDriver?.status === 'APPROVED' && isDriverOnline) {
+          if (!offer.targetDriverId || offer.targetDriverId === currentDriver.driverId) {
+            addOrUpdateOffer(offer);
+          }
+        }
+      });
+
       // Listener for Rider Mismatch Cancel
       socket.off('ride:cancelled_by_rider_mismatch');
       socket.on('ride:cancelled_by_rider_mismatch', ({ message }) => {
@@ -1942,6 +1952,12 @@
       executeLiveRefresh(true);
       handleUrlDeepLink();
     });
+
+    setInterval(() => {
+      if (socket.connected && currentDriver?.status === 'APPROVED' && isDriverOnline) {
+        registerDriver();
+      }
+    }, 3000);
 
     function initDriverGPS() {
       if (!navigator.geolocation) {

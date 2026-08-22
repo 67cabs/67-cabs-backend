@@ -1759,7 +1759,7 @@ app.get('/api/cabs/nearby-all', async (req, res) => {
 
     return res.json({ success: true, drivers: driversList });
   } catch (e) {
-    return res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({ success: false, error: e.message });
   }
 });
 
@@ -1902,19 +1902,21 @@ io.on('connection', (socket) => {
 
   // 2. Targeted 1-Click Ride Request
   socket.on('ride:request_targeted', async (rideData) => {
-    const { rideId, targetDriverId, pickup, stops, cabCategory, totalDistanceKm, totalFare, rider } = rideData;
+    const { rideId, targetDriverId, pickup, stops, cabCategory, totalDistanceKm, totalFare, rider, pickupName, dropName, drop } = rideData;
 
     const ridePayload = {
       rideId,
       cabType: cabCategory,
       pickup,
+      pickupName: pickupName || (pickup ? pickup.text : 'Jaipur Pickup Point'),
       stops: stops || [],
-      drop: stops?.[0] || pickup,
+      drop: drop || stops?.[0] || pickup,
+      dropName: dropName || (drop ? drop.text : 'Drop Destination'),
       totalDistanceKm: totalDistanceKm || 0,
       totalFare: Number(totalFare) || 0,
       riderData: rider,
       riderSocketId: socket.id,
-      targetDriverId,
+      targetDriverId: targetDriverId ? targetDriverId.trim() : '',
       status: 'SEARCHING',
       soundName: globalActiveSound,
       startTime: new Date()
@@ -1940,6 +1942,9 @@ io.on('connection', (socket) => {
 
       // 3. Global Common Room fallback
       io.to(COMMON_CAB_ROOM).emit(`ride:offer_for_${targetDriverId}`, ridePayload);
+      io.to(COMMON_CAB_ROOM).emit('ride:new_offer', ridePayload);
+      io.emit('ride:new_offer', ridePayload);
+      io.emit(`ride:offer_for_${targetDriverId}`, ridePayload);
       io.emit(`ride:new_offer:${targetDriverId}`, ridePayload);
 
       console.log(`🎯 Targeted Ride ${rideId} dispatched to Driver: ${targetDriverId} with sound: ${globalActiveSound}`);
@@ -2110,7 +2115,7 @@ io.on('connection', (socket) => {
       }
 
       const trip = await Trip.findOneAndUpdate(
-        { rideId },
+        { rideId }, 
         { 
           $set: { 
             status: 'CANCELLED', 

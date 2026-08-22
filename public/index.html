@@ -89,7 +89,7 @@
       </div>
 
       <!-- ========================================== -->
-      <!-- STEP 1: ROUTE BUILDER                      -->
+      <!-- STEP 1: ROUTE BUILDER                     -->
       <!-- ========================================== -->
       <div id="step-1-route-builder" class="space-y-3">
         <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200">
@@ -152,7 +152,7 @@
       <!-- STEP 2: CAB SELECTION & PROXIMITY CARDS    -->
       <!-- ========================================== -->
       <div id="step-2-cab-selection" class="hidden space-y-3">
-        
+
         <!-- Live Dispatch Waiting Banner (With Countdown) -->
         <div id="dispatch-waiting-banner" class="hidden bg-amber-50 border border-amber-300 p-4 rounded-2xl text-center space-y-2">
           <div class="text-2xl animate-spin">⏳</div>
@@ -199,7 +199,7 @@
               </button>
             </div>
           </div>
-          
+
           <div id="proximity-drivers-list" class="space-y-2 max-h-56 overflow-y-auto custom-scrollbar pr-1">
             <div class="text-center p-4 text-xs text-slate-400">Loading nearby drivers...</div>
           </div>
@@ -219,7 +219,7 @@
               <div id="assigned-vehicle-no" class="text-xs text-slate-400 font-mono">RJ 14 TA 0000</div>
             </div>
           </div>
-          
+
           <div class="flex items-center gap-2">
             <!-- 📞 Call Driver Action Button -->
             <a id="btn-call-driver" href="tel:" class="bg-green-600 hover:bg-green-500 text-white p-2.5 rounded-xl shadow-lg flex items-center justify-center text-sm font-bold transition">
@@ -416,7 +416,7 @@
         <button onclick="closeKYCModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
       </div>
       <p class="text-xs text-slate-500">Apna Govt ID number dalein aur dono taraf ki photo upload karein taaki MongoDB verified record ban sake.</p>
-      
+
       <div class="space-y-3 text-xs">
         <div>
           <label class="font-bold text-slate-600">Govt ID Card Number *</label>
@@ -546,7 +546,7 @@
       <p class="text-xs text-slate-500">
         Rider-initiated early drop par booked trip ka full fare apply rahega. Driver ko yeh OTP provide karein:
       </p>
-      
+
       <div class="bg-amber-50 border border-amber-300 p-4 rounded-2xl">
         <div class="text-[10px] font-bold text-amber-900 uppercase">Early Drop Close OTP</div>
         <div id="early-drop-otp" class="text-3xl font-black text-amber-600 tracking-widest mt-1">7890</div>
@@ -573,7 +573,7 @@
       toastMsg.innerText = msg;
       toastIcon.innerText = icon;
       toast.classList.remove('hidden');
-      
+
       setTimeout(() => {
         toast.classList.remove('-translate-y-4', 'opacity-0');
         toast.classList.add('translate-y-0', 'opacity-100');
@@ -605,7 +605,11 @@
       }
     });
 
-    const socket = io({
+    const LIVE_SERVER_HOST = (typeof window !== 'undefined' && window.location && window.location.origin && !window.location.origin.includes('localhost') && window.location.origin.startsWith('http')) 
+      ? window.location.origin 
+      : 'https://137.23.57.23.sslip.io';
+
+    const socket = io(LIVE_SERVER_HOST, {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: Infinity,
@@ -1154,7 +1158,7 @@
 
       navigator.geolocation.getCurrentPosition(onSuccess, onError, highAccuracyOptions);
     }
-    
+
     document.getElementById('btn-gps').addEventListener('click', fetchPreciseGPS);
     window.addEventListener('load', () => setTimeout(fetchPreciseGPS, 400));
 
@@ -1176,7 +1180,7 @@
         debounceTimer = setTimeout(async () => {
           const bboxParam = `${JAIPUR_BBOX.minLng},${JAIPUR_BBOX.minLat},${JAIPUR_BBOX.maxLng},${JAIPUR_BBOX.maxLat}`;
           const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&bbox=${bboxParam}&limit=6`;
-          
+
           try {
             const res = await fetch(url);
             const data = await res.json();
@@ -1392,7 +1396,7 @@
       filtered.forEach((drv) => {
         const card = document.createElement('div');
         card.className = "bg-slate-50 hover:bg-amber-50/60 p-3 rounded-xl border border-slate-200 flex items-center justify-between transition shadow-sm";
-        
+
         const isCurrentlyBeingOffered = (activeTargetDriverId === drv.id);
         const btnClass = isCurrentlyBeingOffered
           ? "mt-1 bg-slate-800 text-amber-300 text-[11px] font-black px-3 py-1.5 rounded-lg shadow cursor-not-allowed opacity-80"
@@ -1427,16 +1431,30 @@
       activeRideId = `RIDE_${Date.now()}`;
       activeTargetDriverId = targetDriverId;
       tripPhase = 'TO_PICKUP';
-      
+
       renderProximityCards();
 
       socket.off(`ride:accepted:${activeRideId}`);
       socket.on(`ride:accepted:${activeRideId}`, handleRideAcceptedEvent);
 
+      const pickupTextVal = document.getElementById('pickup-search-input')?.value || 'Jaipur Pickup Point';
+      const dropTextVal = dropStops[0]?.text || document.getElementById('drop-search-input-0')?.value || 'Drop Destination';
+
       socket.emit('ride:request_targeted', {
         rideId: activeRideId,
         targetDriverId: targetDriverId,
-        pickup: { lat: pickupCoords[0], lng: pickupCoords[1] },
+        pickup: { 
+          lat: pickupCoords[0], 
+          lng: pickupCoords[1],
+          text: pickupTextVal
+        },
+        pickupName: pickupTextVal,
+        drop: {
+          lat: dropStops[0]?.lat || pickupCoords[0],
+          lng: dropStops[0]?.lng || pickupCoords[1],
+          text: dropTextVal
+        },
+        dropName: dropTextVal,
         stops: dropStops.filter(s => s.lat !== null),
         cabCategory: selectedCategory,
         totalDistanceKm: totalTripDistanceKm,
@@ -1575,7 +1593,7 @@
     function handleDriverArrivalUI(driverData) {
       tripPhase = 'ARRIVED';
       playArrivedChime();
-      
+
       const arrivalModal = document.getElementById('arrival-safety-modal');
       if (arrivalModal) arrivalModal.classList.remove('hidden');
 
@@ -1696,7 +1714,7 @@
       document.getElementById('rider-confirmed-card').classList.add('hidden');
       document.getElementById('otp-container-box').classList.remove('hidden');
       document.getElementById('step-1-route-builder').classList.remove('hidden');
-      
+
       if (routePolyline) map.removeLayer(routePolyline);
       if (liveDriverMarker) map.removeLayer(liveDriverMarker);
       clearNearbyMapMarkers();
